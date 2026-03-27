@@ -65,7 +65,7 @@ export const db = {
     getAll: () => supabase
       .from('tournaments')
       .select('*')
-      .order('createdAt', { ascending: false }),
+      .order('created_at', { ascending: false }),
     
     upsert: (tournament: any) => supabase
       .from('tournaments')
