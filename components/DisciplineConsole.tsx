@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Discipline, ClubConfig, Member, Player, Category, Tournament } from '../types';
+import { Discipline, ClubConfig, Member, Player } from '../types';
 import { 
   BarChart3, Users, CalendarCheck2, Stethoscope, ChevronLeft, 
-  Activity, Trophy, TrendingUp, Filter, Loader2, User, UserCheck,
-  ChevronUp, ChevronDown, LayoutDashboard
+  Activity, Trophy, Loader2,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
-import Dashboard from './Dashboard';
-import AttendanceTracker from './AttendanceTracker';
+import PlantelDashboard from './PlantelDashboard';
+import Asistencia from './Asistencia';
 import MedicalDashboard from './MedicalDashboard';
 import PlayerCard from './PlayerCard';
+import PlantelLista from './PlantelLista';
 import TournamentManagement from './TournamentManagement';
 import { db } from '../lib/supabase';
 
@@ -21,7 +22,7 @@ interface DisciplineConsoleProps {
   onRefresh?: () => Promise<void> | void;
 }
 
-const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubConfig, members, onBack, onRefresh }) => {
+const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubConfig, members, onBack }) => {
   const [activeSubTab, setActiveSubTab] = useState<'summary' | 'players' | 'attendance' | 'medical' | 'tournaments'>('summary');
   const [selectedGender, setSelectedGender] = useState<'Masculino' | 'Femenino'>('Masculino');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
@@ -40,9 +41,9 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
         setSelectedCategoryId(activeBranch.categories[0].id);
       }
     }
-  }, [activeBranch]);
+  }, [activeBranch, selectedCategoryId]);
 
-  const fetchPlayersData = async () => {
+  const fetchPlayersData = React.useCallback(async () => {
     if (!selectedCategoryId || !activeBranch) return;
     setIsLoadingPlayers(true);
     try {
@@ -61,11 +62,11 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
     } finally {
       setIsLoadingPlayers(false);
     }
-  };
+  }, [selectedCategoryId, activeBranch, discipline.name]);
 
   useEffect(() => {
     fetchPlayersData();
-  }, [selectedCategoryId, discipline.name, selectedGender]);
+  }, [selectedCategoryId, discipline.name, selectedGender, fetchPlayersData]);
 
   const displayPlayers = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -73,10 +74,8 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
     const assignedMembers = members.filter(m => {
       if (!m.assignments) return false;
       return m.assignments.some((a: any) => {
-        // Robustez: Comprobamos IDs con y sin guiones bajos
         const aDiscId = a.discipline_id || a.disciplineId;
         const aCatId = a.category_id || a.categoryId;
-        
         return aDiscId === discipline.id && aCatId === selectedCategoryId && a.role === 'PLAYER';
       });
     });
@@ -85,7 +84,7 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
       const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
       const categoryName = activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || '';
       return {
-        id: m.id,
+        id: m.id, // Usamos el ID del miembro como base
         name: m.name,
         dni: m.dni,
         number: savedData?.number || '00',
@@ -106,7 +105,7 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
   const subTabs = [
     { id: 'summary', label: 'Dashboard', icon: BarChart3 },
     { id: 'players', label: 'Plantel', icon: Users },
-    { id: 'attendance', label: 'Presentes', icon: CalendarCheck2 },
+    { id: 'attendance', label: 'Asistencia', icon: CalendarCheck2 },
     { id: 'tournaments', label: 'Torneos', icon: Trophy },
     { id: 'medical', label: 'Médico', icon: Stethoscope },
   ];
@@ -192,29 +191,17 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
             </div>
           ) : (
             <>
-              {activeSubTab === 'summary' && <Dashboard currentCategory={activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || 'General'} />}
+              {activeSubTab === 'summary' && <PlantelDashboard clubConfig={clubConfig} members={members} />}
               {activeSubTab === 'players' && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 animate-fade-in">
-                  {displayPlayers.map(athlete => (
-                    <div key={athlete.id} onClick={() => setSelectedPlayer(athlete)} className="bg-white dark:bg-[#0f1219] rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl transition-all cursor-pointer group flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full border-2 border-slate-50 dark:border-slate-800 p-1 mb-3 group-hover:scale-110 transition-transform relative">
-                          <img src={athlete.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-full" />
-                          <div className="absolute -bottom-1 -right-1 bg-primary-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-black italic text-[8px] shadow-lg">{athlete.overallRating}</div>
-                        </div>
-                        <h3 className="font-black uppercase tracking-tighter text-xs text-slate-800 dark:text-white text-center leading-none truncate w-full">{athlete.name}</h3>
-                        <p className="text-[7px] font-black text-primary-600 mt-1 uppercase">{athlete.position} #{athlete.number}</p>
-                    </div>
-                  ))}
-                  {displayPlayers.length === 0 && (
-                     <div className="col-span-full py-20 text-center opacity-30 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[3rem]">
-                        <Users size={48} className="mx-auto mb-4" />
-                        <p className="text-[9px] font-black uppercase tracking-widest">No hay atletas asignados a esta división</p>
-                        <p className="text-[8px] font-bold uppercase mt-2">Verifica el rol JUGADOR en Miembros</p>
-                     </div>
-                  )}
-                </div>
+                <PlantelLista 
+                  disciplineId={discipline.id}
+                  categoryId={selectedCategoryId}
+                  disciplineName={discipline.name}
+                  categoryName={activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || ''}
+                  onPlayerClick={(p) => setSelectedPlayer(p)}
+                />
               )}
-              {activeSubTab === 'attendance' && <AttendanceTracker players={displayPlayers} clubConfig={clubConfig} forceSelectedDisc={discipline.name} />}
+              {activeSubTab === 'attendance' && <Asistencia players={displayPlayers} clubConfig={clubConfig} forceSelectedDisc={discipline.name} />}
               {activeSubTab === 'tournaments' && (
                 <TournamentManagement 
                   discipline={discipline} 

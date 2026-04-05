@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Database, Sun, Moon, Shield, Users, UserCog, Wallet } from 'lucide-react';
+import { Database, Sun, Moon, Shield, Users, UserCog, Wallet } from 'lucide-react';
 import { ClubConfig } from '../types';
 
 interface TopNavProps {
@@ -32,7 +32,7 @@ const TopNav: React.FC<TopNavProps> = ({
           onClick={() => setView('squads')}
           className="w-12 h-12 rounded-2xl bg-primary-600 flex items-center justify-center cursor-pointer shadow-lg shadow-primary-600/20 hover:scale-105 transition-transform"
         >
-          {config.logoUrl ? <img src={config.logoUrl} className="w-full h-full object-contain p-2" /> : <Shield size={22} className="text-white" />}
+          {config.logo_url ? <img src={config.logo_url} className="w-full h-full object-contain p-2" /> : <Shield size={22} className="text-white" />}
         </div>
         <div className="hidden md:block">
           <h1 className="font-black text-xs uppercase tracking-[0.3em] dark:text-white leading-none">{config.name || 'MI CLUB'}</h1>
@@ -43,7 +43,8 @@ const TopNav: React.FC<TopNavProps> = ({
       <div className="flex items-center gap-2 md:gap-8">
         <div className="flex gap-1 md:gap-4">
           {menu.map(item => {
-            const active = currentView === item.id || (currentView === 'discipline-console' && item.id === 'squads');
+            const active = currentView === item.id || 
+                          ((currentView === 'discipline-console' || currentView === 'squads-config') && item.id === 'squads');
             return (
               <button
                 key={item.id}

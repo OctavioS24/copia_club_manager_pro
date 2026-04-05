@@ -80,7 +80,7 @@ export const db = {
     getAll: (tournamentId: string) => supabase
       .from('tournament_participants')
       .select('*')
-      .eq('tournamentid', tournamentId),
+      .eq('tournament_id', tournamentId),
     
     upsert: (participant: any) => supabase
       .from('tournament_participants')
@@ -107,6 +107,35 @@ export const db = {
       .eq('tournamentId', tournamentId)
       .order('date', { ascending: true }),
     
+    getByTeamName: (teamName: string) => supabase
+      .from('matches')
+      .select('*')
+      .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+      .eq('status', 'Finished')
+      .order('date', { ascending: false }),
+    
+    getLastResults: (teamName: string, limit: number = 5) => {
+      const today = new Date().toISOString().split('T')[0];
+      return supabase
+        .from('matches')
+        .select('*')
+        .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+        .lt('date', today)
+        .order('date', { ascending: false })
+        .limit(limit);
+    },
+
+    getUpcomingMatches: (teamName: string, limit: number = 3) => {
+      const today = new Date().toISOString().split('T')[0];
+      return supabase
+        .from('matches')
+        .select('*')
+        .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+        .gte('date', today)
+        .order('date', { ascending: true })
+        .limit(limit);
+    },
+    
     upsert: async (match: any) => {
       const { incidents, ...matchData } = match;
       
@@ -116,30 +145,13 @@ export const db = {
         .select()
         .single();
       
-      if (mErr && mErr.code === 'PGRST204') {
-        const safeMatchData = { ...matchData };
-        delete (safeMatchData as any).home_participant_id;
-        delete (safeMatchData as any).away_participant_id;
-        delete (safeMatchData as any).homeParticipantId;
-        delete (safeMatchData as any).awayParticipantId;
-
-        const { data: mDataSafe, error: mErrSafe } = await supabase
-          .from('matches')
-          .upsert(safeMatchData)
-          .select()
-          .single();
-          
-        if (mErrSafe) throw mErrSafe;
-        return { data: mDataSafe };
-      }
-
       if (mErr) throw mErr;
 
       if (incidents && incidents.length > 0) {
-        await supabase.from('match_events').delete().eq('matchId', mData.id);
+        await supabase.from('match_events').delete().eq('match_id', mData.id);
         const eventsToSave = incidents.map((inc: any) => ({
-          matchId: mData.id,
-          playerId: inc.playerId,
+          match_id: mData.id,
+          playerId: inc.player_id || inc.playerId,
           type: inc.type,
           minute: parseInt(inc.minute) || 0,
           notes: inc.notes || ''
@@ -151,6 +163,12 @@ export const db = {
     },
     
     delete: (id: string) => supabase.from('matches').delete().eq('id', id)
+  },
+  matchEvents: {
+    getByPlayerIds: (playerIds: string[]) => supabase
+      .from('match_events')
+      .select('*')
+      .in('playerId', playerIds)
   },
   players: {
     getAll: () => supabase
@@ -178,6 +196,22 @@ export const db = {
     
     delete: (id: string) => supabase
       .from('fees')
+      .delete()
+      .eq('id', id)
+  },
+  attendance: {
+    getByDate: (date: string, discipline: string) => supabase
+      .from('attendance')
+      .select('*')
+      .eq('date', date)
+      .eq('discipline', discipline),
+    
+    upsert: (records: any[]) => supabase
+      .from('attendance')
+      .upsert(records, { onConflict: 'player_id,date,discipline' }),
+      
+    delete: (id: string) => supabase
+      .from('attendance')
       .delete()
       .eq('id', id)
   }

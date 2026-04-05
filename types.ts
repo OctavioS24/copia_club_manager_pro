@@ -29,9 +29,9 @@ export interface Discipline {
 
 export interface ClubConfig {
   name: string;
-  logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
+  logo_url: string;
+  primary_color: string;
+  secondary_color: string;
   disciplines: Discipline[];
 }
 
@@ -70,7 +70,7 @@ export interface Member {
   tutor?: Tutor;
   assignments: Assignment[];
   status: 'Active' | 'Inactive' | 'Pending';
-  createdAt: string;
+  created_at: string;
   systemRole: 'STAFF' | 'Socio' | 'Externo';
   canLogin: boolean;
   username?: string;
@@ -81,16 +81,16 @@ export interface Member {
 export interface MedicalHistoryItem {
   id: string;
   date: string;
-  isFit: boolean;
-  expiryDate: string;
+  is_fit: boolean;
+  expiry_date: string;
   notes: string;
-  professionalName: string;
+  professional_name: string;
 }
 
 export interface MedicalRecord {
-  isFit: boolean;
-  lastCheckup: string;
-  expiryDate: string;
+  is_fit: boolean;
+  last_checkup: string;
+  expiry_date: string;
   notes: string;
   history: MedicalHistoryItem[];
 }
@@ -110,6 +110,7 @@ export interface Player {
   stats: Record<string, number>;
   medical?: MedicalRecord;
   status: string;
+  created_at: string;
 }
 
 export interface Fixture {
@@ -129,9 +130,9 @@ export interface TeamStructure {
   gender: string;
   category: string;
   coach: string;
-  physicalTrainer: string;
-  medicalStaff: string;
-  playersCount: number;
+  physical_trainer: string;
+  medical_staff: string;
+  players_count: number;
 }
 
 export interface MemberFee {
@@ -153,39 +154,56 @@ export type MatchStatus = 'Scheduled' | 'Finished' | 'Canceled';
 export type MatchEventType = 'Goal' | 'YellowCard' | 'RedCard' | 'Foul' | 'Substitution';
 
 export interface TournamentSettings {
-  hasGroups: boolean;
-  groupsCount: number;
-  advancingPerGroup: number;
-  hasPlayoffs: boolean;
-  playoffStart: 'F' | 'SF' | 'QF' | 'R16';
+  has_groups: boolean;
+  groups_count: number;
+  advancing_per_group: number;
+  has_playoffs: boolean;
+  playoff_start: 'F' | 'SF' | 'QF' | 'R16';
+  dates_count?: number;
 }
 
 export interface TournamentParticipant {
   id: string;
-  tournamentid: string;
+  tournament_id: string;
   name: string;
-  memberids: string[];
+  member_ids: string[];
+}
+
+export interface MatchFixture {
+  id: string;
+  rival: string;
+  date: string;
+  condition: 'Home' | 'Away';
+}
+
+export interface PlayerStats {
+  goals: number;
+  yellow_cards: number;
+  red_cards: number;
 }
 
 export interface Tournament {
   id: string;
   name: string;
   type: TournamentType;
-  disciplineId: string;
-  categoryId: string;
+  discipline_id: string;
+  category_id: string;
   gender: 'Masculino' | 'Femenino';
   status: 'Open' | 'Finished';
   settings: TournamentSettings;
+  fixture_base?: MatchFixture[];
+  assigned_categories?: string[];
   created_at: string;
 }
 
 export interface Match {
   id: string;
   tournamentId: string;
+  categoryId?: string;
   homeTeam: string;
   awayTeam: string;
-  home_participant_id?: string;
-  away_participant_id?: string;
+  homeParticipantId?: string;
+  awayParticipantId?: string;
   homeScore?: number;
   awayScore?: number;
   date: string;
@@ -194,6 +212,8 @@ export interface Match {
   status: MatchStatus;
   group?: string; 
   stage?: string; 
+  isOverridden?: boolean;
+  originalMatchId?: string;
   events?: MatchEvent[];
 }
 

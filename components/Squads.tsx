@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Player, ClubConfig, Discipline, Category } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Player, ClubConfig } from '../types';
 import { 
-  Users, Shield, Star, Search, ChevronRight, ChevronLeft, Settings, Loader2
+  Users, Shield, Star, Search, ChevronRight, Settings
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 
@@ -19,8 +19,6 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
   const activeSport = useMemo(() => 
     clubConfig.disciplines.find(s => s.id === selectedSportId), 
   [selectedSportId, clubConfig]);
@@ -37,7 +35,7 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
     } else {
       setSelectedCatId('');
     }
-  }, [activeBranch]);
+  }, [activeBranch, selectedCatId]);
 
   const fetchPlayers = async () => {
     setIsLoading(true);

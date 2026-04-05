@@ -3,13 +3,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Tournament, Match, Player, Category, Discipline, ClubConfig, TournamentParticipant, Member } from '../types';
 import { 
   Trophy, Plus, Calendar, Trash2, X, ChevronRight, Edit3, 
-  Activity, Users, Loader2, Info, CheckCircle2,
-  ListOrdered, LayoutGrid, UserPlus, Search, Layout, UserCircle, 
-  GitBranch, ArrowRight, Table as TableIcon, Award, ChevronLeft, 
-  Settings2, Flag, Shield, UserCheck, Timer, AlertCircle,
-  BadgeCheck, Home, Plane, UserMinus
+  Users, Loader2, CheckCircle2,
+  ListOrdered, Search, Layout, UserCircle, 
+  GitBranch, Table as TableIcon, Award, ChevronLeft, 
+  Settings2, Shield, UserMinus
 } from 'lucide-react';
 import { db } from '../lib/supabase';
+import CrearTorneo from './Torneos/CrearTorneo';
 
 interface TournamentManagementProps {
   discipline: Discipline;
@@ -25,7 +25,50 @@ interface TempTeam {
   memberIds: string[];
 }
 
-const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline, category, gender, clubConfig }) => {
+import { useCategory } from '../context/useCategory';
+
+const TournamentManagement: React.FC<TournamentManagementProps> = ({ 
+  discipline: propDiscipline, 
+  category: propCategory, 
+  gender: propGender, 
+  clubConfig: propClubConfig 
+}) => {
+  const { selectedDiscipline, selectedDivision, selectedGender } = useCategory();
+  const [discipline, setDiscipline] = useState<Discipline | null>(propDiscipline || null);
+  const [category, setCategory] = useState<Category | null>(propCategory || null);
+  const [gender, setGender] = useState<'Masculino' | 'Femenino'>(propGender || (selectedGender as any) || 'Masculino');
+  const [clubConfig, setClubConfig] = useState<ClubConfig | null>(propClubConfig || null);
+
+  // Fetch data if needed
+  useEffect(() => {
+    const fetchData = async () => {
+      if (propDiscipline && propClubConfig) return;
+
+      setIsLoading(true);
+      try {
+        const configRes = await db.config.get();
+        if (configRes.data) {
+          setClubConfig(configRes.data);
+          const disc = configRes.data.disciplines.find((d: any) => d.id === selectedDiscipline);
+          if (disc) {
+            setDiscipline(disc);
+            if (selectedDivision) {
+              const cat = disc.branches.flatMap((b: any) => b.categories).find((c: any) => c.id === selectedDivision);
+              if (cat) setCategory(cat);
+            }
+          }
+        }
+        if (selectedGender) setGender(selectedGender as any);
+      } catch (err) {
+        console.error("Error fetching data for TournamentManagement:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [propDiscipline, propClubConfig, selectedDiscipline, selectedDivision, selectedGender]);
+
   // --- Estados de Datos ---
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
@@ -39,12 +82,13 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
   const [wizardStep, setWizardStep] = useState(1);
   const [viewMode, setViewMode] = useState<'fixture' | 'groups' | 'bracket' | 'participants'>('fixture');
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
 
   // --- Estados de Formulario de Torneo ---
   const [tForm, setTForm] = useState<Partial<Tournament>>({
-    name: '', type: 'Professional', settings: { hasGroups: false, groupsCount: 1, advancingPerGroup: 2, hasPlayoffs: false, playoffStart: 'F' }
+    name: '', type: 'Professional', settings: { has_groups: false, groups_count: 1, advancing_per_group: 2, has_playoffs: false, playoff_start: 'F' }
   });
   
   // --- Estados para Armado de Equipos ---
@@ -53,8 +97,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
   const [participantSearch, setParticipantSearch] = useState('');
   
   const [matchForm, setMatchForm] = useState({
-    home_participant_id: '', 
-    away_participant_id: '', 
+    homeParticipantId: '', 
+    awayParticipantId: '', 
     rivalName: '',
     isHome: true, 
     myScore: 0, 
@@ -63,7 +107,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
     stage: 'Fase Regular'
   });
 
-  const loadInitialData = async () => {
+  const loadInitialData = React.useCallback(async () => {
+    if (!discipline) return;
     setIsLoading(true);
     try {
       const [tourRes, memRes] = await Promise.all([
@@ -73,9 +118,21 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
       
       if (tourRes.data) {
         const filtered = tourRes.data.filter((t: any) => {
-          const discMatch = t.disciplineId === discipline.id;
-          const genderMatch = !gender || (t.gender === gender);
-          return discMatch && genderMatch;
+          const tDiscId = t.discipline_id || t.disciplineid;
+          const tGender = t.gender;
+          const tAssignedCats = t.assigned_categories || t.assignedcategories || [];
+
+          // Check if the tournament is explicitly for this discipline
+          const discMatch = tDiscId === discipline?.id;
+          
+          // OR if it has assigned_categories that belong to this discipline
+          const hasAssignedCategoryInDiscipline = tAssignedCats.some((catId: string) => {
+            return discipline?.branches?.some(b => b.categories.some(c => c.id === catId));
+          });
+
+          const genderMatch = !gender || (tGender === gender);
+          
+          return (discMatch || hasAssignedCategoryInDiscipline) && genderMatch;
         });
         setTournaments(filtered);
         if (filtered.length > 0 && !activeTournament) setActiveTournament(filtered[0]);
@@ -86,9 +143,9 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [discipline, gender, activeTournament]);
 
-  useEffect(() => { loadInitialData(); }, [discipline.id, gender]);
+  useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
   useEffect(() => {
     if (activeTournament) {
@@ -125,11 +182,11 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
 
   const availableMembers = useMemo(() => {
     return allMembers.filter(m => {
-      const hasDiscipline = m.assignments?.some(a => (a.discipline_id || (a as any).disciplineId) === discipline.id);
+      const hasDiscipline = m.assignments?.some(a => (a.discipline_id || (a as any).disciplineId) === discipline?.id);
       const searchMatch = m.name.toLowerCase().includes(participantSearch.toLowerCase()) || m.dni.includes(participantSearch);
       return hasDiscipline && searchMatch;
     });
-  }, [allMembers, discipline.id, participantSearch]);
+  }, [allMembers, discipline?.id, participantSearch]);
 
   const handleFinalizeTournament = async () => {
     if (!tForm.name) return;
@@ -140,12 +197,12 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
         id: tournamentId,
         name: tForm.name.toUpperCase(),
         type: tForm.type,
-        disciplineId: discipline.id,
-        categoryId: category?.id || null,
+        discipline_id: discipline?.id,
+        category_id: category?.id || null,
         gender: gender,
         status: 'Open',
         settings: tForm.settings,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
       await db.tournaments.upsert(newTournament);
 
@@ -157,9 +214,9 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
       if (tForm.type === 'Internal') {
         const promises = tempTeams.map(team => db.participants.upsert({
           id: crypto.randomUUID(),
-          tournamentid: tournamentId,
+          tournament_id: tournamentId,
           name: team.name.toUpperCase(),
-          memberids: team.memberIds
+          member_ids: team.memberIds
         }));
         await Promise.all(promises);
       }
@@ -184,7 +241,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
       setTempTeams(partRes.data.map(p => ({
         id: p.id,
         name: p.name,
-        memberIds: p.memberids || []
+        memberIds: p.member_ids || []
       })));
     }
     setWizardStep(1);
@@ -201,8 +258,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
   const handleEditMatch = (match: Match) => {
     setEditingMatchId(match.id);
     setMatchForm({
-      home_participant_id: match.home_participant_id || '',
-      away_participant_id: match.away_participant_id || '',
+      homeParticipantId: match.homeParticipantId || '',
+      awayParticipantId: match.awayParticipantId || '',
       rivalName: activeTournament?.type === 'Professional' ? (match.homeTeam === clubConfig.name ? match.awayTeam : match.homeTeam) : '',
       isHome: match.homeTeam === clubConfig.name,
       myScore: (match.homeTeam === clubConfig.name ? match.homeScore : match.awayScore) || 0,
@@ -253,7 +310,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
           <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-1 ml-1">Central de Torneos Plegma Sport</p>
         </div>
         <button 
-          onClick={() => { setEditingTournamentId(null); setWizardStep(1); setTForm({name: '', type: 'Internal', settings: { hasGroups: false, groupsCount: 1, advancingPerGroup: 2, hasPlayoffs: false, playoffStart: 'F' }}); setShowWizard(true); }}
+          onClick={() => setShowCreateModal(true)}
           className="bg-primary-600 text-white px-10 py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
         >
           <Plus size={18} strokeWidth={3} /> Nuevo Torneo
@@ -298,8 +355,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                 <div className="space-y-2">
                     {[
                       { id: 'fixture', label: 'Resultados', icon: Calendar },
-                      { id: 'groups', label: 'Tablas', icon: ListOrdered, show: activeTournament.settings.hasGroups },
-                      { id: 'bracket', label: 'Playoffs', icon: GitBranch, show: activeTournament.settings.hasPlayoffs },
+                      { id: 'groups', label: 'Tablas', icon: ListOrdered, show: activeTournament.settings.has_groups },
+                      { id: 'bracket', label: 'Playoffs', icon: GitBranch, show: activeTournament.settings.has_playoffs },
                       { id: 'participants', label: 'Equipos', icon: Users, show: true }
                     ].map(item => (item.show !== false) && (
                       <button key={item.id} onClick={() => setViewMode(item.id as any)} className={`w-full p-4 rounded-2xl flex items-center gap-4 text-[11px] font-black uppercase transition-all ${viewMode === item.id ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>
@@ -359,7 +416,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                        <div key={p.id} className="bg-white dark:bg-[#0f1219] p-8 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
                           <h4 className="text-lg font-black uppercase italic tracking-tighter text-slate-800 dark:text-white mb-4">{p.name}</h4>
                           <div className="space-y-2">
-                             {(p.memberids || []).map(mid => {
+                             {(p.member_ids || []).map(mid => {
                                const m = allMembers.find(mem => mem.id === mid);
                                return <div key={mid} className="text-[10px] font-bold uppercase text-slate-500 bg-slate-50 dark:bg-white/5 p-2 rounded-xl flex items-center gap-2"><UserCircle size={14} /> {m?.name}</div>
                              })}
@@ -377,6 +434,16 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
            )}
         </div>
       </div>
+
+      {showCreateModal && (
+        <CrearTorneo 
+          clubConfig={clubConfig}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => loadInitialData()}
+          defaultDisciplineId={discipline?.id}
+          defaultGender={gender}
+        />
+      )}
 
       {showWizard && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[600] flex items-center justify-center p-4 animate-fade-in">
@@ -410,8 +477,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                {wizardStep === 2 && (
                  <div className="space-y-8 animate-fade-in">
                     <div 
-                      onClick={() => setTForm({...tForm, settings: {...tForm.settings!, hasGroups: !tForm.settings?.hasGroups}})}
-                      className={`flex items-center justify-between p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all ${tForm.settings?.hasGroups ? 'border-primary-600 bg-primary-600/5' : 'border-slate-100 dark:border-white/5'}`}
+                      onClick={() => setTForm({...tForm, settings: {...tForm.settings!, has_groups: !tForm.settings?.has_groups}})}
+                      className={`flex items-center justify-between p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all ${tForm.settings?.has_groups ? 'border-primary-600 bg-primary-600/5' : 'border-slate-100 dark:border-white/5'}`}
                     >
                        <div className="flex items-center gap-6">
                           <TableIcon size={32} className="text-primary-600" />
@@ -420,11 +487,11 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ligas divididas por zonas</p>
                           </div>
                        </div>
-                       <CheckCircle2 size={24} className={tForm.settings?.hasGroups ? 'text-primary-600' : 'text-slate-200'} />
+                       <CheckCircle2 size={24} className={tForm.settings?.has_groups ? 'text-primary-600' : 'text-slate-200'} />
                     </div>
                     <div 
-                      onClick={() => setTForm({...tForm, settings: {...tForm.settings!, hasPlayoffs: !tForm.settings?.hasPlayoffs}})}
-                      className={`flex items-center justify-between p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all ${tForm.settings?.hasPlayoffs ? 'border-primary-600 bg-primary-600/5' : 'border-slate-100 dark:border-white/5'}`}
+                      onClick={() => setTForm({...tForm, settings: {...tForm.settings!, has_playoffs: !tForm.settings?.has_playoffs}})}
+                      className={`flex items-center justify-between p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all ${tForm.settings?.has_playoffs ? 'border-primary-600 bg-primary-600/5' : 'border-slate-100 dark:border-white/5'}`}
                     >
                        <div className="flex items-center gap-6">
                           <GitBranch size={32} className="text-primary-600" />
@@ -433,7 +500,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Llaves directas hasta la final</p>
                           </div>
                        </div>
-                       <CheckCircle2 size={24} className={tForm.settings?.hasPlayoffs ? 'text-primary-600' : 'text-slate-200'} />
+                       <CheckCircle2 size={24} className={tForm.settings?.has_playoffs ? 'text-primary-600' : 'text-slate-200'} />
                     </div>
                  </div>
                )}
@@ -537,7 +604,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                     <div className="space-y-3">
                        <label className={labelClasses}>Equipo Local</label>
                        {activeTournament.type === 'Internal' ? (
-                          <select className={inputClasses} value={matchForm.home_participant_id} onChange={e => setMatchForm({...matchForm, home_participant_id: e.target.value})}>
+                          <select className={inputClasses} value={matchForm.homeParticipantId} onChange={e => setMatchForm({...matchForm, homeParticipantId: e.target.value})}>
                              <option value="">-- EQUIPO --</option>
                              {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
@@ -548,7 +615,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                     <div className="space-y-3">
                        <label className={labelClasses}>Equipo Visitante</label>
                        {activeTournament.type === 'Internal' ? (
-                          <select className={inputClasses} value={matchForm.away_participant_id} onChange={e => setMatchForm({...matchForm, away_participant_id: e.target.value})}>
+                          <select className={inputClasses} value={matchForm.awayParticipantId} onChange={e => setMatchForm({...matchForm, awayParticipantId: e.target.value})}>
                              <option value="">-- EQUIPO --</option>
                              {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
@@ -572,8 +639,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
               <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-white/5">
                  <button 
                   onClick={async () => {
-                    let hName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.home_participant_id)?.name : (matchForm.isHome ? clubConfig.name : matchForm.rivalName);
-                    let vName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.away_participant_id)?.name : (!matchForm.isHome ? clubConfig.name : matchForm.rivalName);
+                    const hName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.homeParticipantId)?.name : (matchForm.isHome ? category?.name : matchForm.rivalName);
+                    const vName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.awayParticipantId)?.name : (!matchForm.isHome ? category?.name : matchForm.rivalName);
                     
                     await db.matches.upsert({
                       id: editingMatchId || crypto.randomUUID(),
@@ -582,8 +649,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({ discipline,
                       awayTeam: vName || 'Visitante',
                       homeScore: matchForm.myScore,
                       awayScore: matchForm.rivalScore,
-                      home_participant_id: matchForm.home_participant_id,
-                      away_participant_id: matchForm.away_participant_id,
+                      homeParticipantId: matchForm.homeParticipantId,
+                      awayParticipantId: matchForm.awayParticipantId,
                       date: matchForm.date,
                       status: 'Finished',
                       stage: matchForm.stage

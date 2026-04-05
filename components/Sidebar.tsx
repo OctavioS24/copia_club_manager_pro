@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className={`p-6 flex flex-col items-center border-b border-slate-200 dark:border-white/5 transition-all duration-500 ${isCollapsed ? 'min-h-[100px] justify-center' : 'min-h-[180px] justify-center'}`}>
           <div className="w-14 h-14 rounded-2xl bg-primary-600 flex items-center justify-center shrink-0 shadow-xl shadow-primary-600/30 mb-4 transition-transform hover:scale-105">
-            {config.logoUrl ? <img src={config.logoUrl} className="w-full h-full object-contain p-2" /> : <Shield size={28} className="text-white" />}
+            {config.logo_url ? <img src={config.logo_url} className="w-full h-full object-contain p-2" /> : <Shield size={28} className="text-white" />}
           </div>
           {!isCollapsed && (
             <div className="animate-fade-in text-center px-4 w-full">

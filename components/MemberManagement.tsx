@@ -1,13 +1,11 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Member, AppRole, ClubConfig, Tutor, Assignment, Player } from '../types';
+import { Member, AppRole, ClubConfig, Assignment } from '../types';
 import { 
-  UserPlus, Search, Trash2, User, X, Save, Camera, Loader2, PlusCircle, Heart, 
-  UserCheck, Fingerprint, ShieldCheck, Briefcase, Ruler, Weight, Activity, 
-  BadgeCheck, Contact2, ShieldAlert, ChevronRight, MapPin, Phone, Mail, UserCircle,
-  Image as ImageIcon
+  UserPlus, Search, Trash2, X, Save, Camera, Loader2, PlusCircle, Heart, 
+  Fingerprint, ShieldCheck, Briefcase, 
+  Contact2, UserCircle
 } from 'lucide-react';
-import { db, supabase } from '../lib/supabase';
 
 interface MemberManagementProps {
   members: Member[];
@@ -82,7 +80,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       const memberToSave = {
         ...formData,
         id: memberId,
-        createdAt: selectedMember?.createdAt || new Date().toISOString(),
+        created_at: selectedMember?.created_at || new Date().toISOString(),
       } as Member;
 
       await onSaveMember(memberToSave);

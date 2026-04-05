@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ClubConfig, Discipline, Branch, Category, Metric } from '../types';
+import React, { useState, useRef } from 'react';
+import { ClubConfig, Discipline } from '../types';
 import { 
   Save, Plus, Trash2, Shield, Palette, Database, ChevronDown, 
-  User, Users, Activity, CheckCircle, Loader2, Camera, Sparkles, 
-  X, Image as ImageIcon, LayoutGrid, Settings2, Search, Lock, Unlock, Edit3,
-  ChevronUp, BarChart3, Target
+  Activity, CheckCircle, Loader2, Camera, 
+  X, Image as ImageIcon, LayoutGrid, Lock, Unlock,
+  BarChart3, Target, User
 } from 'lucide-react';
 
 interface MasterDataProps {
@@ -22,17 +22,10 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   
   // States for Matrix View
-  const [selectedDiscId, setSelectedDiscId] = useState<string | null>(null);
+  const [selectedDiscId, setSelectedDiscId] = useState<string | null>(config.disciplines[0]?.id || null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const discIconRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
-  useEffect(() => {
-    setLocalConfig(config);
-    if (config.disciplines.length > 0 && !selectedDiscId) {
-      setSelectedDiscId(config.disciplines[0].id);
-    }
-  }, [config]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -470,11 +463,11 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                     <input 
                       type="color" 
                       disabled={!isEditingEnabled}
-                      value={localConfig.primaryColor} 
-                      onChange={e => setLocalConfig({...localConfig, primaryColor: e.target.value})} 
+                      value={localConfig.primary_color} 
+                      onChange={e => setLocalConfig({...localConfig, primary_color: e.target.value})} 
                       className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
                     />
-                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.primaryColor}</span>
+                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.primary_color}</span>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -483,11 +476,11 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                     <input 
                       type="color" 
                       disabled={!isEditingEnabled}
-                      value={localConfig.secondaryColor} 
-                      onChange={e => setLocalConfig({...localConfig, secondaryColor: e.target.value})} 
+                      value={localConfig.secondary_color} 
+                      onChange={e => setLocalConfig({...localConfig, secondary_color: e.target.value})} 
                       className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
                     />
-                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.secondaryColor}</span>
+                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.secondary_color}</span>
                   </div>
                 </div>
               </div>
@@ -498,14 +491,14 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                 const file = e.target.files?.[0];
                 if (file) {
                   const reader = new FileReader();
-                  reader.onloadend = () => setLocalConfig({...localConfig, logoUrl: reader.result as string});
+                  reader.onloadend = () => setLocalConfig({...localConfig, logo_url: reader.result as string});
                   reader.readAsDataURL(file);
                 }
               }} accept="image/*" className="hidden" />
               
               <div className="w-64 h-64 rounded-full bg-white dark:bg-slate-900 shadow-3xl flex items-center justify-center overflow-hidden mb-12 border-8 border-white dark:border-slate-800 relative group">
-                {localConfig.logoUrl ? (
-                  <img src={localConfig.logoUrl} className="w-full h-full object-contain p-8" />
+                {localConfig.logo_url ? (
+                  <img src={localConfig.logo_url} className="w-full h-full object-contain p-8" />
                 ) : (
                   <Shield size={80} className="text-slate-100 dark:text-slate-800" />
                 )}

@@ -1,12 +1,12 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Player, ClubConfig, Metric, MedicalHistoryItem } from '../types.ts';
 import { 
-  X, Activity, Save, Edit3, User, Heart, Shield, Hash, Camera, 
-  Loader2, CheckCircle, Smartphone, Mail, Fingerprint, MapPin, 
-  Briefcase, BarChart3, Target, Award, Info, History, Clock, UserCircle
+  X, Save, Edit3, Heart, 
+  Loader2, CheckCircle, Fingerprint, 
+  BarChart3, Target, Info, History, Clock, UserCircle
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { db } from '../lib/supabase.ts';
 
 interface PlayerCardProps {
@@ -23,7 +23,6 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [player, setPlayer] = useState<Player>(initialPlayer);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolución robusta de métricas desde la matriz
   const currentMetrics = useMemo(() => {
@@ -65,7 +64,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
     if (overall !== player.overallRating) {
         setPlayer(prev => ({ ...prev, overallRating: overall }));
     }
-  }, [player.stats, currentMetrics]);
+  }, [player.stats, currentMetrics, player.overallRating]);
 
   const radarData = currentMetrics.map(m => ({
     subject: m.name,
@@ -269,14 +268,14 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
                       <label className={labelClasses}>Estado Actual</label>
-                      <div className={`p-6 rounded-[2rem] border flex items-center gap-6 transition-all ${player.medical?.isFit ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600' : 'bg-red-500/5 border-red-500/10 text-red-600'}`}>
-                        {player.medical?.isFit ? <CheckCircle size={32} /> : <Info size={32} />}
+                      <div className={`p-6 rounded-[2rem] border flex items-center gap-6 transition-all ${player.medical?.is_fit ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600' : 'bg-red-500/5 border-red-500/10 text-red-600'}`}>
+                        {player.medical?.is_fit ? <CheckCircle size={32} /> : <Info size={32} />}
                         <div>
                           <h5 className="text-[11px] font-black uppercase tracking-widest">
-                            {player.medical?.isFit ? 'Apto Competencia' : 'Baja Médica'}
+                            {player.medical?.is_fit ? 'Apto Competencia' : 'Baja Médica'}
                           </h5>
                           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                            Vto: {player.medical?.expiryDate || 'N/A'}
+                            Vto: {player.medical?.expiry_date || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -285,7 +284,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
                     <div className="space-y-4">
                       <label className={labelClasses}>Última Evaluación</label>
                       <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2rem] border border-slate-100 dark:border-white/5">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fecha: {player.medical?.lastCheckup || 'Sin fecha'}</p>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fecha: {player.medical?.last_checkup || 'Sin fecha'}</p>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-2 line-clamp-2 italic">
                           "{player.medical?.notes || 'Sin observaciones.'}"
                         </p>
@@ -304,20 +303,20 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
                         {player.medical?.history && player.medical.history.length > 0 ? (
                           player.medical.history.map((item: MedicalHistoryItem) => (
                             <div key={item.id} className="relative pl-12">
-                               <div className={`absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${item.isFit ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                               <div className={`absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${item.is_fit ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                                <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-100 dark:border-white/5">
                                   <div className="flex justify-between items-start mb-2">
                                      <span className="text-[9px] font-black uppercase text-slate-400 italic flex items-center gap-2">
                                         <Clock size={10} /> {item.date}
                                      </span>
-                                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${item.isFit ? 'text-emerald-500 bg-emerald-500/10' : 'text-red-500 bg-red-500/10'}`}>
-                                        {item.isFit ? 'Apto' : 'Baja'}
+                                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${item.is_fit ? 'text-emerald-500 bg-emerald-500/10' : 'text-red-500 bg-red-500/10'}`}>
+                                        {item.is_fit ? 'Apto' : 'Baja'}
                                      </span>
                                   </div>
                                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed italic">"{item.notes || 'Sin notas'}"</p>
                                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[8px] font-bold text-slate-400 uppercase tracking-widest flex justify-between">
-                                     <span>Vto: {item.expiryDate || 'N/A'}</span>
-                                     <span className="flex items-center gap-1"><UserCircle size={10} /> {item.professionalName}</span>
+                                     <span>Vto: {item.expiry_date || 'N/A'}</span>
+                                     <span className="flex items-center gap-1"><UserCircle size={10} /> {item.professional_name}</span>
                                   </div>
                                </div>
                             </div>

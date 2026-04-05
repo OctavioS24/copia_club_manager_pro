@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, MedicalRecord, MedicalHistoryItem } from '../types';
 import { 
-  Activity, AlertTriangle, CheckCircle, Search, Calendar, FileText, 
-  Plus, X, Save, Trash2, Edit2, Loader2, Heart, ShieldCheck, 
-  ClipboardList, History, Clock, ChevronRight, UserCircle
+  Activity, AlertTriangle, CheckCircle, Calendar, 
+  Plus, X, Save, Edit2, Loader2, ShieldCheck, 
+  ClipboardList, History, Clock, UserCircle
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 
@@ -13,30 +13,63 @@ interface MedicalDashboardProps {
   onRefresh?: () => void;
 }
 
-const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh }) => {
+import { useCategory } from '../context/useCategory';
+
+const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayers, onRefresh }) => {
+  const { selectedDivision, selectedDiscipline } = useCategory();
+  const [players, setPlayers] = useState<Player[]>(propPlayers || []);
   const [filter, setFilter] = useState<'all' | 'injured' | 'expired'>('all');
   const [showModal, setShowModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch players if needed
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      if (propPlayers) return;
+
+      setIsLoading(true);
+      try {
+        const { data } = await db.members.getAll();
+        if (data && selectedDivision && selectedDiscipline) {
+          const filtered = data.filter((m: any) => 
+            m.assignments?.some((a: any) => 
+              a.discipline_id === selectedDiscipline && 
+              a.category_id === selectedDivision &&
+              a.role === 'PLAYER'
+            )
+          );
+          setPlayers(filtered);
+        }
+      } catch (err) {
+        console.error("Error fetching players for MedicalDashboard:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlayers();
+  }, [propPlayers, selectedDivision, selectedDiscipline]);
   
   // Estado para la nueva evaluación que se está cargando
   const [formData, setFormData] = useState<MedicalRecord>({
-    isFit: true,
-    lastCheckup: new Date().toISOString().split('T')[0],
-    expiryDate: '',
+    is_fit: true,
+    last_checkup: new Date().toISOString().split('T')[0],
+    expiry_date: '',
     notes: '',
     history: []
   });
 
   const handleEditClick = (player: Player) => {
     setSelectedPlayer(player);
-    const existingMedical = player.medical || { isFit: true, lastCheckup: '', expiryDate: '', notes: '', history: [] };
+    const existingMedical = player.medical || { is_fit: true, last_checkup: '', expiry_date: '', notes: '', history: [] };
     
     setFormData({
       ...existingMedical,
       // Al abrir para editar, preparamos los campos para una "Nueva Evaluación"
       // pero mantenemos el historial existente
-      lastCheckup: new Date().toISOString().split('T')[0],
+      last_checkup: new Date().toISOString().split('T')[0],
       notes: '',
       history: existingMedical.history || []
     });
@@ -50,18 +83,18 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
       // Creamos el nuevo item del historial
       const newHistoryItem: MedicalHistoryItem = {
         id: crypto.randomUUID(),
-        date: formData.lastCheckup || new Date().toISOString().split('T')[0],
-        isFit: formData.isFit,
-        expiryDate: formData.expiryDate,
+        date: formData.last_checkup || new Date().toISOString().split('T')[0],
+        is_fit: formData.is_fit,
+        expiry_date: formData.expiry_date,
         notes: formData.notes,
-        professionalName: 'Staff Médico Club' // Podría ser dinámico en el futuro
+        professional_name: 'Staff Médico Club' // Podría ser dinámico en el futuro
       };
 
       // Actualizamos el objeto médico completo
       const updatedMedical: MedicalRecord = {
-        isFit: formData.isFit,
-        lastCheckup: formData.lastCheckup,
-        expiryDate: formData.expiryDate,
+        is_fit: formData.is_fit,
+        last_checkup: formData.last_checkup,
+        expiry_date: formData.expiry_date,
         notes: formData.notes,
         history: [newHistoryItem, ...(formData.history || [])]
       };
@@ -80,13 +113,21 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
     }
   };
 
-  const injuredPlayers = players.filter(p => !p.medical?.isFit || p.status === 'Injured');
+  const injuredPlayers = players.filter(p => !p.medical?.is_fit || p.status === 'Injured');
   const expiredPlayers = players.filter(p => {
-      if (!p.medical?.expiryDate) return false;
-      return new Date(p.medical.expiryDate) < new Date();
+      if (!p.medical?.expiry_date) return false;
+      return new Date(p.medical.expiry_date) < new Date();
   });
 
   const displayPlayers = filter === 'injured' ? injuredPlayers : filter === 'expired' ? expiredPlayers : players;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full py-40">
+        <Loader2 className="animate-spin text-primary-600" size={48} />
+      </div>
+    );
+  }
 
   const inputClasses = "w-full p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl font-bold text-sm outline-none border border-transparent dark:border-slate-700 focus:border-primary-600/50 transition-all dark:text-slate-200 shadow-inner";
   const labelClasses = "text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-2 block";
@@ -169,7 +210,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
                      </div>
                   </td>
                   <td className="p-8">
-                    {player.medical?.isFit ? (
+                    {player.medical?.is_fit ? (
                        <div className="flex items-center gap-2 text-emerald-600">
                           <CheckCircle size={14} />
                           <span className="text-[9px] font-black uppercase tracking-widest">Apto Competición</span>
@@ -184,7 +225,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
                   <td className="p-8">
                      <div className="flex items-center gap-3 text-[11px] font-black text-slate-500 italic">
                         <Calendar size={14} className="text-primary-600" />
-                        {player.medical?.expiryDate || 'N/A'}
+                        {player.medical?.expiry_date || 'N/A'}
                      </div>
                   </td>
                   <td className="p-8 text-right">
@@ -232,27 +273,27 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
 
                         {formData.history && formData.history.length > 0 ? (
                           <div className="space-y-8 relative before:absolute before:left-4 before:top-2 before:bottom-0 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                            {formData.history.map((item, idx) => (
+                            {formData.history.map((item) => (
                               <div key={item.id} className="relative pl-12 animate-fade-in-up">
                                 {/* Dot Indicator */}
-                                <div className={`absolute left-2.5 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-10 ${item.isFit ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                                 <div className={`absolute left-2.5 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-10 ${item.is_fit ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                                 
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow">
                                    <div className="flex justify-between items-start mb-3">
                                       <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 italic">
                                          <Clock size={12} /> {item.date}
                                       </div>
-                                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${item.isFit ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
-                                         {item.isFit ? 'Apto' : 'Baja'}
+                                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${item.is_fit ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                         {item.is_fit ? 'Apto' : 'Baja'}
                                       </span>
                                    </div>
                                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-4">
                                       {item.notes || 'Sin observaciones registradas.'}
                                    </p>
                                    <div className="flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-50 dark:border-white/5 pt-3">
-                                      <UserCircle size={10} /> {item.professionalName}
+                                      <UserCircle size={10} /> {item.professional_name}
                                       <span className="mx-2">•</span>
-                                      Vto: {item.expiryDate || 'N/A'}
+                                      Vto: {item.expiry_date || 'N/A'}
                                    </div>
                                 </div>
                               </div>
@@ -279,14 +320,14 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
                                 <label className={labelClasses}>Dictamen de Aptitud Actual</label>
                                 <div className="grid grid-cols-2 gap-4 p-2 bg-slate-100 dark:bg-slate-800/60 rounded-[2rem] border border-slate-200 dark:border-white/5">
                                     <button 
-                                      onClick={() => setFormData({...formData, isFit: true})} 
-                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${formData.isFit ? 'bg-emerald-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
+                                      onClick={() => setFormData({...formData, is_fit: true})} 
+                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${formData.is_fit ? 'bg-emerald-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
                                     >
                                       <ShieldCheck size={16} /> Apto Competencia
                                     </button>
                                     <button 
-                                      onClick={() => setFormData({...formData, isFit: false})} 
-                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${!formData.isFit ? 'bg-red-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
+                                      onClick={() => setFormData({...formData, is_fit: false})} 
+                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${!formData.is_fit ? 'bg-red-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
                                     >
                                       <AlertTriangle size={16} /> Baja Médica
                                     </button>
@@ -301,8 +342,8 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
                                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-600 group-focus-within:scale-110 transition-transform" size={18} />
                                       <input 
                                         type="date" 
-                                        value={formData.lastCheckup} 
-                                        onChange={e => setFormData({...formData, lastCheckup: e.target.value})} 
+                                        value={formData.last_checkup} 
+                                        onChange={e => setFormData({...formData, last_checkup: e.target.value})} 
                                         className={inputClasses + " pl-12"} 
                                       />
                                     </div>
@@ -313,8 +354,8 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players, onRefresh 
                                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 group-focus-within:scale-110 transition-transform" size={18} />
                                       <input 
                                         type="date" 
-                                        value={formData.expiryDate} 
-                                        onChange={e => setFormData({...formData, expiryDate: e.target.value})} 
+                                        value={formData.expiry_date} 
+                                        onChange={e => setFormData({...formData, expiry_date: e.target.value})} 
                                         className={inputClasses + " pl-12"} 
                                       />
                                     </div>

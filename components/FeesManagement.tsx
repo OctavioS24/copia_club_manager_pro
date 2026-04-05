@@ -2,18 +2,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MemberFee, Member } from '../types';
 import { 
-  Search, DollarSign, Filter, Check, AlertCircle, Calendar, Plus, X, 
-  Trash2, Save, CreditCard, Loader2, User, History, TrendingUp, 
-  ArrowUpRight, AlertTriangle, Clock, Receipt, Wallet, FileText, 
-  Camera, Link as LinkIcon, ExternalLink, Image as ImageIcon,
-  ChevronDown, UserCheck
+  Search, DollarSign, Check, Plus, X, 
+  Trash2, Save, CreditCard, Loader2, History, TrendingUp, 
+  ArrowUpRight, AlertTriangle, Clock, Receipt, 
+  Camera, ExternalLink, Image as ImageIcon,
+  ChevronDown
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 
 const FeesManagement: React.FC = () => {
   const [fees, setFees] = useState<MemberFee[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Member | null>(null);
@@ -37,7 +36,6 @@ const FeesManagement: React.FC = () => {
   });
 
   const loadData = async () => {
-    setIsLoading(true);
     try {
       const { data: feesData } = await db.fees.getAll();
       const { data: membersData } = await db.members.getAll();
@@ -55,8 +53,6 @@ const FeesManagement: React.FC = () => {
       if (membersData) setMembers(membersData);
     } catch (e) {
       console.error(e);
-    } finally {
-      setIsLoading(false);
     }
   };
 
