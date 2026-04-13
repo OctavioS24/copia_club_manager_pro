@@ -5,8 +5,12 @@ import {
   Save, Plus, Trash2, Shield, Palette, Database, ChevronDown, 
   Activity, CheckCircle, Loader2, Camera, 
   X, Image as ImageIcon, LayoutGrid, Lock, Unlock,
-  BarChart3, Target, User
+  BarChart3, Target, User, Settings2
 } from 'lucide-react';
+
+import PosicionesPorDisciplina from './Estructura/PosicionesPorDisciplina';
+import ReglasPorDisciplina from './Estructura/ReglasPorDisciplina';
+import RivalesPorDisciplina from './Estructura/RivalesPorDisciplina';
 
 interface MasterDataProps {
   config: ClubConfig;
@@ -14,7 +18,7 @@ interface MasterDataProps {
 }
 
 const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
-  const [activeTab, setActiveTab] = useState<'disciplines' | 'matrix' | 'identity'>('disciplines');
+  const [activeTab, setActiveTab] = useState<'disciplines' | 'matrix' | 'identity' | 'positions' | 'rules' | 'rivals'>('disciplines');
   const [localConfig, setLocalConfig] = useState<ClubConfig>(config);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
@@ -119,7 +123,10 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
             {[
               { id: 'disciplines', label: '1. Disciplinas', icon: Shield },
               { id: 'matrix', label: '2. Matriz Deportiva', icon: Database },
-              { id: 'identity', label: '3. Identidad Club', icon: Palette }
+              { id: 'identity', label: '3. Identidad Club', icon: Palette },
+              { id: 'positions', label: '4. Puestos', icon: LayoutGrid },
+              { id: 'rules', label: '5. Reglas', icon: Settings2 },
+              { id: 'rivals', label: '6. Rivales', icon: Shield }
             ].map(tab => (
               <button 
                 key={tab.id}
@@ -315,9 +322,9 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                             <div key={cat.id} className={`group/cat transition-all duration-500 w-full ${isExpanded ? 'bg-slate-50 dark:bg-white/[0.03] rounded-[2.5rem] p-4 md:p-6' : 'bg-transparent'}`}>
                               {/* Header Acordeón */}
                               <div className="flex items-center gap-4 w-full overflow-hidden">
-                                <button 
+                                <div 
                                   onClick={() => toggleCategory(cat.id)}
-                                  className={`w-full flex items-center justify-between p-4 md:p-6 rounded-3xl transition-all border overflow-hidden ${isExpanded ? 'bg-white dark:bg-slate-800 border-primary-600/30 shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-slate-300 dark:hover:border-white/10'}`}
+                                  className={`w-full flex items-center justify-between p-4 md:p-6 rounded-3xl transition-all border overflow-hidden cursor-pointer ${isExpanded ? 'bg-white dark:bg-slate-800 border-primary-600/30 shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-slate-300 dark:hover:border-white/10'}`}
                                 >
                                   <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
                                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0 ${isExpanded ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
@@ -356,7 +363,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                         <ChevronDown size={20} />
                                      </div>
                                   </div>
-                                </button>
+                                </div>
                               </div>
 
                               {/* Body Acordeón (Métricas) */}
@@ -520,6 +527,20 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
             </div>
           </div>
         </div>
+      )}
+      {/* --- TAB 4: PUESTOS POR DISCIPLINA --- */}
+      {activeTab === 'positions' && (
+        <PosicionesPorDisciplina disciplines={localConfig.disciplines} />
+      )}
+
+      {/* --- TAB 5: REGLAS POR DISCIPLINA --- */}
+      {activeTab === 'rules' && (
+        <ReglasPorDisciplina disciplines={localConfig.disciplines} />
+      )}
+
+      {/* --- TAB 6: RIVALES POR DISCIPLINA --- */}
+      {activeTab === 'rivals' && (
+        <RivalesPorDisciplina disciplines={localConfig.disciplines} />
       )}
     </div>
   );

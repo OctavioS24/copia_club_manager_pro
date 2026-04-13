@@ -52,9 +52,52 @@ export const db = {
       .select('*')
       .order('name', { ascending: true }),
     
-    upsert: (member: any) => supabase
-      .from('members')
-      .upsert(member),
+    upsert: async (member: any) => {
+      // Mapeamos las claves de camelCase a lowercase para coincidir con la DB
+      const mappedMember = {
+        id: member.id,
+        name: member.name,
+        dni: member.dni,
+        gender: member.gender,
+        birthdate: member.birthDate || member.birthdate,
+        email: member.email,
+        phone: member.phone,
+        photourl: member.photoUrl || member.photourl,
+        address: member.address,
+        city: member.city,
+        province: member.province,
+        postalcode: member.postalCode || member.postalcode,
+        bloodtype: member.bloodType || member.bloodtype,
+        medicalinsurance: member.medicalInsurance || member.medicalinsurance,
+        weight: member.weight,
+        height: member.height,
+        tutor: member.tutor,
+        assignments: member.assignments,
+        status: member.status,
+        systemrole: member.systemRole || member.systemrole,
+        canlogin: member.canLogin || member.canlogin,
+        username: member.username,
+        overallrating: member.overallRating || member.overallrating,
+        stats: member.stats,
+        medical: member.medical,
+        created_at: member.created_at
+      };
+
+      // Limpiamos campos undefined
+      const cleanMember = Object.fromEntries(
+        Object.entries(mappedMember).filter(([, v]) => v !== undefined)
+      );
+      
+      const { data, error } = await supabase
+        .from('members')
+        .upsert(cleanMember);
+      
+      if (error) {
+        console.error("Error detallado de Supabase (Members):", error.message);
+        throw error;
+      }
+      return { data, error: null };
+    },
       
     delete: (id: string) => supabase
       .from('members')
@@ -67,24 +110,97 @@ export const db = {
       .select('*')
       .order('created_at', { ascending: false }),
     
-    upsert: (tournament: any) => supabase
-      .from('tournaments')
-      .upsert(tournament),
+    upsert: async (tournament: any) => {
+      // Mapear campos a lowercase para la DB
+      const mappedTournament = {
+        id: tournament.id,
+        name: tournament.name,
+        type: tournament.type,
+        discipline_id: tournament.discipline_id || tournament.disciplineid,
+        gender: tournament.gender,
+        categoryid: tournament.category_id || tournament.categoryid,
+        assigned_categories: tournament.assigned_categories || tournament.assignedcategories,
+        fixture_base: tournament.fixture_base || tournament.fixturebase,
+        status: tournament.status,
+        settings: tournament.settings,
+        created_at: tournament.created_at
+      };
+
+      // Limpiar campos undefined
+      const cleanTournament = Object.fromEntries(
+        Object.entries(mappedTournament).filter(([, v]) => v !== undefined)
+      );
+
+      const { data, error } = await supabase
+        .from('tournaments')
+        .upsert(cleanTournament);
+
+      if (error) {
+        console.error("Error detallado de Supabase (Tournaments):", error.message);
+        throw error;
+      }
+      return { data, error: null };
+    },
       
-    delete: (id: string) => supabase
-      .from('tournaments')
-      .delete()
-      .eq('id', id)
+    delete: async (id: string) => {
+      // 1. Get matches for this tournament to delete their events
+      const { data: matches } = await supabase
+        .from('matches')
+        .select('id')
+        .eq('tournamentid', id);
+      
+      if (matches && matches.length > 0) {
+        const matchIds = matches.map(m => m.id);
+        // 2. Delete match events
+        await supabase
+          .from('match_events')
+          .delete()
+          .in('match_id', matchIds);
+      }
+
+      // 3. Delete matches
+      await supabase
+        .from('matches')
+        .delete()
+        .eq('tournamentid', id);
+
+      // 4. Delete participants
+      await supabase
+        .from('tournament_participants')
+        .delete()
+        .eq('tournamentid', id);
+
+      // 5. Delete tournament
+      return supabase
+        .from('tournaments')
+        .delete()
+        .eq('id', id);
+    }
   },
   participants: {
     getAll: (tournamentId: string) => supabase
       .from('tournament_participants')
       .select('*')
-      .eq('tournament_id', tournamentId),
+      .eq('tournamentid', tournamentId),
     
-    upsert: (participant: any) => supabase
-      .from('tournament_participants')
-      .upsert(participant),
+    upsert: (participant: any) => {
+      const mappedParticipant = {
+        id: participant.id,
+        tournamentid: participant.tournament_id || participant.tournamentid,
+        name: participant.name,
+        member_ids: participant.member_ids || participant.memberids || participant.memberIds,
+        categoryid: participant.category_id || participant.categoryid
+      };
+
+      // Limpiar campos undefined
+      const cleanParticipant = Object.fromEntries(
+        Object.entries(mappedParticipant).filter(([, v]) => v !== undefined)
+      );
+
+      return supabase
+        .from('tournament_participants')
+        .upsert(cleanParticipant);
+    },
       
     delete: (id: string) => supabase
       .from('tournament_participants')
@@ -98,19 +214,19 @@ export const db = {
         *,
         events:match_events (
           id,
-          playerId,
+          playerid,
           type,
           minute,
           notes
         )
       `)
-      .eq('tournamentId', tournamentId)
+      .eq('tournamentid', tournamentId)
       .order('date', { ascending: true }),
     
     getByTeamName: (teamName: string) => supabase
       .from('matches')
       .select('*')
-      .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+      .or(`hometeam.eq."${teamName}",awayteam.eq."${teamName}"`)
       .eq('status', 'Finished')
       .order('date', { ascending: false }),
     
@@ -119,7 +235,7 @@ export const db = {
       return supabase
         .from('matches')
         .select('*')
-        .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+        .or(`hometeam.eq."${teamName}",awayteam.eq."${teamName}"`)
         .lt('date', today)
         .order('date', { ascending: false })
         .limit(limit);
@@ -130,7 +246,7 @@ export const db = {
       return supabase
         .from('matches')
         .select('*')
-        .or(`homeTeam.eq."${teamName}",awayTeam.eq."${teamName}"`)
+        .or(`hometeam.eq."${teamName}",awayteam.eq."${teamName}"`)
         .gte('date', today)
         .order('date', { ascending: true })
         .limit(limit);
@@ -139,9 +255,25 @@ export const db = {
     upsert: async (match: any) => {
       const { incidents, ...matchData } = match;
       
+      // Mapear campos a lowercase para la DB
+      const mappedMatch = {
+        id: matchData.id,
+        tournamentid: matchData.tournamentId || matchData.tournamentid,
+        categoryid: matchData.category_id || matchData.categoryid || matchData.categoryId,
+        date: matchData.date,
+        hometeam: matchData.home_team || matchData.hometeam || matchData.homeTeam,
+        awayteam: matchData.away_team || matchData.awayteam || matchData.awayTeam,
+        homescore: matchData.home_score || matchData.homescore || matchData.homeScore,
+        awayscore: matchData.away_score || matchData.awayscore || matchData.awayScore,
+        status: matchData.status,
+        location: matchData.location,
+        referee: matchData.referee,
+        notes: matchData.notes
+      };
+
       const { data: mData, error: mErr } = await supabase
         .from('matches')
-        .upsert(matchData)
+        .upsert(mappedMatch)
         .select()
         .single();
       
@@ -151,7 +283,7 @@ export const db = {
         await supabase.from('match_events').delete().eq('match_id', mData.id);
         const eventsToSave = incidents.map((inc: any) => ({
           match_id: mData.id,
-          playerId: inc.player_id || inc.playerId,
+          playerid: inc.player_id || inc.playerId || inc.playerid,
           type: inc.type,
           minute: parseInt(inc.minute) || 0,
           notes: inc.notes || ''
@@ -168,27 +300,48 @@ export const db = {
     getByPlayerIds: (playerIds: string[]) => supabase
       .from('match_events')
       .select('*')
-      .in('playerId', playerIds)
+      .in('playerid', playerIds)
+  },
+  rivals: {
+    getAll: (discipline?: string) => {
+      let query = supabase
+        .from('rivals')
+        .select('*')
+        .order('name', { ascending: true });
+      if (discipline) {
+        query = query.eq('discipline', discipline);
+      }
+      return query;
+    },
+    
+    upsert: (rival: any) => supabase
+      .from('rivals')
+      .upsert(rival),
+      
+    delete: (id: string) => supabase
+      .from('rivals')
+      .delete()
+      .eq('id', id)
   },
   players: {
     getAll: () => supabase
-      .from('players')
+      .from('members')
       .select('*')
       .order('name', { ascending: true }),
     
     upsert: (player: any) => supabase
-      .from('players')
+      .from('members')
       .upsert(player),
       
     delete: (id: string) => supabase
-      .from('players')
+      .from('members')
       .delete()
       .eq('id', id)
   },
   fees: {
     getAll: () => supabase
       .from('fees')
-      .select('*, player:players(*)'),
+      .select('*, player:members(*)'),
     
     upsert: (fee: any) => supabase
       .from('fees')

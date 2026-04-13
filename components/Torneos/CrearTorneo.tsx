@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Trophy, X, Calendar, Hash, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../../lib/supabase';
-import { ClubConfig, TournamentType } from '../../types';
+import { ClubConfig, TournamentType, Tournament } from '../../types';
 
 interface CrearTorneoProps {
   onClose: () => void;
@@ -59,11 +59,12 @@ const CrearTorneo: React.FC<CrearTorneoProps> = ({ onClose, onSuccess, clubConfi
     setIsSubmitting(true);
     try {
       const tournamentId = crypto.randomUUID();
-      const newTournament: any = {
+      const newTournament: Partial<Tournament> = {
         id: tournamentId,
         name: name.toUpperCase(),
         type,
-        discipline_id: defaultDisciplineId,
+        disciplineid: defaultDisciplineId || '',
+        categoryid: '', // Will be assigned categories
         gender: defaultGender || 'Masculino',
         status: 'Open',
         settings: {
@@ -74,8 +75,8 @@ const CrearTorneo: React.FC<CrearTorneoProps> = ({ onClose, onSuccess, clubConfi
           playoff_start: 'F',
           dates_count: datesCount
         },
-        assigned_categories: selectedCategories,
-        fixture_base: [],
+        assignedcategories: selectedCategories,
+        fixturebase: [],
         created_at: new Date().toISOString()
       };
 

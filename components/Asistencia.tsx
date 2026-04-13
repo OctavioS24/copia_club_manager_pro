@@ -6,27 +6,25 @@ import { db } from '../lib/supabase';
 
 interface AsistenciaProps {
   players: Player[];
-  clubConfig: any;
   forceSelectedDisc?: string;
 }
 
 import { useCategory } from '../context/useCategory';
+import { getPlayersByCategory } from '../lib/playerUtils';
 
-const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfig: propClubConfig, forceSelectedDisc }) => {
-  const { selectedDiscipline, selectedDivision } = useCategory();
-  const [clubConfig, setClubConfig] = useState(propClubConfig || { disciplines: [] });
+const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
+  const { selectedDiscipline, selectedDivision, selectedGender } = useCategory();
   const [players, setPlayers] = useState<Player[]>(propPlayers || []);
-  const [selectedDisc, setSelectedDisc] = useState<string | null>(forceSelectedDisc || null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentDisciplineName, setCurrentDisciplineName] = useState<string>('');
 
-  // Fetch club config and players if needed
+  // Fetch club config and players
   useEffect(() => {
     const fetchData = async () => {
-      if (propPlayers && propClubConfig) return;
-
+      if (!selectedDiscipline || !selectedDivision) return;
       setIsLoading(true);
       try {
         const [configRes, membersRes] = await Promise.all([
@@ -34,23 +32,31 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfi
           db.members.getAll()
         ]);
 
+        let discName = '';
+        let categoryName = '';
         if (configRes.data) {
-          setClubConfig(configRes.data);
-          if (!selectedDisc && !forceSelectedDisc) {
-            const disc = configRes.data.disciplines.find((d: any) => d.id === selectedDiscipline);
-            if (disc) setSelectedDisc(disc.name);
+          const disc = configRes.data.disciplines.find((d: any) => d.id === selectedDiscipline);
+          if (disc) {
+            discName = disc.name;
+            setCurrentDisciplineName(disc.name);
+            
+            // Find category name
+            const branch = disc.branches.find((b: any) => b.categories.some((c: any) => c.id === selectedDivision));
+            const cat = branch?.categories.find((c: any) => c.id === selectedDivision);
+            if (cat) categoryName = cat.name;
           }
         }
 
-        if (membersRes.data && selectedDivision && selectedDiscipline) {
-          const filtered = membersRes.data.filter((m: any) => 
-            m.assignments?.some((a: any) => 
-              a.discipline_id === selectedDiscipline && 
-              a.category_id === selectedDivision &&
-              a.role === 'PLAYER'
-            )
+        if (membersRes.data) {
+          const filtered = getPlayersByCategory(
+            membersRes.data,
+            discName,
+            selectedGender || '',
+            categoryName,
+            selectedDiscipline,
+            selectedDivision
           );
-          setPlayers(filtered);
+          setPlayers(filtered as any);
         }
       } catch (err) {
         console.error("Error fetching data for Asistencia:", err);
@@ -60,16 +66,18 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfi
     };
 
     fetchData();
-  }, [propPlayers, propClubConfig, selectedDiscipline, selectedDivision, forceSelectedDisc, selectedDisc]);
+  }, [selectedDiscipline, selectedDivision, selectedGender]);
 
-  // Cargar asistencia existente cuando cambia la fecha o disciplina
+  // Cargar asistencia existente
   useEffect(() => {
     const fetchAttendance = async () => {
-      if (!selectedDisc || !date) return;
+      if (!currentDisciplineName || !date) return;
       
       setIsLoading(true);
       try {
-        const { data, error } = await db.attendance.getByDate(date, selectedDisc);
+        // Normalize discipline name for DB lookup
+        const normalizedDisc = currentDisciplineName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const { data, error } = await db.attendance.getByDate(date, normalizedDisc);
         if (error) throw error;
         
         const records: Record<string, string> = {};
@@ -85,7 +93,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfi
     };
 
     fetchAttendance();
-  }, [date, selectedDisc]);
+  }, [date, currentDisciplineName]);
 
   const handleStatusToggle = (playerId: string) => {
     setAttendance(prev => {
@@ -95,15 +103,17 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfi
   };
 
   const handleSave = async () => {
-      if (!selectedDisc) return;
+      if (!currentDisciplineName) return;
       
       setIsSaving(true);
       try {
+        // Normalize discipline name for DB save
+        const normalizedDisc = currentDisciplineName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const recordsToSave = players.map(p => ({
           player_id: p.id,
           date: date,
           status: attendance[p.id] || 'A',
-          discipline: selectedDisc
+          discipline: normalizedDisc
         }));
 
         const { error } = await db.attendance.upsert(recordsToSave);
@@ -163,20 +173,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers, clubConfi
         </div>
       </div>
 
-      {/* SELECTOR DE DISCIPLINA (Si no es forzada) */}
-      {!forceSelectedDisc && (
-        <div className="flex gap-3 mb-10 overflow-x-auto pb-2 scrollbar-hide justify-center">
-            {clubConfig.disciplines?.map((d: any) => (
-                <button 
-                  key={d.id} 
-                  onClick={() => setSelectedDisc(d.name)} 
-                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedDisc === d.name ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-900 text-slate-400 border border-slate-100 dark:border-white/5'}`}
-                >
-                    {d.name}
-                </button>
-            ))}
-        </div>
-      )}
+      {/* SELECTOR DE DISCIPLINA REMOVIDO POR SOLICITUD - SE USA LA DEL CONTEXTO */}
 
       {/* LISTADO VERTICAL */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-white/5 overflow-hidden relative min-h-[300px]">

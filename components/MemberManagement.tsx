@@ -1,11 +1,12 @@
 
-import React, { useState, useMemo, useRef } from 'react';
-import { Member, AppRole, ClubConfig, Assignment } from '../types';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { Member, AppRole, ClubConfig, MemberAssignment, DisciplinePosition } from '../types';
 import { 
   UserPlus, Search, Trash2, X, Save, Camera, Loader2, PlusCircle, Heart, 
   Fingerprint, ShieldCheck, Briefcase, 
-  Contact2, UserCircle
+  Contact2, UserCircle, AlertCircle
 } from 'lucide-react';
+import { getPositionsByDiscipline } from '../lib/disciplinePositions';
 
 interface MemberManagementProps {
   members: Member[];
@@ -22,15 +23,42 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const [activeTab, setActiveTab] = useState<ModalTab>('identity');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [availablePositions, setAvailablePositions] = useState<Record<string, DisciplinePosition[]>>({});
+  const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<Member>>({
-    name: '', dni: '', gender: 'Masculino', birthDate: '', email: '', phone: '',
-    photoUrl: '', address: '', city: '', province: '', postalCode: '',
-    bloodType: '', medicalInsurance: '', weight: '', height: '',
-    status: 'Active', assignments: [], systemRole: 'Socio', canLogin: false,
+    name: '', dni: '', gender: 'Masculino', birthdate: '', email: '', phone: '',
+    photourl: '', address: '', city: '', province: '', postalcode: '',
+    bloodtype: '', medicalinsurance: '', weight: '', height: '',
+    status: 'Active', assignments: [], systemrole: 'Socio', canlogin: false,
     tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
   });
+
+  // Fetch positions for a discipline
+  const fetchPositionsForDiscipline = useCallback(async (disciplineName: string) => {
+    if (availablePositions[disciplineName] || loadingPositions[disciplineName]) return;
+    
+    setLoadingPositions(prev => ({ ...prev, [disciplineName]: true }));
+    try {
+      const positions = await getPositionsByDiscipline(disciplineName);
+      setAvailablePositions(prev => ({ ...prev, [disciplineName]: positions }));
+    } catch (error) {
+      console.error('Error fetching positions:', error);
+    } finally {
+      setLoadingPositions(prev => ({ ...prev, [disciplineName]: false }));
+    }
+  }, [availablePositions, loadingPositions]);
+
+  useEffect(() => {
+    if (activeTab === 'sports' && formData.assignments) {
+      formData.assignments.forEach(as => {
+        if (as.discipline) {
+          fetchPositionsForDiscipline(as.discipline);
+        }
+      });
+    }
+  }, [activeTab, formData.assignments, fetchPositionsForDiscipline]);
 
   const filteredMembers = useMemo(() => {
     return members.filter(m => 
@@ -51,10 +79,10 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const handleNew = () => {
     setSelectedMember(null);
     setFormData({
-      name: '', dni: '', gender: 'Masculino', birthDate: '', email: '', phone: '',
-      photoUrl: '', address: '', city: '', province: '', postalCode: '',
-      bloodType: '', medicalInsurance: '', weight: '', height: '',
-      status: 'Active', assignments: [], systemRole: 'Socio', canLogin: false,
+      name: '', dni: '', gender: 'Masculino', birthdate: '', email: '', phone: '',
+      photourl: '', address: '', city: '', province: '', postalcode: '',
+      bloodtype: '', medicalinsurance: '', weight: '', height: '',
+      status: 'Active', assignments: [], systemrole: 'Socio', canlogin: false,
       tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
     });
     setActiveTab('identity');
@@ -66,7 +94,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photoUrl: reader.result as string }));
+        setFormData(prev => ({ ...prev, photourl: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -76,9 +104,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     if (!formData.name || !formData.dni) return alert("Nombre y DNI son obligatorios");
     setIsSaving(true);
     try {
+      // Destructure to remove tutor if it's not in the database schema
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).tutor;
       const memberId = selectedMember?.id || crypto.randomUUID();
       const memberToSave = {
-        ...formData,
+        ...dataToSave,
         id: memberId,
         created_at: selectedMember?.created_at || new Date().toISOString(),
       } as Member;
@@ -94,21 +125,47 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const addAssignment = () => {
     if (config.disciplines.length === 0) return alert("Configura disciplinas primero");
-    // Fix: Updated Assignment property names to match snake_case in types.ts
-    const newAssignment: Assignment = {
-      id: crypto.randomUUID(),
+    const newAssignment: MemberAssignment = {
+      discipline: config.disciplines[0].name,
       discipline_id: config.disciplines[0].id,
+      category: '',
       category_id: '',
+      position: '',
       role: 'PLAYER'
     };
     setFormData(prev => ({ ...prev, assignments: [...(prev.assignments || []), newAssignment] }));
   };
 
-  const updateAssignment = (idx: number, field: keyof Assignment, value: string) => {
+  const updateAssignment = (idx: number, field: keyof MemberAssignment, value: string) => {
     const newAss = [...(formData.assignments || [])];
-    newAss[idx] = { ...newAss[idx], [field]: value };
-    // Fix: Updated check for discipline_id and corresponding category_id reset
-    if (field === 'discipline_id') newAss[idx].category_id = '';
+    const current = newAss[idx];
+    
+    let updated = { ...current, [field]: value };
+    
+    if (field === 'discipline') {
+      const disc = config.disciplines.find(d => d.name === value);
+      updated = { 
+        ...updated, 
+        discipline_id: disc?.id || '',
+        category: '', 
+        category_id: '',
+        position: '' 
+      };
+      fetchPositionsForDiscipline(value);
+    }
+    
+    if (field === 'category') {
+      const disc = config.disciplines.find(d => d.name === current.discipline);
+      const cat = disc?.branches.flatMap(b => b.categories).find(c => c.id === value);
+      updated = { 
+        ...updated, 
+        category_id: value,
+        category: cat?.name || '',
+        position: '' 
+      };
+    }
+    
+    newAss[idx] = updated;
     setFormData({ ...formData, assignments: newAss });
   };
 
@@ -155,7 +212,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
           <div key={member.id} className="bg-white dark:bg-slate-800/40 rounded-[2.5rem] p-6 md:p-8 border border-slate-200 dark:border-slate-700/50 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
             <div className="flex items-center gap-5 relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-900 overflow-hidden shadow-inner shrink-0">
-                <img src={member.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                <img src={member.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between items-start">
@@ -230,8 +287,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 onClick={() => fileInputRef.current?.click()}
                                 className="w-40 h-40 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer group hover:border-primary-600 transition-all relative"
                              >
-                                {formData.photoUrl ? (
-                                   <img src={formData.photoUrl} className="w-full h-full object-cover" />
+                                {formData.photourl ? (
+                                   <img src={formData.photourl} className="w-full h-full object-cover" />
                                 ) : (
                                    <div className="flex flex-col items-center text-slate-400 group-hover:text-primary-600 transition-colors">
                                       <Camera size={32} />
@@ -264,7 +321,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                             </div>
                             <div className="space-y-2 col-span-1 md:col-span-2">
                               <label className={labelClasses}>Fecha de Nacimiento</label>
-                              <input type="date" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} className={inputClasses} />
+                              <input type="date" value={formData.birthdate} onChange={e => setFormData({...formData, birthdate: e.target.value})} className={inputClasses} />
                             </div>
                           </div>
                        </div>
@@ -279,14 +336,14 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                              <label className={labelClasses}>Grupo Sanguíneo</label>
-                             <select value={formData.bloodType} onChange={e => setFormData({...formData, bloodType: e.target.value})} className={selectClasses}>
+                             <select value={formData.bloodtype} onChange={e => setFormData({...formData, bloodtype: e.target.value})} className={selectClasses}>
                                 <option value="">No definido</option>
                                 {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'].map(t => <option key={t} value={t}>{t}</option>)}
                              </select>
                           </div>
                           <div className="space-y-2">
                              <label className={labelClasses}>Obra Social / Seguro</label>
-                             <input value={formData.medicalInsurance} onChange={e => setFormData({...formData, medicalInsurance: e.target.value.toUpperCase()})} className={inputClasses} placeholder="NOMBRE PREPAGA" />
+                             <input value={formData.medicalinsurance} onChange={e => setFormData({...formData, medicalinsurance: e.target.value.toUpperCase()})} className={inputClasses} placeholder="NOMBRE PREPAGA" />
                           </div>
                           <div className="space-y-2">
                              <label className={labelClasses}>Peso (kg)</label>
@@ -364,18 +421,19 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           <div className="w-1 h-4 bg-blue-500 rounded-full"></div> Perfil Deportivo
                         </h4>
                         <button onClick={addAssignment} className="flex items-center gap-2 text-primary-600 text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all">
-                          <PlusCircle size={16} /> Nuevo Rol
+                          <PlusCircle size={16} /> Agregar Actividad
                         </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                         {formData.assignments?.map((as, idx) => {
-                          // Fix: Use snake_case property discipline_id
-                          const disc = config.disciplines.find(d => d.id === as.discipline_id);
+                          const disc = config.disciplines.find(d => d.name === as.discipline);
                           const availableCategories = disc?.branches?.flatMap(b => b.categories) || [];
+                          const positions = availablePositions[as.discipline] || [];
+                          const isLoadingPos = loadingPositions[as.discipline];
                           
                           return (
-                            <div key={as.id} className="bg-slate-50 dark:bg-slate-800/60 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 space-y-4 shadow-sm transition-all">
+                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/60 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 space-y-4 shadow-sm transition-all">
                               <div className="flex justify-between items-center">
                                 <select 
                                   value={as.role} 
@@ -392,14 +450,41 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 </button>
                               </div>
                               <div className="space-y-3">
-                                {/* Fix: Use snake_case property names discipline_id and category_id */}
-                                <select value={as.discipline_id} onChange={e => updateAssignment(idx, 'discipline_id', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
-                                  {config.disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                <select value={as.category_id} onChange={e => updateAssignment(idx, 'category_id', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
-                                  <option value="">-- Seleccionar Categoría --</option>
-                                  {availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
+                                <div className="space-y-1">
+                                  <label className={labelClasses}>Disciplina</label>
+                                  <select value={as.discipline} onChange={e => updateAssignment(idx, 'discipline', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
+                                    {config.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                  </select>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <label className={labelClasses}>Categoría</label>
+                                  <select value={as.category} onChange={e => updateAssignment(idx, 'category', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
+                                    <option value="">-- Seleccionar Categoría --</option>
+                                    {availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className={labelClasses}>Puesto</label>
+                                  {isLoadingPos ? (
+                                    <div className="flex items-center gap-2 p-3 text-[10px] text-slate-400 font-bold uppercase">
+                                      <Loader2 size={12} className="animate-spin" /> Cargando puestos...
+                                    </div>
+                                  ) : positions.length > 0 ? (
+                                    <select value={as.position} onChange={e => updateAssignment(idx, 'position', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
+                                      <option value="">-- Seleccionar Puesto --</option>
+                                      {positions.map(p => <option key={p.id} value={p.position}>{p.position}</option>)}
+                                    </select>
+                                  ) : (
+                                    <div className="flex items-start gap-2 p-3 bg-orange-500/10 rounded-xl border border-orange-500/20">
+                                      <AlertCircle size={14} className="text-orange-500 shrink-0 mt-0.5" />
+                                      <p className="text-[9px] text-orange-500 font-bold uppercase leading-tight">
+                                        No hay puestos configurados. Ve a ESTRUCTURA {'>'} PUESTOS para crearlos.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
@@ -424,7 +509,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           </div>
                           <div className="space-y-2">
                              <label className={labelClasses}>Rol Institucional</label>
-                             <select value={formData.systemRole} onChange={e => setFormData({...formData, systemRole: e.target.value as any})} className={selectClasses}>
+                             <select value={formData.systemrole} onChange={e => setFormData({...formData, systemrole: e.target.value as any})} className={selectClasses}>
                                 <option value="STAFF">Personal / Staff</option>
                                 <option value="Socio">Socio / Miembro</option>
                                 <option value="Externo">Externo / Invitado</option>
@@ -437,11 +522,11 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Permitir login en app móvil / web</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" checked={formData.canLogin} onChange={e => setFormData({...formData, canLogin: e.target.checked})} className="sr-only peer" />
+                                  <input type="checkbox" checked={formData.canlogin} onChange={e => setFormData({...formData, canlogin: e.target.checked})} className="sr-only peer" />
                                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
                                 </label>
                              </div>
-                             {formData.canLogin && (
+                             {formData.canlogin && (
                                <div className="space-y-2 animate-fade-in">
                                   <label className={labelClasses}>Nombre de Usuario</label>
                                   <div className="relative">

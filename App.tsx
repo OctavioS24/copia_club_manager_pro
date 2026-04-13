@@ -10,6 +10,9 @@ import { db } from './lib/supabase.ts';
 import { Shield, ArrowRight } from 'lucide-react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import SquadConfigView from './components/Squads/SquadConfigView.tsx';
+import TorneosPrincipal from './components/Torneos/TorneosPrincipal.tsx';
+import TournamentMatchesPage from './components/Torneos/TournamentMatchesPage.tsx';
+import TournamentManagement from './components/TournamentManagement.tsx';
 
 function App() {
   const navigate = useNavigate();
@@ -179,6 +182,24 @@ function App() {
               <FeesManagement />
             </div>
           } />
+
+          <Route path="/torneos" element={
+            <div className="pt-24">
+              <TorneosPrincipal />
+            </div>
+          } />
+
+          <Route path="/torneos/:tournamentId" element={
+            <div className="pt-24">
+              <TournamentManagement clubConfig={config} />
+            </div>
+          } />
+
+          <Route path="/torneos/:tournamentId/partidos" element={
+            <div className="pt-24">
+              <TournamentMatchesPage clubConfig={config} />
+            </div>
+          } />
           
           <Route path="/" element={
             <div className="pt-24 p-12 max-w-7xl mx-auto">
@@ -231,7 +252,7 @@ function App() {
             </div>
           } />
 
-          <Route path="/squads/:disciplineId/config" element={<SquadConfigView />} />
+          <Route path="/squads/:disciplineId/config" element={<SquadConfigView config={config} />} />
         </Routes>
       </main>
     </div>

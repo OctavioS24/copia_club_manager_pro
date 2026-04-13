@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
   TrendingDown, MoveRight, ShieldAlert, Target,
   Award, Calendar, ChevronRight, History, Timer
 } from 'lucide-react';
 import { ClubConfig, Match, Member, MatchEvent } from '../types';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 
 interface PlantelDashboardProps {
   clubConfig: ClubConfig;
@@ -28,12 +27,13 @@ const MatchSkeleton = () => (
 );
 
 import { useCategory } from '../context/useCategory';
+import { getDisciplineConfig, DisciplineConfig } from '../lib/disciplineConfig';
 
 const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClubConfig, members: propMembers }) => {
-  const navigate = useNavigate();
   const { selectedDiscipline, selectedDivision } = useCategory();
   const [clubConfig, setClubConfig] = useState<ClubConfig | null>(propClubConfig || null);
   const [members, setMembers] = useState<Member[]>(propMembers || []);
+  const [disciplineConfig, setDisciplineConfig] = useState<DisciplineConfig | null>(null);
 
   // Fetch initial data if needed
   useEffect(() => {
@@ -76,67 +76,76 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
   // Jugadores del plantel seleccionado
   const squadPlayers = useMemo(() => {
-    if (!selectedCategory) return [];
-    return members.filter(m => 
-      m.assignments?.some(a => 
-        a.discipline_id === selectedCategory.disciplineId && 
-        a.category_id === selectedCategory.category.id &&
-        a.role === 'PLAYER'
-      )
+    if (!selectedCategory || !clubConfig) return [];
+    const disc = clubConfig.disciplines.find(d => d.id === selectedCategory.disciplineId);
+    const discName = disc?.name || '';
+    
+    const filtered = members.filter(m => 
+      m.assignments?.some(a => {
+        const aDisc = (a.discipline || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const dName = (discName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const aCat = (a.category || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cName = (selectedCategory.category.name || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const discMatch = a.discipline_id === selectedCategory.disciplineId || aDisc === dName;
+        const catMatch = a.category_id === selectedCategory.category.id || a.category === selectedCategory.category.id || aCat === cName;
+        
+        const role = (a.role || '').toUpperCase();
+        const isPlayer = role === 'PLAYER' || role === 'JUGADOR';
+        
+        return discMatch && catMatch && isPlayer;
+      })
     );
-  }, [members, selectedCategory]);
+
+    if (filtered.length === 0 && members.length > 0) {
+      console.log(`Dashboard: No se encontraron jugadores para ${discName} - ${selectedCategory.category.name}`);
+      console.log(`Buscando: DiscID=${selectedCategory.disciplineId}, CatID=${selectedCategory.category.id}, DiscName=${discName}, CatName=${selectedCategory.category.name}`);
+    }
+
+    return filtered;
+  }, [members, selectedCategory, clubConfig]);
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!selectedCategory || !selectedDivision) return;
+      if (!selectedCategory || !selectedDivision || !clubConfig) return;
       
       setIsLoading(true);
       setIsLoadingLists(true);
       setError(null);
       try {
-        const teamName = selectedCategory.category.name;
-        const playerIds = squadPlayers.map(p => p.id);
+        const disc = clubConfig.disciplines.find(d => d.id === selectedDiscipline);
+        const discName = disc?.name || 'FUTBOL';
+        const [configData, playerIds] = await Promise.all([
+          getDisciplineConfig(discName),
+          Promise.resolve(squadPlayers.map(p => p.id))
+        ]);
 
-        // Fetch tournaments that include this category
-        const tourRes = await db.tournaments.getAll();
-        const categoryTournaments = tourRes.data?.filter((t: any) => {
-          const assigned = t.assigned_categories || t.assignedcategories || [];
-          return assigned.includes(selectedDivision);
-        }) || [];
-        
-        const tournamentIds = categoryTournaments.map(t => t.id);
+        setDisciplineConfig(configData);
 
-        // Fetch matches for these tournaments OR by team name for external matches
-        let allMatches: Match[] = [];
-        if (tournamentIds.length > 0) {
-          const matchesPromises = tournamentIds.map(id => db.matches.getAll(id));
-          const matchesResults = await Promise.all(matchesPromises);
-          matchesResults.forEach(res => {
-            if (res.data) allMatches = [...allMatches, ...res.data];
-          });
-        }
+        // Fetch matches for this specific category
+        // We check by ID primarily
+        const { data: allMatches, error: matchesError } = await supabase
+          .from('matches')
+          .select('*, events:match_events(*)')
+          .eq('categoryid', selectedDivision)
+          .order('date', { ascending: false });
 
-        // Also fetch by team name to be sure
-        const nameMatchesRes = await db.matches.getByTeamName(teamName);
-        if (nameMatchesRes.data) {
-          const newMatches = nameMatchesRes.data.filter(nm => !allMatches.some(am => am.id === nm.id));
-          allMatches = [...allMatches, ...newMatches];
-        }
+        if (matchesError) throw matchesError;
 
-        const [eventsRes, lastRes, upcomingRes] = await Promise.all([
-          playerIds.length > 0 ? db.matchEvents.getByPlayerIds(playerIds) : Promise.resolve({ data: [] }),
-          db.matches.getLastResults(teamName, 5),
-          db.matches.getUpcomingMatches(teamName, 3)
+        const [eventsRes] = await Promise.all([
+          playerIds.length > 0 ? db.matchEvents.getByPlayerIds(playerIds) : Promise.resolve({ data: [] })
         ]);
 
         if (eventsRes.error) throw eventsRes.error;
-        if (lastRes.error) throw lastRes.error;
-        if (upcomingRes.error) throw upcomingRes.error;
 
-        setMatches(allMatches);
+        const finishedMatches = (allMatches || []).filter(m => m.status === 'Finished');
+        const upcomingMatches = (allMatches || []).filter(m => m.status === 'Scheduled');
+
+        setMatches(allMatches || []);
         setPlayerEvents(eventsRes.data || []);
-        setLastResults(lastRes.data || []);
-        setUpcomingMatches(upcomingRes.data || []);
+        setLastResults(finishedMatches.slice(0, 5));
+        setUpcomingMatches(upcomingMatches.slice(0, 3));
       } catch (err) {
         console.error("Error fetching stats:", err);
         setError("No se pudieron cargar las estadísticas del plantel.");
@@ -147,65 +156,109 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     };
 
     fetchStats();
-  }, [selectedCategory, squadPlayers, selectedDivision]);
+  }, [selectedCategory, squadPlayers, selectedDivision, clubConfig, selectedDiscipline]);
 
   const points = useMemo(() => {
-    if (!selectedCategory) return 0;
-    const teamName = selectedCategory.category.name;
-    return matches.reduce((acc, match) => {
-      const isHome = match.homeTeam === teamName;
-      const myScore = isHome ? (match.homeScore || 0) : (match.awayScore || 0);
-      const rivalScore = isHome ? (match.awayScore || 0) : (match.homeScore || 0);
+    if (!selectedCategory || !clubConfig) return 0;
+    const teamName = clubConfig.name || 'Mi Equipo';
+    const rules = disciplineConfig?.scoring_rules || { win: 3, draw: 1, loss: 0 };
 
-      if (myScore > rivalScore) return acc + 3;
-      if (myScore === rivalScore) return acc + 1;
-      return acc;
+    return matches.reduce((acc, match) => {
+      if (match.status !== 'Finished') return acc;
+      const isHome = (match.hometeam || match.home_team) === teamName;
+      const myScore = isHome ? (match.homescore ?? match.home_score ?? 0) : (match.awayscore ?? match.away_score ?? 0);
+      const rivalScore = isHome ? (match.awayscore ?? match.away_score ?? 0) : (match.homescore ?? match.home_score ?? 0);
+
+      if (myScore > rivalScore) return acc + rules.win;
+      if (myScore === rivalScore) return acc + rules.draw;
+      return acc + rules.loss;
     }, 0);
-  }, [matches, selectedCategory]);
+  }, [matches, selectedCategory, clubConfig, disciplineConfig]);
 
   const visualStreak = useMemo(() => {
-    if (matches.length === 0) return [];
-    const teamName = selectedCategory?.category.name;
-    return matches.slice(0, 5).map(m => {
-      const isHome = m.homeTeam === teamName;
-      const myScore = isHome ? (m.homeScore || 0) : (m.awayScore || 0);
-      const rivalScore = isHome ? (m.awayScore || 0) : (m.homeScore || 0);
+    const finishedMatches = matches.filter(m => m.status === 'Finished');
+    if (finishedMatches.length === 0 || !clubConfig) return [];
+    const teamName = clubConfig.name || 'Mi Equipo';
+    return finishedMatches.slice(0, 5).map(m => {
+      const isHome = m.hometeam === teamName;
+      const myScore = isHome ? (m.homescore || 0) : (m.awayscore || 0);
+      const rivalScore = isHome ? (m.awayscore || 0) : (m.homescore || 0);
       
       if (myScore > rivalScore) return { result: 'G', color: 'bg-emerald-500' };
       if (myScore === rivalScore) return { result: 'E', color: 'bg-amber-500' };
       return { result: 'P', color: 'bg-red-500' };
     });
-  }, [matches, selectedCategory]);
+  }, [matches, clubConfig]);
 
   const trend = useMemo(() => {
-    if (matches.length < 3) return 'neutral';
-    const teamName = selectedCategory?.category.name;
+    const finishedMatches = matches.filter(m => m.status === 'Finished');
+    if (finishedMatches.length < 3 || !clubConfig) return 'neutral';
+    const teamName = clubConfig.name || 'Mi Equipo';
     
     const getPoints = (m: Match) => {
-      const isHome = m.homeTeam === teamName;
-      const myScore = isHome ? (m.homeScore || 0) : (m.awayScore || 0);
-      const rivalScore = isHome ? (m.awayScore || 0) : (m.homeScore || 0);
-      if (myScore > rivalScore) return 3;
-      if (myScore === rivalScore) return 1;
-      return 0;
+      const isHome = m.hometeam === teamName;
+      const myScore = isHome ? (m.homescore || 0) : (m.awayscore || 0);
+      const rivalScore = isHome ? (m.awayscore || 0) : (m.homescore || 0);
+      const rules = disciplineConfig?.scoring_rules || { win: 3, draw: 1, loss: 0 };
+      
+      if (myScore > rivalScore) return rules.win;
+      if (myScore === rivalScore) return rules.draw;
+      return rules.loss;
     };
 
-    const last3 = matches.slice(0, 3).reduce((acc, m) => acc + getPoints(m), 0);
-    const prev3 = matches.slice(3, 6).reduce((acc, m) => acc + getPoints(m), 0);
+    const last3 = finishedMatches.slice(0, 3).reduce((acc, m) => acc + getPoints(m), 0);
+    const prev3 = finishedMatches.slice(3, 6).reduce((acc, m) => acc + getPoints(m), 0);
 
     if (last3 > prev3) return 'up';
     if (last3 < prev3) return 'down';
     return 'neutral';
-  }, [matches, selectedCategory]);
+  }, [matches, clubConfig, disciplineConfig]);
 
   const squadStats = useMemo(() => {
-    return playerEvents.reduce((acc, event) => {
-      if (event.type === 'Goal') acc.goals++;
-      if (event.type === 'YellowCard') acc.yellowCards++;
-      if (event.type === 'RedCard') acc.redCards++;
+    const stats: Record<string, number> = {};
+    
+    // Inicializar stats según config
+    if (disciplineConfig) {
+      disciplineConfig.dashboard_stats.forEach(s => stats[s] = 0);
+      // También inicializar las que vienen de eventos
+      disciplineConfig.event_types.forEach(et => {
+        if (et.statsKey) stats[et.statsKey] = 0;
+      });
+    }
+
+    // Combinar eventos de playerEvents (por jugador) y de matches (por categoría)
+    const allEvents = [...playerEvents];
+    matches.forEach(m => {
+      if (m.events) {
+        m.events.forEach(e => {
+          if (!allEvents.find(ae => ae.id === e.id)) {
+            allEvents.push(e);
+          }
+        });
+      }
+    });
+
+    return allEvents.reduce((acc, event) => {
+      if (disciplineConfig) {
+        const eventType = disciplineConfig.event_types.find(et => 
+          et.name.toUpperCase() === event.type.toUpperCase() ||
+          (et.name === 'TARJETA AMARILLA' && (event.type === 'T. AMARILLA' || event.type === 'TARJETA AMARILLA')) ||
+          (et.name === 'TARJETA ROJA' && (event.type === 'T. ROJA' || event.type === 'TARJETA ROJA')) ||
+          (et.name === 'GOL' && (event.type === 'GOAL' || event.type === 'GOL'))
+        );
+        if (eventType && eventType.statsKey) {
+          acc[eventType.statsKey] = (acc[eventType.statsKey] || 0) + 1;
+        }
+      } else {
+        // Fallback a fútbol si no hay config
+        const type = event.type.toUpperCase();
+        if (type === 'GOAL' || type === 'GOL') acc.GOLES_TOTALES = (acc.GOLES_TOTALES || 0) + 1;
+        if (type === 'YELLOWCARD' || type === 'T. AMARILLA' || type === 'TARJETA AMARILLA') acc.TARJETAS_AMARILLAS = (acc.TARJETAS_AMARILLAS || 0) + 1;
+        if (type === 'REDCARD' || type === 'T. ROJA' || type === 'TARJETA ROJA') acc.TARJETAS_ROJAS = (acc.TARJETAS_ROJAS || 0) + 1;
+      }
       return acc;
-    }, { goals: 0, yellowCards: 0, redCards: 0 });
-  }, [playerEvents]);
+    }, stats);
+  }, [playerEvents, matches, disciplineConfig]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -230,97 +283,119 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
         <div className="space-y-8 animate-fade-in">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-primary-600/30 transition-all group relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-primary-600/5 rounded-bl-full"></div>
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Puntos Acumulados</p>
-                  <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{points} <span className="text-xs not-italic text-slate-400 ml-1">PTS</span></h3>
-                </div>
-                <div className="p-5 rounded-2xl bg-primary-600/10 text-primary-600 group-hover:scale-110 transition-transform shadow-lg shadow-primary-600/5">
-                  <Trophy size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-emerald-600/30 transition-all group relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/5 rounded-bl-full"></div>
-              <div className="flex justify-between items-start relative z-10">
-                <div className="flex-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Racha Actual</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                      {visualStreak.length > 0 ? visualStreak.map((s, i) => (
-                        <div key={i} className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center text-white text-[10px] font-black shadow-lg shadow-black/10`}>
-                          {s.result}
-                        </div>
-                      )) : (
-                        <span className="text-xs font-black text-slate-300">SIN DATOS</span>
-                      )}
-                    </div>
-                    {trend !== 'neutral' && (
-                      <div className={`p-2 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
-                        {trend === 'up' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-                      </div>
-                    )}
-                    {trend === 'neutral' && visualStreak.length > 0 && (
-                      <div className="p-2 rounded-full bg-slate-500/20 text-slate-500">
-                        <MoveRight size={18} />
-                      </div>
-                    )}
+            {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PUNTOS_ACUMULADOS')) && (
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-primary-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary-600/5 rounded-bl-full"></div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Puntos Acumulados</p>
+                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{points} <span className="text-xs not-italic text-slate-400 ml-1">PTS</span></h3>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-primary-600/10 text-primary-600 group-hover:scale-110 transition-transform shadow-lg shadow-primary-600/5">
+                    <Trophy size={24} />
                   </div>
                 </div>
-                <div className="p-5 rounded-2xl bg-emerald-600/10 text-emerald-600 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-600/5">
-                  <Activity size={24} />
-                </div>
               </div>
-            </div>
+            )}
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-blue-600/30 transition-all group relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/5 rounded-bl-full"></div>
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Partidos Jugados</p>
-                  <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.length}</h3>
-                </div>
-                <div className="p-5 rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
-                  <Target size={24} />
+            {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('RACHA_ACTUAL')) && (
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-emerald-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/5 rounded-bl-full"></div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="flex-1">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Racha Actual</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-1.5">
+                        {visualStreak.length > 0 ? visualStreak.map((s, i) => (
+                          <div key={i} className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center text-white text-[10px] font-black shadow-lg shadow-black/10`}>
+                            {s.result}
+                          </div>
+                        )) : (
+                          <span className="text-xs font-black text-slate-300">SIN DATOS</span>
+                        )}
+                      </div>
+                      {trend !== 'neutral' && (
+                        <div className={`p-2 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
+                          {trend === 'up' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                        </div>
+                      )}
+                      {trend === 'neutral' && visualStreak.length > 0 && (
+                        <div className="p-2 rounded-full bg-slate-500/20 text-slate-500">
+                          <MoveRight size={18} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-emerald-600/10 text-emerald-600 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-600/5">
+                    <Activity size={24} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PARTIDOS_JUGADOS')) && (
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-blue-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/5 rounded-bl-full"></div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Partidos Jugados</p>
+                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.length}</h3>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
+                    <Target size={24} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Estadísticas Personales del Plantel */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500">
-                <Award size={32} />
+            {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => (
+              <div key={et.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
+                  <Award size={32} />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{et.name}S TOTALES</p>
+                  <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats[et.statsKey] || 0}</h4>
+                </div>
               </div>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goles Totales</p>
-                <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.goals}</h4>
-              </div>
-            </div>
+            ))}
+            
+            {!disciplineConfig && (
+              <>
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500">
+                    <Award size={32} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goles Totales</p>
+                    <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.GOLES_TOTALES || 0}</h4>
+                  </div>
+                </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <ShieldAlert size={32} />
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tarjetas Amarillas</p>
-                <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.yellowCards}</h4>
-              </div>
-            </div>
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <ShieldAlert size={32} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tarjetas Amarillas</p>
+                    <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
+                  </div>
+                </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500">
-                <ShieldAlert size={32} />
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tarjetas Rojas</p>
-                <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.redCards}</h4>
-              </div>
-            </div>
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500">
+                    <ShieldAlert size={32} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tarjetas Rojas</p>
+                    <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats.TARJETAS_ROJAS || 0}</h4>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Match History & Upcoming Matches */}
@@ -342,18 +417,18 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                   Array(5).fill(0).map((_, i) => <MatchSkeleton key={i} />)
                 ) : lastResults.length > 0 ? (
                   lastResults.map((m) => {
-                    const isHome = m.homeTeam === selectedCategory.category.name;
-                    const rival = isHome ? m.awayTeam : m.homeTeam;
-                    const myScore = isHome ? m.homeScore : m.awayScore;
-                    const rivalScore = isHome ? m.awayScore : m.homeScore;
+                    const teamName = clubConfig.name || 'Mi Equipo';
+                    const isHome = m.hometeam === teamName;
+                    const rival = isHome ? m.awayteam : m.hometeam;
+                    const myScore = isHome ? m.homescore : m.awayscore;
+                    const rivalScore = isHome ? m.awayscore : m.homescore;
                     const isWin = (myScore || 0) > (rivalScore || 0);
                     const isDraw = (myScore || 0) === (rivalScore || 0);
 
                     return (
                       <div 
                         key={m.id} 
-                        onClick={() => navigate(`/match/${m.id}`)}
-                        className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all cursor-pointer"
+                        className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all"
                       >
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black italic shadow-lg ${isWin ? 'bg-emerald-500' : isDraw ? 'bg-amber-500' : 'bg-red-500'}`}>
@@ -366,7 +441,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-xl font-black italic text-slate-800 dark:text-white">
-                            {m.homeScore} - {m.awayScore}
+                            {m.homescore} - {m.awayscore}
                           </div>
                           <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
                         </div>
@@ -398,14 +473,14 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                   Array(3).fill(0).map((_, i) => <MatchSkeleton key={i} />)
                 ) : upcomingMatches.length > 0 ? (
                   upcomingMatches.map((m) => {
-                    const isHome = m.homeTeam === selectedCategory.category.name;
-                    const rival = isHome ? m.awayTeam : m.homeTeam;
+                    const teamName = clubConfig.name || 'Mi Equipo';
+                    const isHome = m.hometeam === teamName;
+                    const rival = isHome ? m.awayteam : m.hometeam;
 
                     return (
                       <div 
                         key={m.id} 
-                        onClick={() => navigate(`/match/${m.id}`)}
-                        className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all cursor-pointer"
+                        className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all"
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-primary-600/10 rounded-2xl flex items-center justify-center text-primary-600">

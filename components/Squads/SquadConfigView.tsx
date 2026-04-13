@@ -10,10 +10,14 @@ import { Discipline } from '../../types';
 import PlantelDashboard from '../PlantelDashboard';
 import PlantelLista from '../PlantelLista';
 import Asistencia from '../Asistencia';
-import TournamentManagement from '../TournamentManagement';
+import FixtureView from '../Torneos/FixtureView';
 import MedicalDashboard from '../MedicalDashboard';
 
-const SquadConfigView: React.FC = () => {
+interface SquadConfigViewProps {
+  config?: ClubConfig;
+}
+
+const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig }) => {
   const { disciplineId } = useParams<{ disciplineId: string }>();
   const navigate = useNavigate();
   const { 
@@ -27,17 +31,27 @@ const SquadConfigView: React.FC = () => {
   const [discipline, setDiscipline] = useState<Discipline | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [clubName, setClubName] = useState('MI CLUB');
 
   useEffect(() => {
     const fetchDiscipline = async () => {
       setLoading(true);
       try {
+        // Use prop config if available and has disciplines
+        if (propConfig && propConfig.disciplines && propConfig.disciplines.length > 0) {
+          const found = propConfig.disciplines.find(d => d.id === disciplineId);
+          if (found) {
+            setDiscipline(found);
+            setSelectedDiscipline(found.id);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Fallback to fetching from DB if not found in props or props not provided
         const { data, error } = await db.config.get();
         if (error) throw error;
         
         if (data) {
-          setClubName(data.name || 'MI CLUB');
           const disciplines: Discipline[] = data.disciplines || [];
           const found = disciplines.find(d => d.id === disciplineId);
           if (found) {
@@ -53,7 +67,32 @@ const SquadConfigView: React.FC = () => {
     };
 
     fetchDiscipline();
-  }, [disciplineId, setSelectedDiscipline]);
+  }, [disciplineId, propConfig, setSelectedDiscipline]);
+
+  // Separate effect for validating gender/division to avoid infinite loops
+  useEffect(() => {
+    if (discipline) {
+      // Validate and reset gender/division if they don't belong to this discipline
+      const isGenderValid = discipline.branches.some(b => b.gender === selectedGender && b.enabled);
+      if (!isGenderValid) {
+        const firstEnabledBranch = discipline.branches.find(b => b.enabled);
+        if (firstEnabledBranch) {
+          setSelectedGender(firstEnabledBranch.gender);
+          setSelectedDivision(null);
+        } else {
+          setSelectedGender(null);
+          setSelectedDivision(null);
+        }
+      } else {
+        // Gender is valid, check if division is valid within this gender
+        const branch = discipline.branches.find(b => b.gender === selectedGender);
+        const isDivisionValid = branch?.categories.some(c => c.id === selectedDivision);
+        if (!isDivisionValid) {
+          setSelectedDivision(null);
+        }
+      }
+    }
+  }, [discipline, selectedGender, selectedDivision, setSelectedGender, setSelectedDivision]);
 
   const handleGenderChange = (gender: string) => {
     setSelectedGender(gender);
@@ -108,8 +147,8 @@ const SquadConfigView: React.FC = () => {
         return <PlantelLista />;
       case 'asistencia':
         return <Asistencia />;
-      case 'torneo':
-        return <TournamentManagement />;
+      case 'fixture':
+        return <FixtureView />;
       case 'medico':
         return <MedicalDashboard />;
       default:
@@ -121,38 +160,12 @@ const SquadConfigView: React.FC = () => {
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
     { id: 'plantel', label: 'PLANTEL', icon: Users },
     { id: 'asistencia', label: 'ASISTENCIA', icon: CalendarCheck },
-    { id: 'torneo', label: 'TORNEO', icon: Trophy },
+    { id: 'fixture', label: 'FIXTURE', icon: Trophy },
     { id: 'medico', label: 'MÉDICO', icon: Activity },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans">
-      {/* Header Navigation */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-pink-600/20">
-              <span className="font-black text-xl italic">M</span>
-            </div>
-            <div>
-              <h1 className="font-black text-lg tracking-tighter leading-none italic">{clubName}</h1>
-              <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em] uppercase">Management System</p>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <button className="text-pink-500 font-black text-xs tracking-widest border-b-2 border-pink-500 pb-1">PLANTELES</button>
-            <button className="text-slate-400 hover:text-white font-black text-xs tracking-widest transition-colors">MIEMBROS</button>
-            <button className="text-slate-400 hover:text-white font-black text-xs tracking-widest transition-colors">PAGOS</button>
-            <button className="text-slate-400 hover:text-white font-black text-xs tracking-widest transition-colors">ESTRUCTURA</button>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700"></div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-slate-900 text-white font-sans pt-24">
       <main className="max-w-7xl mx-auto px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
           {/* Left Section: Selectors */}

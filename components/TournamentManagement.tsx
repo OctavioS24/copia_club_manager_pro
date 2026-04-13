@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Tournament, Match, Player, Category, Discipline, ClubConfig, TournamentParticipant, Member } from '../types';
+import { Tournament, Match, Player, Category, Discipline, ClubConfig, TournamentParticipant, Member, Rival, MatchFixture } from '../types';
 import { 
   Trophy, Plus, Calendar, Trash2, X, ChevronRight, Edit3, 
   Users, Loader2, CheckCircle2,
   ListOrdered, Search, Layout, UserCircle, 
   GitBranch, Table as TableIcon, Award, ChevronLeft, 
-  Settings2, Shield, UserMinus
+  Settings2, Shield, UserMinus, CheckCircle
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 import CrearTorneo from './Torneos/CrearTorneo';
+import { getRivals, replicateFixtures } from '../lib/torneos';
 
 interface TournamentManagementProps {
   discipline: Discipline;
@@ -39,21 +40,73 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
   const [gender, setGender] = useState<'Masculino' | 'Femenino'>(propGender || (selectedGender as any) || 'Masculino');
   const [clubConfig, setClubConfig] = useState<ClubConfig | null>(propClubConfig || null);
 
+  // --- Estados de Datos ---
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [participants, setParticipants] = useState<TournamentParticipant[]>([]);
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [rivals, setRivals] = useState<Rival[]>([]);
+  
+  // --- Estados de UI ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [viewMode, setViewMode] = useState<'fixture' | 'groups' | 'bracket' | 'participants' | 'fixture_base'>('fixture');
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [tournamentToDelete, setTournamentToDelete] = useState<{id: string, name: string} | null>(null);
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
+  const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
+  const [isReplicating, setIsReplicating] = useState(false);
+
+  // --- Estados de Formulario de Torneo ---
+  const [tForm, setTForm] = useState<Partial<Tournament>>({
+    name: '', type: 'Professional', settings: { has_groups: false, groups_count: 1, advancing_per_group: 2, has_playoffs: false, playoff_start: 'F' }
+  });
+  
+  // --- Estados para Fixture Base ---
+  const [fixturebase, setFixtureBase] = useState<MatchFixture[]>([]);
+
+  // --- Estados para Wizard de Equipos ---
+  const [tempTeams, setTempTeams] = useState<TempTeam[]>([]);
+  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  const [participantSearch, setParticipantSearch] = useState('');
+
+  // --- Estado para Formulario de Partido ---
+  const [matchForm, setMatchForm] = useState({
+    homeParticipantId: '',
+    awayParticipantId: '',
+    rivalName: '',
+    isHome: true,
+    myScore: 0,
+    rivalScore: 0,
+    date: new Date().toISOString().split('T')[0],
+    stage: 'Fase Regular'
+  });
+
   // Fetch data if needed
   useEffect(() => {
     const fetchData = async () => {
-      if (propDiscipline && propClubConfig) return;
-
       setIsLoading(true);
       try {
-        const configRes = await db.config.get();
+        const [configRes] = await Promise.all([
+          db.config.get()
+        ]);
+        
         if (configRes.data) {
           setClubConfig(configRes.data);
-          const disc = configRes.data.disciplines.find((d: any) => d.id === selectedDiscipline);
+          const disc = configRes.data.disciplines.find((d: any) => d.id === (propDiscipline?.id || selectedDiscipline));
           if (disc) {
             setDiscipline(disc);
-            if (selectedDivision) {
-              const cat = disc.branches.flatMap((b: any) => b.categories).find((c: any) => c.id === selectedDivision);
+            
+            // Fetch rivals for this discipline
+            const rivalsData = await getRivals(disc.name);
+            setRivals(rivalsData);
+
+            const catId = propCategory?.id || selectedDivision;
+            if (catId) {
+              const cat = disc.branches.flatMap((b: any) => b.categories).find((c: any) => c.id === catId);
               if (cat) setCategory(cat);
             }
           }
@@ -67,45 +120,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
     };
 
     fetchData();
-  }, [propDiscipline, propClubConfig, selectedDiscipline, selectedDivision, selectedGender]);
-
-  // --- Estados de Datos ---
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [participants, setParticipants] = useState<TournamentParticipant[]>([]);
-  const [allMembers, setAllMembers] = useState<Member[]>([]);
-  
-  // --- Estados de UI ---
-  const [isLoading, setIsLoading] = useState(true);
-  const [showWizard, setShowWizard] = useState(false);
-  const [wizardStep, setWizardStep] = useState(1);
-  const [viewMode, setViewMode] = useState<'fixture' | 'groups' | 'bracket' | 'participants'>('fixture');
-  const [showMatchModal, setShowMatchModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
-  const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
-
-  // --- Estados de Formulario de Torneo ---
-  const [tForm, setTForm] = useState<Partial<Tournament>>({
-    name: '', type: 'Professional', settings: { has_groups: false, groups_count: 1, advancing_per_group: 2, has_playoffs: false, playoff_start: 'F' }
-  });
-  
-  // --- Estados para Armado de Equipos ---
-  const [tempTeams, setTempTeams] = useState<TempTeam[]>([]);
-  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
-  const [participantSearch, setParticipantSearch] = useState('');
-  
-  const [matchForm, setMatchForm] = useState({
-    homeParticipantId: '', 
-    awayParticipantId: '', 
-    rivalName: '',
-    isHome: true, 
-    myScore: 0, 
-    rivalScore: 0, 
-    date: new Date().toISOString().split('T')[0], 
-    stage: 'Fase Regular'
-  });
+  }, [propDiscipline, propClubConfig, propCategory?.id, selectedDiscipline, selectedDivision, selectedGender]);
 
   const loadInitialData = React.useCallback(async () => {
     if (!discipline) return;
@@ -118,24 +133,23 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       
       if (tourRes.data) {
         const filtered = tourRes.data.filter((t: any) => {
-          const tDiscId = t.discipline_id || t.disciplineid;
+          const tDiscId = t.discipline_id;
           const tGender = t.gender;
-          const tAssignedCats = t.assigned_categories || t.assignedcategories || [];
+          const tAssignedCats = t.assigned_categories || [];
 
-          // Check if the tournament is explicitly for this discipline
           const discMatch = tDiscId === discipline?.id;
-          
-          // OR if it has assigned_categories that belong to this discipline
           const hasAssignedCategoryInDiscipline = tAssignedCats.some((catId: string) => {
             return discipline?.branches?.some(b => b.categories.some(c => c.id === catId));
           });
 
           const genderMatch = !gender || (tGender === gender);
-          
           return (discMatch || hasAssignedCategoryInDiscipline) && genderMatch;
         });
         setTournaments(filtered);
-        if (filtered.length > 0 && !activeTournament) setActiveTournament(filtered[0]);
+        if (filtered.length > 0 && !activeTournament) {
+          setActiveTournament(filtered[0]);
+          setFixtureBase(filtered[0].fixture_base || []);
+        }
       }
       if (memRes.data) setAllMembers(memRes.data);
     } catch (e) {
@@ -151,8 +165,72 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
     if (activeTournament) {
       db.matches.getAll(activeTournament.id).then(res => res.data && setMatches(res.data));
       db.participants.getAll(activeTournament.id).then(res => res.data && setParticipants(res.data));
+      setFixtureBase(activeTournament.fixture_base || []);
     }
   }, [activeTournament]);
+
+  const addFixtureLine = () => {
+    const newLine: MatchFixture = {
+      id: crypto.randomUUID(),
+      rival: rivals[0]?.name || '',
+      date: new Date().toISOString().split('T')[0],
+      condition: 'Local'
+    };
+    setFixtureBase([...fixturebase, newLine]);
+  };
+
+  const removeFixtureLine = (id: string) => {
+    setFixtureBase(fixturebase.filter(f => f.id !== id));
+  };
+
+  const updateFixtureLine = (id: string, field: keyof MatchFixture, value: any) => {
+    setFixtureBase(fixturebase.map(f => f.id === id ? { ...f, [field]: value } : f));
+  };
+
+  const saveFixtureBase = async () => {
+    if (!activeTournament) return;
+    setIsLoading(true);
+    try {
+      const { error } = await db.tournaments.upsert({
+        ...activeTournament,
+        fixture_base: fixturebase
+      });
+      if (error) throw error;
+      setActiveTournament({ ...activeTournament, fixture_base: fixturebase });
+      alert('Fixture base guardado correctamente');
+    } catch (error) {
+      console.error('Error saving fixture base:', error);
+      alert('Error al guardar el fixture base');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReplicate = async () => {
+    if (!activeTournament || !activeTournament.assigned_categories) return;
+    if (!confirm('¿Replicar el fixture base para todas las categorías? Esto creará partidos nuevos.')) return;
+    
+    setIsReplicating(true);
+    try {
+      await replicateFixtures(
+        activeTournament.id,
+        activeTournament.assigned_categories,
+        fixturebase,
+        clubConfig?.name || 'Mi Equipo'
+      );
+      
+      const res = await db.matches.getAll(activeTournament.id);
+      if (res.data) setMatches(res.data);
+      
+      alert('Fixture replicado con éxito');
+      setViewMode('fixture');
+    } catch (error) {
+      console.error('Error replicating fixtures:', error);
+      alert('Error al replicar el fixture');
+    } finally {
+      setIsReplicating(false);
+    }
+  };
 
   // --- LÓGICA DE EQUIPOS ---
   const addTeam = () => {
@@ -248,22 +326,29 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
     setShowWizard(true);
   };
 
-  const handleDeleteTournament = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('¿Eliminar torneo y toda su historia?')) return;
-    await db.tournaments.delete(id);
-    loadInitialData();
+  const handleDeleteTournament = async () => {
+    if (!tournamentToDelete) return;
+    setIsLoading(true);
+    try {
+      await db.tournaments.delete(tournamentToDelete.id);
+      setTournamentToDelete(null);
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error deleting tournament:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditMatch = (match: Match) => {
     setEditingMatchId(match.id);
     setMatchForm({
-      homeParticipantId: match.homeParticipantId || '',
-      awayParticipantId: match.awayParticipantId || '',
-      rivalName: activeTournament?.type === 'Professional' ? (match.homeTeam === clubConfig.name ? match.awayTeam : match.homeTeam) : '',
-      isHome: match.homeTeam === clubConfig.name,
-      myScore: (match.homeTeam === clubConfig.name ? match.homeScore : match.awayScore) || 0,
-      rivalScore: (match.homeTeam === clubConfig.name ? match.awayScore : match.homeScore) || 0,
+      homeParticipantId: match.home_participant_id || '',
+      awayParticipantId: match.away_participant_id || '',
+      rivalName: activeTournament?.type === 'Professional' ? (match.home_team === clubConfig.name ? match.away_team : match.home_team) : '',
+      isHome: match.home_team === clubConfig.name,
+      myScore: (match.home_team === clubConfig.name ? match.home_score : match.away_score) || 0,
+      rivalScore: (match.home_team === clubConfig.name ? match.away_score : match.home_score) || 0,
       date: match.date,
       stage: match.stage || 'Fase Regular'
     });
@@ -339,7 +424,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                        <button onClick={(e) => handleEditTournament(t, e)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary-600">
                           <Edit3 size={14} />
                        </button>
-                       <button onClick={(e) => handleDeleteTournament(t.id, e)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-500">
+                       <button onClick={(e) => { e.stopPropagation(); setTournamentToDelete({ id: t.id, name: t.name }); }} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-500">
                           <Trash2 size={14} />
                        </button>
                     </div>
@@ -355,6 +440,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                 <div className="space-y-2">
                     {[
                       { id: 'fixture', label: 'Resultados', icon: Calendar },
+                      { id: 'fixture_base', label: 'Fixture Base', icon: TableIcon },
                       { id: 'groups', label: 'Tablas', icon: ListOrdered, show: activeTournament.settings.has_groups },
                       { id: 'bracket', label: 'Playoffs', icon: GitBranch, show: activeTournament.settings.has_playoffs },
                       { id: 'participants', label: 'Equipos', icon: Users, show: true }
@@ -371,6 +457,97 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
         <div className="flex-1 min-w-0">
            {activeTournament ? (
              <div className="space-y-8 animate-fade-in">
+                {viewMode === 'fixture_base' && (
+                  <div className="space-y-8 animate-fade-in">
+                    <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
+                      <div>
+                        <span className="px-4 py-1.5 bg-pink-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{activeTournament.name}</span>
+                        <h3 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mt-3">Fixture Base</h3>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase mt-2">Define el orden de partidos para replicar en todas las categorías</p>
+                      </div>
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={addFixtureLine}
+                          className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
+                        >
+                          <Plus size={16} /> Agregar Fecha
+                        </button>
+                        <button 
+                          onClick={saveFixtureBase}
+                          className="bg-pink-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
+                        >
+                          <CheckCircle size={16} /> Guardar Base
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {fixturebase.map((line, index) => (
+                        <div key={line.id} className="bg-white dark:bg-[#0f1219]/60 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 flex flex-wrap items-center gap-6">
+                          <div className="w-12 h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-lg font-black italic text-slate-400">
+                            {index + 1}
+                          </div>
+                          
+                          <div className="flex-1 min-w-[200px]">
+                            <label className={labelClasses}>Rival</label>
+                            <select 
+                              value={line.rival}
+                              onChange={(e) => updateFixtureLine(line.id, 'rival', e.target.value)}
+                              className={inputClasses}
+                            >
+                              {rivals.length === 0 && <option value="">-- SIN RIVALES --</option>}
+                              {rivals.map(r => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="w-48">
+                            <label className={labelClasses}>Fecha</label>
+                            <input 
+                              type="date"
+                              value={line.date}
+                              onChange={(e) => updateFixtureLine(line.id, 'date', e.target.value)}
+                              className={inputClasses}
+                            />
+                          </div>
+
+                          <div className="w-40">
+                            <label className={labelClasses}>Condición</label>
+                            <select 
+                              value={line.condition}
+                              onChange={(e) => updateFixtureLine(line.id, 'condition', e.target.value)}
+                              className={inputClasses}
+                            >
+                              <option value="Local">Local</option>
+                              <option value="Visitante">Visitante</option>
+                            </select>
+                          </div>
+
+                          <button 
+                            onClick={() => removeFixtureLine(line.id)}
+                            className="p-4 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {fixturebase.length > 0 && (
+                        <div className="pt-10 flex justify-center">
+                          <button 
+                            onClick={handleReplicate}
+                            disabled={isReplicating}
+                            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-12 py-6 rounded-3xl font-black uppercase text-[12px] tracking-[0.2em] shadow-2xl flex items-center gap-4 hover:scale-105 transition-all disabled:opacity-50"
+                          >
+                            {isReplicating ? <Loader2 className="animate-spin" /> : <GitBranch size={20} />}
+                            Replicar Fixture a Categorías
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {viewMode === 'fixture' && (
                   <>
                      <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
@@ -389,19 +566,19 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                         {matches.map(m => (
                           <div key={m.id} onClick={() => handleEditMatch(m)} className="bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-10 group hover:border-primary-600/30 transition-all cursor-pointer relative">
                               <div className="flex-1 text-right">
-                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.homeTeam}</p>
+                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.home_team}</p>
                                  <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Local</p>
                               </div>
                               <div className="flex flex-col items-center gap-2">
                                  <div className="bg-slate-100 dark:bg-white/5 px-6 py-3 rounded-2xl flex items-center gap-5 text-2xl font-black italic shadow-inner">
-                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.homeScore : '-'}</span>
+                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.home_score : '-'}</span>
                                     <span className="text-[10px] text-slate-400 not-italic uppercase tracking-widest">VS</span>
-                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.awayScore : '-'}</span>
+                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.away_score : '-'}</span>
                                  </div>
                                  <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Calendar size={12} /> {m.date}</div>
                               </div>
                               <div className="flex-1 text-left">
-                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.awayTeam}</p>
+                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.away_team}</p>
                                  <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Visitante</p>
                               </div>
                               <button onClick={(e) => handleDeleteMatch(m.id, e)} className="absolute right-4 opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
@@ -443,6 +620,49 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
           defaultDisciplineId={discipline?.id}
           defaultGender={gender}
         />
+      )}
+
+      {tournamentToDelete && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+          >
+            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            
+            <h3 className="text-2xl font-black text-white text-center mb-2 uppercase tracking-tight italic">
+              Eliminar torneo
+            </h3>
+            
+            <p className="text-slate-400 text-center mb-8 leading-relaxed">
+              ¿Estás seguro que deseas eliminar <span className="text-white font-bold">"{tournamentToDelete.name}"</span>? 
+              Esta acción eliminará también todos sus partidos asociados y no se puede deshacer.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setTournamentToDelete(null)}
+                className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors uppercase text-sm tracking-wider"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteTournament}
+                disabled={isLoading}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors uppercase text-sm tracking-wider flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Eliminar'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {showWizard && (
@@ -548,7 +768,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                   onClick={() => toggleMemberInTeam(m.id)} 
                                   className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${isInActive ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : isInAnyTeam ? 'opacity-30 grayscale' : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-primary-600/30'}`}
                                  >
-                                    <img src={m.photoUrl} className="w-10 h-10 rounded-xl object-cover" />
+                                    <img src={m.photourl} className="w-10 h-10 rounded-xl object-cover" />
                                     <div className="flex-1">
                                        <p className="text-[10px] font-black uppercase truncate">{m.name}</p>
                                        <p className="text-[8px] font-bold opacity-60">DNI: {m.dni}</p>
@@ -639,18 +859,22 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
               <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-white/5">
                  <button 
                   onClick={async () => {
-                    const hName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.homeParticipantId)?.name : (matchForm.isHome ? category?.name : matchForm.rivalName);
-                    const vName = activeTournament.type === 'Internal' ? participants.find(p => p.id === matchForm.awayParticipantId)?.name : (!matchForm.isHome ? category?.name : matchForm.rivalName);
+                    const hName = activeTournament.type === 'Internal' 
+                      ? participants.find(p => p.id === matchForm.homeParticipantId)?.name 
+                      : (matchForm.isHome ? (clubConfig?.name || 'MI EQUIPO') : matchForm.rivalName);
+                    const vName = activeTournament.type === 'Internal' 
+                      ? participants.find(p => p.id === matchForm.awayParticipantId)?.name 
+                      : (!matchForm.isHome ? (clubConfig?.name || 'MI EQUIPO') : matchForm.rivalName);
                     
                     await db.matches.upsert({
                       id: editingMatchId || crypto.randomUUID(),
-                      tournamentId: activeTournament.id,
-                      homeTeam: hName || 'Local',
-                      awayTeam: vName || 'Visitante',
-                      homeScore: matchForm.myScore,
-                      awayScore: matchForm.rivalScore,
-                      homeParticipantId: matchForm.homeParticipantId,
-                      awayParticipantId: matchForm.awayParticipantId,
+                      tournament_id: activeTournament.id,
+                      home_team: hName || 'Local',
+                      away_team: vName || 'Visitante',
+                      home_score: matchForm.myScore,
+                      away_score: matchForm.rivalScore,
+                      home_participant_id: matchForm.homeParticipantId,
+                      away_participant_id: matchForm.awayParticipantId,
                       date: matchForm.date,
                       status: 'Finished',
                       stage: matchForm.stage
@@ -666,6 +890,13 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
               </div>
            </div>
         </div>
+      )}
+
+      {showRivalsModal && (
+        <RivalsManager onClose={() => {
+          setShowRivalsModal(false);
+          getRivals().then(setRivals); // Refresh rivals list
+        }} />
       )}
     </div>
   );

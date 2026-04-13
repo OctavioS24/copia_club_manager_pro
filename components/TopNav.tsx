@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Database, Sun, Moon, Shield, Users, UserCog, Wallet } from 'lucide-react';
+import { Database, Sun, Moon, Shield, Users, UserCog, Wallet, Trophy } from 'lucide-react';
 import { ClubConfig } from '../types';
 
 interface TopNavProps {
@@ -20,6 +20,7 @@ const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const menu = [
     { id: 'squads', label: 'Planteles', icon: Users },
+    { id: 'torneos', label: 'Torneos', icon: Trophy },
     { id: 'members', label: 'Miembros', icon: UserCog },
     { id: 'payments', label: 'Pagos', icon: Wallet },
     { id: 'master-data', label: 'Estructura', icon: Database },

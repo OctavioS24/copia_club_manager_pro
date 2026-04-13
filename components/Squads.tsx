@@ -59,24 +59,43 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
     // Obtenemos el nombre exacto de la categoría seleccionada en el filtro lateral
     const selectedCategoryName = activeBranch?.categories.find(c => c.id === selectedCatId)?.name;
 
-    return players.filter(p => {
+    return (players as any[]).filter(p => {
         // 1. Filtro por Búsqueda de Texto
-        const matchesSearch = searchTerm === '' || p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.dni.includes(searchTerm);
+        const matchesSearch = searchTerm === '' || p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.dni && p.dni.includes(searchTerm));
         
-        // 2. Filtro por Disciplina (Comparación exacta por nombre normalizado)
-        const pDisc = (p.discipline || '').trim().toLowerCase();
-        const sDisc = (activeSport.name || '').trim().toLowerCase();
-        const matchesSport = pDisc === sDisc;
+        // Buscar la asignación correspondiente para esta disciplina y categoría
+        const assignment = p.assignments?.find((a: any) => {
+          const matchesDisc = (a.discipline || '').trim().toLowerCase() === (activeSport.name || '').trim().toLowerCase() || a.discipline_id === activeSport.id;
+          const matchesCat = (a.category || '').trim().toLowerCase() === (selectedCategoryName || '').trim().toLowerCase() || a.category_id === selectedCatId;
+          return matchesDisc && matchesCat;
+        });
 
-        // 3. Filtro por Categoría (Comparación exacta por nombre normalizado)
-        const pCat = (p.category || '').trim().toLowerCase();
-        const sCat = (selectedCategoryName || '').trim().toLowerCase();
-        const matchesCategory = !selectedCategoryName || pCat === sCat;
-        
+        if (!assignment) return false;
+
+        // Solo mostrar jugadores
+        const role = (assignment.role || '').toUpperCase();
+        const isPlayer = role === 'PLAYER' || role === 'JUGADOR';
+        if (!isPlayer) return false;
+
         // 4. Filtro por Género (Importante para separar ramas)
         const matchesGender = !p.gender || p.gender.toLowerCase() === selectedGender.toLowerCase();
 
-        return matchesSearch && matchesSport && matchesCategory && matchesGender;
+        return matchesSearch && matchesGender;
+    }).map(p => {
+      // Mapear a la estructura que espera el componente (Player interface)
+      const assignment = p.assignments?.find((a: any) => {
+        const matchesDisc = (a.discipline || '').trim().toLowerCase() === (activeSport.name || '').trim().toLowerCase() || a.discipline_id === activeSport.id;
+        const matchesCat = (a.category || '').trim().toLowerCase() === (selectedCategoryName || '').trim().toLowerCase() || a.category_id === selectedCatId;
+        return matchesDisc && matchesCat;
+      });
+
+      return {
+        ...p,
+        position: assignment?.position || '',
+        // El número suele venir de una tabla aparte o de un campo extendido, 
+        // pero aquí lo dejamos como fallback si no existe en el objeto
+        number: p.number || '00'
+      };
     }).sort((a, b) => (b.overallRating || 0) - (a.overallRating || 0));
   }, [players, activeSport, selectedGender, selectedCatId, searchTerm, activeBranch]);
 

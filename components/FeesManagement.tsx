@@ -215,7 +215,7 @@ const FeesManagement: React.FC = () => {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
-                        <img src={fee.member?.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        <img src={fee.member?.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
                       </div>
                       <div>
                         <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name}</p>
@@ -297,7 +297,7 @@ const FeesManagement: React.FC = () => {
                                   className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0"
                                 >
                                   <div className="w-10 h-10 rounded-xl bg-slate-200 overflow-hidden shrink-0">
-                                    <img src={m.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                                    <img src={m.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
                                   </div>
                                   <div className="text-left">
                                     <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase italic">{m.name}</p>
@@ -315,7 +315,7 @@ const FeesManagement: React.FC = () => {
                        <div className="flex items-center justify-between p-5 bg-primary-600/5 dark:bg-primary-600/10 rounded-3xl border-2 border-primary-600/20 animate-fade-in">
                           <div className="flex items-center gap-4">
                              <div className="w-12 h-12 rounded-2xl bg-white shadow-md overflow-hidden p-1">
-                                <img src={selectedMemberInModal.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-xl" />
+                                <img src={selectedMemberInModal.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-xl" />
                              </div>
                              <div>
                                 <p className="text-sm font-black text-primary-600 uppercase italic leading-none">{selectedMemberInModal.name}</p>
@@ -408,7 +408,7 @@ const FeesManagement: React.FC = () => {
            <div className="bg-white dark:bg-[#0f121a] w-full max-w-3xl rounded-[3rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col h-[80vh]">
               <div className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
                 <div className="flex items-center gap-6">
-                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg"><img src={selectedMemberHistory.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" /></div>
+                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg"><img src={selectedMemberHistory.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" /></div>
                    <div>
                       <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">{selectedMemberHistory.name}</h3>
                       <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">Resumen Histórico de Pagos</p>

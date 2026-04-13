@@ -73,72 +73,100 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
     fetchData();
   }, [disciplineId, categoryId, propDisciplineName, propCategoryName]);
 
-  // Cuerpo Técnico
-  const coachingStaff = useMemo(() => {
-    return members.filter(m => 
-      m.assignments?.some(a => {
-        const aDiscId = a.discipline_id;
-        const aCatId = a.category_id;
-        return aDiscId === disciplineId && aCatId === categoryId && a.role === 'COACH';
-      })
-    ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [members, disciplineId, categoryId]);
+  // Separar y agrupar miembros por rol y categoría
+  const { coachingStaffGroups, playersList } = useMemo(() => {
+    const staffGroups: Record<string, Member[]> = {};
+    const players: (Member & { number: string; position: string })[] = [];
 
-  // Jugadores combinados con su data de posición/dorsal
-  const players = useMemo(() => {
-    const assignedPlayers = members.filter(m => 
-      m.assignments?.some(a => {
-        const aDiscId = a.discipline_id;
-        const aCatId = a.category_id;
-        return aDiscId === disciplineId && aCatId === categoryId && a.role === 'PLAYER';
-      })
-    );
+    members.forEach(m => {
+      const assignment = m.assignments?.find(a => {
+        const aDisc = (a.discipline || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const dName = (disciplineName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const aCat = (a.category || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cName = (categoryName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const discMatch = a.discipline_id === disciplineId || aDisc === dName;
+        const catMatch = a.category_id === categoryId || a.category === categoryId || aCat === cName;
+        
+        return discMatch && catMatch;
+      });
 
-    return assignedPlayers.map(m => {
-      const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
-      return {
-        ...m,
-        number: savedData?.number || '00',
-        position: savedData?.position || '',
-      };
-    });
-  }, [members, persistedPlayers, disciplineId, categoryId]);
+      if (!assignment) return;
 
-  // Agrupación por posición
-  const groupedPlayers = useMemo(() => {
-    const groups: Record<string, typeof players> = {
-      'Arqueros': [],
-      'Defensores': [],
-      'Mediocampistas': [],
-      'Delanteros': [],
-      'Sin puesto': []
-    };
+      // Normalizar el rol para la comparación (manejar inglés/español y mayúsculas)
+      const role = (assignment.role || '').toUpperCase();
+      const isPlayer = role === 'PLAYER' || role === 'JUGADOR';
 
-    players.forEach(p => {
-      const pos = (p.position || '').trim().toUpperCase();
-      
-      if (!pos) {
-        groups['Sin puesto'].push(p);
-      } else if (pos.includes('ARQUERO') || pos.includes('PORTERO') || pos.includes('ARQ')) {
-        groups['Arqueros'].push(p);
-      } else if (pos.includes('DEF') || pos.includes('ZAGUERO') || pos.includes('LATERAL')) {
-        groups['Defensores'].push(p);
-      } else if (pos.includes('MED') || pos.includes('VOLANTE') || pos.includes('CENTRO') || pos.includes('VOL')) {
-        groups['Mediocampistas'].push(p);
-      } else if (pos.includes('DEL') || pos.includes('ATACANTE') || pos.includes('PUNTA')) {
-        groups['Delanteros'].push(p);
+      if (isPlayer) {
+        const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
+        players.push({
+          ...m,
+          number: savedData?.number || '00',
+          position: assignment.position || savedData?.position || '',
+        });
       } else {
-        groups['Sin puesto'].push(p);
+        // Agrupar técnicos por su rol
+        const roleKey = role || 'STAFF';
+        if (!staffGroups[roleKey]) staffGroups[roleKey] = [];
+        staffGroups[roleKey].push(m);
       }
     });
 
-    // Orden alfabético por nombre dentro de cada sección
-    Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => a.name.localeCompare(b.name));
+    // Ordenar técnicos dentro de cada grupo
+    Object.keys(staffGroups).forEach(key => {
+      staffGroups[key].sort((a, b) => a.name.localeCompare(b.name));
     });
 
-    return groups;
-  }, [players]);
+    return {
+      coachingStaffGroups: staffGroups,
+      playersList: players.sort((a, b) => a.name.localeCompare(b.name))
+    };
+  }, [members, persistedPlayers, disciplineId, categoryId, disciplineName, categoryName]);
+
+  // Agrupación de jugadores por posición
+  const groupedPlayers = useMemo(() => {
+    const groups: Record<string, typeof playersList> = {};
+
+    playersList.forEach(p => {
+      const pos = (p.position || 'SIN PUESTO').trim().toUpperCase();
+      if (!groups[pos]) groups[pos] = [];
+      groups[pos].push(p);
+    });
+
+    // Ordenar grupos: Poner "SIN PUESTO" al final si existe
+    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+      if (a === 'SIN PUESTO') return 1;
+      if (b === 'SIN PUESTO') return -1;
+      return a.localeCompare(b);
+    });
+
+    const sortedGroups: Record<string, typeof playersList> = {};
+    sortedGroupKeys.forEach(key => {
+      sortedGroups[key] = groups[key];
+    });
+
+    return sortedGroups;
+  }, [playersList]);
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role.toUpperCase()) {
+      case 'COACH':
+      case 'ENTRENADOR': return 'ENTRENADOR';
+      case 'PHYSICAL_TRAINER':
+      case 'PREPARADOR FÍSICO':
+      case 'PREP. FÍSICO': return 'PREPARADOR FÍSICO';
+      case 'MEDICAL':
+      case 'MÉDICO': return 'MÉDICO';
+      case 'DELEGATE':
+      case 'DELEGADO': return 'DELEGADO';
+      case 'COORDINATOR':
+      case 'COORDINADOR': return 'COORDINADOR';
+      case 'ADMIN':
+      case 'ADMINISTRADOR': return 'ADMINISTRADOR';
+      default: return role.toUpperCase();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -173,21 +201,35 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
           </div>
         </div>
 
-        {coachingStaff.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {coachingStaff.map(staff => (
-              <div key={staff.id} className="bg-primary-600/5 dark:bg-primary-600/10 border border-primary-600/20 rounded-[2.5rem] p-6 flex items-center gap-5 hover:bg-primary-600/15 transition-all group">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary-600/20 shadow-lg shrink-0">
-                  <img 
-                    src={staff.photoUrl || 'https://via.placeholder.com/150'} 
-                    alt={staff.name}
-                    className="w-full h-full object-cover" 
-                    referrerPolicy="no-referrer"
-                  />
+        {Object.entries(coachingStaffGroups).length > 0 ? (
+          <div className="space-y-8">
+            {Object.entries(coachingStaffGroups).map(([role, staffList]) => (
+              <div key={role} className="space-y-4">
+                <div className="flex items-center gap-2 px-4">
+                  <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.2em]">
+                    {getRoleDisplayName(role)} ({staffList.length})
+                  </span>
+                  <div className="flex-1 h-px bg-primary-600/10"></div>
                 </div>
-                <div className="min-w-0">
-                  <h4 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-white truncate">{staff.name}</h4>
-                  <span className="text-[9px] font-black text-primary-600 uppercase tracking-widest bg-primary-600/10 px-3 py-1 rounded-full mt-2 inline-block">ENTRENADOR</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {staffList.map(staff => (
+                    <div key={staff.id} className="bg-primary-600/5 dark:bg-primary-600/10 border border-primary-600/20 rounded-[2.5rem] p-6 flex items-center gap-5 hover:bg-primary-600/15 transition-all group">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary-600/20 shadow-lg shrink-0">
+                        <img 
+                          src={staff.photourl || 'https://via.placeholder.com/150'} 
+                          alt={staff.name}
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-white truncate">{staff.name}</h4>
+                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-widest bg-primary-600/10 px-3 py-1 rounded-full mt-2 inline-block">
+                          {getRoleDisplayName(role)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -220,7 +262,7 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                   <div className="flex items-center gap-5 relative z-10">
                     <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-slate-100 dark:border-slate-700 shadow-xl group-hover:scale-105 transition-transform duration-500 shrink-0">
                       <img 
-                        src={player.photoUrl || 'https://via.placeholder.com/150'} 
+                        src={player.photourl || 'https://via.placeholder.com/150'} 
                         alt={player.name}
                         className="w-full h-full object-cover" 
                         referrerPolicy="no-referrer"
@@ -246,7 +288,7 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
         )
       ))}
 
-      {players.length === 0 && !isLoading && (
+      {playersList.length === 0 && !isLoading && (
         <div className="py-20 text-center opacity-30 border-4 border-dashed border-slate-100 dark:border-white/5 rounded-[4rem]">
           <Users size={64} className="mx-auto mb-6 text-slate-300" />
           <h3 className="font-black uppercase tracking-[0.6em] text-[10px]">Sin jugadores en este plantel</h3>

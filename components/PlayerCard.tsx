@@ -61,10 +61,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
 
   useEffect(() => {
     const overall = calculateOverall(player.stats || {}, currentMetrics);
-    if (overall !== player.overallRating) {
-        setPlayer(prev => ({ ...prev, overallRating: overall }));
+    if (overall !== player.overallrating) {
+        setPlayer(prev => ({ ...prev, overallrating: overall }));
     }
-  }, [player.stats, currentMetrics, player.overallRating]);
+  }, [player.stats, currentMetrics, player.overallrating]);
 
   const radarData = currentMetrics.map(m => ({
     subject: m.name,
@@ -144,9 +144,9 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
             
             <div className="hidden md:flex p-8 flex-col items-center border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="w-32 h-32 rounded-[2rem] bg-slate-200 dark:bg-slate-800 border-2 border-primary-600/20 overflow-hidden shadow-lg relative group mb-5">
-                <img src={player.photoUrl || 'https://via.placeholder.com/400'} className="w-full h-full object-cover" />
+                <img src={player.photourl || 'https://via.placeholder.com/400'} className="w-full h-full object-cover" />
                 <div className="absolute top-0 right-0 bg-primary-600 text-white w-10 h-10 rounded-bl-2xl flex items-center justify-center font-black italic shadow-lg">
-                  {player.overallRating}
+                  {player.overallrating}
                 </div>
               </div>
               <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight text-center truncate w-full px-2">

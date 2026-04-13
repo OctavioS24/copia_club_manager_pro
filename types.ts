@@ -50,32 +50,50 @@ export interface Assignment {
   role: AppRole;
 }
 
+export interface MemberAssignment {
+  discipline: string;
+  category: string;
+  position: string;
+  role?: AppRole;
+  discipline_id?: string;
+  category_id?: string;
+}
+
+export interface DisciplinePosition {
+  id: string;
+  discipline: string;
+  categoryId?: string;
+  position: string;
+  order: number;
+  created_at?: string;
+}
+
 export interface Member {
   id: string;
   name: string;
   dni: string;
   gender: 'Masculino' | 'Femenino' | 'Otro';
-  birthDate: string;
+  birthdate: string;
   email: string;
   phone: string;
-  photoUrl: string;
+  photourl: string;
   address?: string;
   city?: string;
   province?: string;
-  postalCode?: string;
-  bloodType?: string;
-  medicalInsurance?: string;
+  postalcode?: string;
+  bloodtype?: string;
+  medicalinsurance?: string;
   weight?: string;
   height?: string;
   tutor?: Tutor;
-  assignments: Assignment[];
+  assignments: MemberAssignment[];
   status: 'Active' | 'Inactive' | 'Pending';
   created_at: string;
-  systemRole: 'STAFF' | 'Socio' | 'Externo';
-  canLogin: boolean;
+  systemrole: 'STAFF' | 'Socio' | 'Externo';
+  canlogin: boolean;
   username?: string;
   stats: Record<string, number>;
-  overallRating?: number;
+  overallrating?: number;
 }
 
 export interface MedicalHistoryItem {
@@ -104,9 +122,9 @@ export interface Player {
   discipline: string;
   gender: string;
   category: string;
-  photoUrl: string;
+  photourl: string;
   email: string;
-  overallRating: number;
+  overallrating: number;
   stats: Record<string, number>;
   medical?: MedicalRecord;
   status: string;
@@ -151,7 +169,7 @@ export interface MemberFee {
 
 export type TournamentType = 'Professional' | 'Internal';
 export type MatchStatus = 'Scheduled' | 'Finished' | 'Canceled';
-export type MatchEventType = 'Goal' | 'YellowCard' | 'RedCard' | 'Foul' | 'Substitution';
+export type MatchEventType = string;
 
 export interface TournamentSettings {
   has_groups: boolean;
@@ -173,7 +191,7 @@ export interface MatchFixture {
   id: string;
   rival: string;
   date: string;
-  condition: 'Home' | 'Away';
+  condition: 'Local' | 'Visitante';
 }
 
 export interface PlayerStats {
@@ -187,40 +205,58 @@ export interface Tournament {
   name: string;
   type: TournamentType;
   discipline_id: string;
-  category_id: string;
+  category_id?: string;
   gender: 'Masculino' | 'Femenino';
   status: 'Open' | 'Finished';
   settings: TournamentSettings;
   fixture_base?: MatchFixture[];
   assigned_categories?: string[];
   created_at: string;
+  // Alias for backward compatibility if needed
+  disciplineid?: string;
+  categoryid?: string;
+  assignedcategories?: string[];
+}
+
+export interface Rival {
+  id: string;
+  name: string;
+  discipline: string;
+  created_at: string;
 }
 
 export interface Match {
   id: string;
-  tournamentId: string;
-  categoryId?: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeParticipantId?: string;
-  awayParticipantId?: string;
-  homeScore?: number;
-  awayScore?: number;
+  tournamentid: string;
+  categoryid?: string;
+  hometeam: string;
+  awayteam: string;
+  home_participant_id?: string;
+  away_participant_id?: string;
+  homescore?: number;
+  awayscore?: number;
   date: string;
   time?: string;
   venue?: string;
   status: MatchStatus;
   group?: string; 
   stage?: string; 
-  isOverridden?: boolean;
-  originalMatchId?: string;
+  is_overridden?: boolean;
+  original_match_id?: string;
   events?: MatchEvent[];
+  // Alias for backward compatibility
+  home_team?: string;
+  away_team?: string;
+  home_score?: number;
+  away_score?: number;
+  tournament_id?: string;
+  category_id?: string;
 }
 
 export interface MatchEvent {
   id: string;
   match_id: string;
-  playerId: string;
+  player_id: string;
   type: MatchEventType;
   minute?: number;
   notes?: string;

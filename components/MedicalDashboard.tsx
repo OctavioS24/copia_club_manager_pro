@@ -195,7 +195,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
                   <td className="p-8">
                      <div className="flex items-center gap-4">
                        <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0">
-                          <img src={player.photoUrl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
+                          <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
                        </div>
                        <div>
                           <span className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tighter block">{player.name}</span>
@@ -248,7 +248,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
                 <div className="px-8 md:px-12 py-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
                     <div className="flex items-center gap-6">
                         <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden bg-slate-200 shadow-2xl border-4 border-white dark:border-slate-700">
-                            <img src={selectedPlayer.photoUrl} className="w-full h-full object-cover" />
+                            <img src={selectedPlayer.photourl} className="w-full h-full object-cover" />
                         </div>
                         <div>
                             <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none italic">{selectedPlayer.name}</h3>

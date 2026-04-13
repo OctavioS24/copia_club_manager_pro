@@ -11,7 +11,7 @@ import Asistencia from './Asistencia';
 import MedicalDashboard from './MedicalDashboard';
 import PlayerCard from './PlayerCard';
 import PlantelLista from './PlantelLista';
-import TournamentManagement from './TournamentManagement';
+import FixtureView from './Torneos/FixtureView';
 import { db } from '../lib/supabase';
 
 interface DisciplineConsoleProps {
@@ -23,7 +23,7 @@ interface DisciplineConsoleProps {
 }
 
 const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubConfig, members, onBack }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'summary' | 'players' | 'attendance' | 'medical' | 'tournaments'>('summary');
+  const [activeSubTab, setActiveSubTab] = useState<'summary' | 'players' | 'attendance' | 'medical' | 'fixture'>('summary');
   const [selectedGender, setSelectedGender] = useState<'Masculino' | 'Femenino'>('Masculino');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -106,7 +106,7 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
     { id: 'summary', label: 'Dashboard', icon: BarChart3 },
     { id: 'players', label: 'Plantel', icon: Users },
     { id: 'attendance', label: 'Asistencia', icon: CalendarCheck2 },
-    { id: 'tournaments', label: 'Torneos', icon: Trophy },
+    { id: 'fixture', label: 'Fixture', icon: Trophy },
     { id: 'medical', label: 'Médico', icon: Stethoscope },
   ];
 
@@ -201,14 +201,12 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
                   onPlayerClick={(p) => setSelectedPlayer(p)}
                 />
               )}
-              {activeSubTab === 'attendance' && <Asistencia players={displayPlayers} clubConfig={clubConfig} forceSelectedDisc={discipline.name} />}
-              {activeSubTab === 'tournaments' && (
-                <TournamentManagement 
-                  discipline={discipline} 
-                  category={activeBranch?.categories.find(c => c.id === selectedCategoryId) || null}
+              {activeSubTab === 'attendance' && <Asistencia players={displayPlayers} forceSelectedDisc={discipline.name} />}
+              {activeSubTab === 'fixture' && (
+                <FixtureView 
+                  disciplineId={discipline.id} 
+                  categoryId={selectedCategoryId}
                   gender={selectedGender}
-                  players={displayPlayers}
-                  clubConfig={clubConfig}
                 />
               )}
               {activeSubTab === 'medical' && <MedicalDashboard players={displayPlayers} onRefresh={fetchPlayersData} />}
