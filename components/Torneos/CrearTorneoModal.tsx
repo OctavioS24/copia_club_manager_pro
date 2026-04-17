@@ -25,6 +25,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
   const [disciplineId, setDisciplineId] = useState('');
   const [gender, setGender] = useState<'Masculino' | 'Femenino'>('Masculino');
   const [assignedcategories, setAssignedCategories] = useState<string[]>([]);
+  const [categoryConditions, setCategoryConditions] = useState<Record<string, 'Normal' | 'Inverted'>>({});
   const [fixturebase, setFixtureBase] = useState<MatchFixture[]>([]);
 
   useEffect(() => {
@@ -74,6 +75,13 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
     );
   };
 
+  const toggleCategoryCondition = (catId: string) => {
+    setCategoryConditions(prev => ({
+      ...prev,
+      [catId]: prev[catId] === 'Inverted' ? 'Normal' : 'Inverted'
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!name || !disciplineId || assignedcategories.length === 0) return;
     
@@ -85,6 +93,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
         discipline_id: disciplineId,
         gender,
         assigned_categories: assignedcategories,
+        category_conditions: categoryConditions,
         fixture_base: fixturebase,
         status: 'Open',
         settings: {
@@ -124,7 +133,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
             </div>
             <div>
               <h2 className="text-xl font-bold text-white uppercase tracking-tight">Crear Nuevo Torneo</h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Paso {step} de 3</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Paso {step} de 4</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
@@ -231,6 +240,40 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
 
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Equilibrio Local/Visitante</h3>
+                <p className="text-xs text-slate-500">Selecciona qué categorías arrancan con la condición opuesta al fixture base. Por ejemplo, si el fixture base dice que la Fecha 1 es Local, las categorías marcadas como "Invertida" jugarán de Visitante.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {assignedcategories.map(catId => {
+                  const cat = availableCategories.find(c => c.id === catId);
+                  const isInverted = categoryConditions[catId] === 'Inverted';
+                  return (
+                    <div key={catId} className="flex items-center justify-between p-4 bg-slate-800 border border-slate-700 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-5 h-5 text-slate-500" />
+                        <span className="font-bold text-white uppercase tracking-tight">{cat?.name}</span>
+                      </div>
+                      <button
+                        onClick={() => toggleCategoryCondition(catId)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          isInverted 
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' 
+                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                        }`}
+                      >
+                        {isInverted ? 'Condición Invertida' : 'Condición Normal'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Fixture Base</label>
                 <button
@@ -261,12 +304,14 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                           <select
                             value={fixture.rival}
                             onChange={(e) => handleUpdateFixture(fixture.id, 'rival', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none focus:border-pink-500"
                           >
                             <option value="">Seleccionar Rival...</option>
-                            {rivals.map(r => (
-                              <option key={r.id} value={r.name}>{r.name}</option>
-                            ))}
+                            {rivals
+                              .filter(r => !fixturebase.some((f, i) => i !== index && f.rival === r.name))
+                              .map(r => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                              ))}
                           </select>
                         </div>
                         <div className="space-y-1">
@@ -316,7 +361,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
             ANTERIOR
           </button>
 
-          {step < 3 ? (
+          {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
               disabled={!name || (step === 1 && !disciplineId) || (step === 2 && assignedcategories.length === 0)}

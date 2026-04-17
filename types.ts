@@ -168,7 +168,7 @@ export interface MemberFee {
 }
 
 export type TournamentType = 'Professional' | 'Internal';
-export type MatchStatus = 'Scheduled' | 'Finished' | 'Canceled';
+export type MatchStatus = 'Scheduled' | 'Finished' | 'Canceled' | 'Suspended';
 export type MatchEventType = string;
 
 export interface TournamentSettings {
@@ -211,6 +211,7 @@ export interface Tournament {
   settings: TournamentSettings;
   fixture_base?: MatchFixture[];
   assigned_categories?: string[];
+  category_conditions?: Record<string, 'Normal' | 'Inverted'>;
   created_at: string;
   // Alias for backward compatibility if needed
   disciplineid?: string;
@@ -243,6 +244,8 @@ export interface Match {
   stage?: string; 
   is_overridden?: boolean;
   original_match_id?: string;
+  suspension_reason?: string;
+  original_date?: string;
   events?: MatchEvent[];
   // Alias for backward compatibility
   home_team?: string;

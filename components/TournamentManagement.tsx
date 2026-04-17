@@ -6,11 +6,15 @@ import {
   Users, Loader2, CheckCircle2,
   ListOrdered, Search, Layout, UserCircle, 
   GitBranch, Table as TableIcon, Award, ChevronLeft, 
-  Settings2, Shield, UserMinus, CheckCircle
+  Settings2, Shield, UserMinus, CheckCircle, Activity
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 import CrearTorneo from './Torneos/CrearTorneo';
-import { getRivals, replicateFixtures } from '../lib/torneos';
+import { 
+  getRivals, replicateFixtures, 
+  suspendFullDate, resumeFullDate, 
+  updateMatchStatus 
+} from '../lib/torneos';
 
 interface TournamentManagementProps {
   discipline: Discipline;
@@ -59,6 +63,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
   const [isReplicating, setIsReplicating] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   // --- Estados de Formulario de Torneo ---
   const [tForm, setTForm] = useState<Partial<Tournament>>({
@@ -365,6 +370,96 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
     }
   };
 
+  const handleToggleSuspension = async (matchId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'Suspended' ? 'Scheduled' : 'Suspended';
+      await updateMatchStatus(matchId, newStatus as any);
+      if (activeTournament) {
+        const res = await db.matches.getAll(activeTournament.id);
+        if (res.data) setMatches(res.data);
+      }
+    } catch (error) {
+      console.error('Error toggling suspension:', error);
+      alert('Error al cambiar el estado de suspensión');
+    }
+  };
+
+  const handleToggleFullDateSuspension = async (date: string, isSuspended: boolean) => {
+    if (!activeTournament) return;
+    try {
+      if (isSuspended) {
+        await resumeFullDate(activeTournament.id, date);
+      } else {
+        await suspendFullDate(activeTournament.id, date);
+      }
+      
+      const res = await db.matches.getAll(activeTournament.id);
+      if (res.data) setMatches(res.data);
+    } catch (error) {
+      console.error('Error toggling full date suspension:', error);
+      alert('Error al suspender/reanudar la fecha');
+    }
+  };
+
+  const [reschedulingMatch, setReschedulingMatch] = useState<Match | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+
+  const handleRescheduleMatch = async () => {
+    if (!activeTournament || !reschedulingMatch || !rescheduleDate) return;
+
+    try {
+      setIsLoading(true);
+      // Create new match
+      const newMatch: any = {
+        id: crypto.randomUUID(),
+        tournament_id: activeTournament.id,
+        categoryid: reschedulingMatch.categoryid,
+        home_team: reschedulingMatch.home_team || reschedulingMatch.hometeam,
+        away_team: reschedulingMatch.away_team || reschedulingMatch.awayteam,
+        home_participant_id: reschedulingMatch.home_participant_id,
+        away_participant_id: reschedulingMatch.away_participant_id,
+        date: rescheduleDate,
+        status: 'Scheduled',
+        original_match_id: reschedulingMatch.id,
+        stage: reschedulingMatch.stage
+      };
+
+      await db.matches.upsert(newMatch);
+
+      // Mark old match as overridden
+      await db.matches.upsert({
+        ...reschedulingMatch,
+        is_overridden: true,
+        status: 'Suspended'
+      });
+
+      const res = await db.matches.getAll(activeTournament.id);
+      if (res.data) setMatches(res.data);
+      
+      setReschedulingMatch(null);
+      setRescheduleDate('');
+      alert('Partido reprogramado con éxito');
+    } catch (error) {
+      console.error('Error rescheduling match:', error);
+      alert('Error al reprogramar el partido');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const matchesGroupedByDate = useMemo(() => {
+    const groups: Record<string, Match[]> = {};
+    const filteredMatches = categoryFilter === 'all' 
+      ? matches 
+      : matches.filter(m => (m.categoryid || (m as any).category_id || (m as any).category) === categoryFilter);
+
+    filteredMatches.forEach(m => {
+      if (!groups[m.date]) groups[m.date] = [];
+      groups[m.date].push(m);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [matches, categoryFilter]);
+
   const StepIndicator = () => (
     <div className="flex justify-between items-center mb-10 px-12 relative">
       <div className="absolute top-1/2 left-12 right-12 h-1 bg-slate-100 dark:bg-white/5 -translate-y-1/2 -z-10"></div>
@@ -496,9 +591,11 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                               className={inputClasses}
                             >
                               {rivals.length === 0 && <option value="">-- SIN RIVALES --</option>}
-                              {rivals.map(r => (
-                                <option key={r.id} value={r.name}>{r.name}</option>
-                              ))}
+                              {rivals
+                                .filter(r => !fixturebase.some((f, idx) => idx !== index && f.rival === r.name))
+                                .map(r => (
+                                  <option key={r.id} value={r.name}>{r.name}</option>
+                                ))}
                             </select>
                           </div>
 
@@ -551,39 +648,127 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                 {viewMode === 'fixture' && (
                   <>
                      <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
-                        <div>
+                        <div className="flex-1">
                           <span className="px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{activeTournament.name}</span>
-                          <h3 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mt-3">Fixture de Temporada</h3>
+                          <h3 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mt-3 line-clamp-1">Fixture de Temporada</h3>
                         </div>
+
+                        {/* Filtro por Categoría */}
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Filtrar por Categoría</label>
+                           <select 
+                             value={categoryFilter}
+                             onChange={(e) => setCategoryFilter(e.target.value)}
+                             className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-3 text-sm font-bold text-slate-700 dark:text-white outline-none focus:border-primary-500 transition-all appearance-none cursor-pointer"
+                           >
+                              <option value="all">Todas las Categorías</option>
+                              {Array.from(new Set(matches.map(m => m.categoryid || (m as any).category_id || (m as any).category).filter(id => !!id))).map(catId => {
+                                const catObj = discipline?.branches.flatMap(b => b.categories).find(c => c.id === catId);
+                                return (
+                                  <option key={catId as string} value={catId as string}>
+                                    {catObj ? catObj.name : catId}
+                                  </option>
+                                );
+                              })}
+                           </select>
+                        </div>
+
                         <button 
                           onClick={() => { setEditingMatchId(null); setShowMatchModal(true); }}
-                          className="bg-slate-950 dark:bg-white text-white dark:text-slate-950 px-10 py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-2xl flex items-center gap-3"
+                          className="bg-slate-950 dark:bg-white text-white dark:text-slate-950 px-10 py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all w-full md:w-auto justify-center"
                         >
                           <Plus size={18} /> Cargar Partido
                         </button>
                      </div>
-                     <div className="grid grid-cols-1 gap-4">
-                        {matches.map(m => (
-                          <div key={m.id} onClick={() => handleEditMatch(m)} className="bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-10 group hover:border-primary-600/30 transition-all cursor-pointer relative">
-                              <div className="flex-1 text-right">
-                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.home_team}</p>
-                                 <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Local</p>
+                     
+                     <div className="space-y-12">
+                        {matchesGroupedByDate.map(([date, dateMatches]) => {
+                          const hasScheduled = dateMatches.some(m => m.status === 'Scheduled');
+                          
+                          return (
+                            <div key={date} className="space-y-6">
+                              <div className="flex items-center justify-between px-6">
+                                <div className="flex items-center gap-4">
+                                  <div className="p-3 bg-slate-100 dark:bg-white/5 rounded-2xl">
+                                    <Calendar className="text-slate-400" size={20} />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">{new Date(date).toLocaleDateString()}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{dateMatches.length} Partidos</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleToggleFullDateSuspension(date, !hasScheduled)}
+                                  className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${
+                                    !hasScheduled
+                                      ? 'bg-green-600/10 text-green-600 border border-green-600/20'
+                                      : 'bg-red-600/10 text-red-600 border border-red-600/20'
+                                  }`}
+                                >
+                                  {!hasScheduled ? 'Reanudar Fecha' : 'Suspender Fecha'}
+                                </button>
                               </div>
-                              <div className="flex flex-col items-center gap-2">
-                                 <div className="bg-slate-100 dark:bg-white/5 px-6 py-3 rounded-2xl flex items-center gap-5 text-2xl font-black italic shadow-inner">
-                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.home_score : '-'}</span>
-                                    <span className="text-[10px] text-slate-400 not-italic uppercase tracking-widest">VS</span>
-                                    <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? m.away_score : '-'}</span>
-                                 </div>
-                                 <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Calendar size={12} /> {m.date}</div>
+
+                              <div className="grid grid-cols-1 gap-4">
+                                {dateMatches.map(m => (
+                                  <div key={m.id} className={`bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-10 group hover:border-primary-600/30 transition-all cursor-pointer relative ${m.is_overridden ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                                      <div className="flex-1 text-right" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.home_team}</p>
+                                         <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Local</p>
+                                      </div>
+                                      <div className="flex flex-col items-center gap-2" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <div className={`bg-slate-100 dark:bg-white/5 px-6 py-3 rounded-2xl flex items-center gap-5 text-2xl font-black italic shadow-inner ${m.status === 'Suspended' ? 'opacity-50' : ''}`}>
+                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.home_score || (m as any).homescore) : '-'}</span>
+                                            <span className="text-[10px] text-slate-400 not-italic uppercase tracking-widest">VS</span>
+                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.away_score || (m as any).awayscore) : '-'}</span>
+                                         </div>
+                                         <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+                                            {m.status === 'Suspended' ? (
+                                              <span className="text-red-500 flex items-center gap-1 italic"><X size={12} /> {m.is_overridden ? 'REPROGRAMADO' : 'SUSPENDIDO'}</span>
+                                            ) : (
+                                              <span className="text-slate-400 italic">
+                                                {discipline?.branches.flatMap(b => b.categories).find(c => c.id === (m.categoryid || (m as any).category_id || (m as any).category))?.name || (m.categoryid || (m as any).category_id || (m as any).category) || 'Categoría'}
+                                             </span>
+                                            )}
+                                         </div>
+                                      </div>
+                                      <div className="flex-1 text-left" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.away_team}</p>
+                                         <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Visitante</p>
+                                      </div>
+                                      
+                                      {!m.is_overridden && (
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleToggleSuspension(m.id, m.status); }} 
+                                            className={`p-2 rounded-lg transition-colors ${m.status === 'Suspended' ? 'text-green-500 bg-green-500/10' : 'text-orange-500 bg-orange-500/10'}`}
+                                            title={m.status === 'Suspended' ? 'Reanudar' : 'Suspender'}
+                                          >
+                                            <Activity size={14} />
+                                          </button>
+                                          {m.status === 'Suspended' && (
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); setReschedulingMatch(m); setRescheduleDate(m.date); }} 
+                                              className="p-2 rounded-lg bg-blue-500/10 text-blue-500"
+                                              title="Reprogramar"
+                                            >
+                                              <Calendar size={14} />
+                                            </button>
+                                          )}
+                                          <button 
+                                            onClick={(e) => handleDeleteMatch(m.id, e)} 
+                                            className="p-2 rounded-lg bg-red-500/10 text-red-500"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
+                                      )}
+                                  </div>
+                                ))}
                               </div>
-                              <div className="flex-1 text-left">
-                                 <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.away_team}</p>
-                                 <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Visitante</p>
-                              </div>
-                              <button onClick={(e) => handleDeleteMatch(m.id, e)} className="absolute right-4 opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
                      </div>
                   </>
                 )}
@@ -659,6 +844,58 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                 ) : (
                   'Eliminar'
                 )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {reschedulingMatch && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-[#0f121a] border border-white/5 rounded-[3rem] p-10 max-w-md w-full shadow-2xl"
+          >
+            <div className="w-20 h-20 bg-blue-500/10 rounded-[2rem] flex items-center justify-center mb-8 mx-auto">
+              <Calendar className="w-10 h-10 text-blue-500" />
+            </div>
+            
+            <h3 className="text-3xl font-black text-slate-800 dark:text-white text-center mb-4 uppercase tracking-tight italic">
+              Reprogramar Partido
+            </h3>
+            
+            <p className="text-slate-400 text-center mb-10 text-sm font-bold uppercase tracking-widest leading-relaxed">
+              Define la nueva fecha para el encuentro entre<br/>
+              <span className="text-primary-600 block mt-2">{reschedulingMatch.home_team || reschedulingMatch.hometeam} VS {reschedulingMatch.away_team || reschedulingMatch.awayteam}</span>
+            </p>
+
+            <div className="space-y-6 mb-10">
+              <div className="space-y-3">
+                <label className={labelClasses}>Nueva Fecha</label>
+                <input 
+                  type="date" 
+                  value={rescheduleDate} 
+                  onChange={e => setRescheduleDate(e.target.value)}
+                  className={inputClasses}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={() => setReschedulingMatch(null)}
+                className="flex-1 px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black uppercase text-xs tracking-widest transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRescheduleMatch}
+                disabled={isLoading || !rescheduleDate}
+                className="flex-1 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                Confirmar
               </button>
             </div>
           </motion.div>
@@ -826,7 +1063,9 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                        {activeTournament.type === 'Internal' ? (
                           <select className={inputClasses} value={matchForm.homeParticipantId} onChange={e => setMatchForm({...matchForm, homeParticipantId: e.target.value})}>
                              <option value="">-- EQUIPO --</option>
-                             {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                             {participants
+                               .filter(p => p.id !== matchForm.awayParticipantId)
+                               .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
                        ) : (
                           <input className={inputClasses} value={matchForm.isHome ? clubConfig.name : matchForm.rivalName} readOnly={matchForm.isHome} onChange={e => !matchForm.isHome && setMatchForm({...matchForm, rivalName: e.target.value.toUpperCase()})} placeholder={matchForm.isHome ? "" : "NOMBRE RIVAL"} />
@@ -837,7 +1076,9 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                        {activeTournament.type === 'Internal' ? (
                           <select className={inputClasses} value={matchForm.awayParticipantId} onChange={e => setMatchForm({...matchForm, awayParticipantId: e.target.value})}>
                              <option value="">-- EQUIPO --</option>
-                             {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                             {participants
+                               .filter(p => p.id !== matchForm.homeParticipantId)
+                               .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
                        ) : (
                           <input className={inputClasses} value={!matchForm.isHome ? clubConfig.name : matchForm.rivalName} readOnly={!matchForm.isHome} onChange={e => matchForm.isHome && setMatchForm({...matchForm, rivalName: e.target.value.toUpperCase()})} placeholder={!matchForm.isHome ? "" : "NOMBRE RIVAL"} />

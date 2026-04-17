@@ -103,7 +103,7 @@ export const agregarFecha = async (
   // 1. Update tournament fixture_base
   const { data: tournament, error: tError } = await supabase
     .from('tournaments')
-    .select('fixture_base')
+    .select('fixture_base, category_conditions')
     .eq('id', tournamentId)
     .single();
 
@@ -119,20 +119,24 @@ export const agregarFecha = async (
   if (updateError) throw updateError;
 
   // 2. Replicate matches for all categories
-  await replicateFixtures(tournamentId, categories, [fechaData], clubName);
+  await replicateFixtures(tournamentId, categories, [fechaData], clubName, tournament.category_conditions);
 };
 
 export const replicateFixtures = async (
   tournamentId: string, 
   categories: string[], 
   fixtureBase: MatchFixture[],
-  clubName: string = 'Mi Equipo'
+  clubName: string = 'Mi Equipo',
+  categoryConditions?: Record<string, 'Normal' | 'Inverted'>
 ) => {
   const matches: any[] = [];
 
   for (const categoryId of categories) {
+    const isInverted = categoryConditions?.[categoryId] === 'Inverted';
+    
     for (const fixture of fixtureBase) {
-      const isHome = fixture.condition === 'Local';
+      let isHome = fixture.condition === 'Local';
+      if (isInverted) isHome = !isHome;
       
       matches.push({
         tournamentid: tournamentId,
@@ -164,8 +168,111 @@ export const createTournament = async (tournamentData: Partial<Tournament>, club
   if (error) throw error;
 
   if (data && data.assigned_categories && data.fixture_base) {
-    await replicateFixtures(data.id, data.assigned_categories, data.fixture_base, clubName);
+    await replicateFixtures(data.id, data.assigned_categories, data.fixture_base, clubName, data.category_conditions);
   }
 
   return data;
+};
+
+export const updateMatchStatus = async (matchId: string, status: MatchStatus, reason?: string) => {
+  const { error } = await supabase
+    .from('matches')
+    .update({ status, suspension_reason: reason || null })
+    .eq('id', matchId);
+  if (error) throw error;
+};
+
+export const rescheduleMatch = async (match: Match, newDate: string, reason?: string) => {
+  // 1. Mark original match as suspended (This is the "Suspended" record)
+  await supabase
+    .from('matches')
+    .update({ 
+      status: 'Suspended', 
+      suspension_reason: reason || 'Reprogramado'
+    })
+    .eq('id', match.id);
+
+  // 2. Create new match with original data but new date and is_overridden = true
+  // This new match represents the "Rescheduled" state (Scheduled to happen on new date)
+  const newMatchData = { ...match };
+  delete (newMatchData as any).id;
+  delete (newMatchData as any).events;
+
+  const newMatch = {
+    ...newMatchData,
+    id: crypto.randomUUID(),
+    date: newDate,
+    status: 'Scheduled',
+    original_match_id: match.id as string,
+    original_date: match.original_date || match.date,
+    is_overridden: true
+  };
+
+  const { error } = await supabase
+    .from('matches')
+    .insert(newMatch);
+  
+  if (error) throw error;
+};
+
+export const suspendFullDate = async (tournamentId: string, date: string, reason?: string, newDate?: string) => {
+  if (newDate) {
+    // If newDate is provided, we reschedule all scheduled matches of that date
+    const { data: matches } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('tournamentid', tournamentId)
+      .eq('date', date)
+      .eq('status', 'Scheduled');
+
+    if (matches) {
+      for (const m of matches) {
+        await rescheduleMatch(m, newDate, reason);
+      }
+    }
+  } else {
+    // Just suspend
+    const { error } = await supabase
+      .from('matches')
+      .update({ 
+        status: 'Suspended',
+        suspension_reason: reason || null
+      })
+      .eq('tournamentid', tournamentId)
+      .eq('date', date)
+      .eq('status', 'Scheduled');
+    if (error) throw error;
+  }
+};
+
+export const resumeFullDate = async (tournamentId: string, date: string) => {
+  const { error } = await supabase
+    .from('matches')
+    .update({ status: 'Scheduled' })
+    .eq('tournamentid', tournamentId)
+    .eq('date', date)
+    .eq('status', 'Suspended');
+  if (error) throw error;
+};
+
+export const suspendCategoryInDate = async (tournamentId: string, date: string, categoryId: string) => {
+  const { error } = await supabase
+    .from('matches')
+    .update({ status: 'Suspended' })
+    .eq('tournamentid', tournamentId)
+    .eq('date', date)
+    .eq('categoryid', categoryId)
+    .eq('status', 'Scheduled');
+  if (error) throw error;
+};
+
+export const resumeCategoryInDate = async (tournamentId: string, date: string, categoryId: string) => {
+  const { error } = await supabase
+    .from('matches')
+    .update({ status: 'Scheduled' })
+    .eq('tournamentid', tournamentId)
+    .eq('date', date)
+    .eq('categoryid', categoryId)
+    .eq('status', 'Suspended');
+  if (error) throw error;
 };

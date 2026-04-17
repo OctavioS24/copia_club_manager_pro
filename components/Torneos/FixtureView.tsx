@@ -142,8 +142,9 @@ const FixtureView: React.FC<FixtureViewProps> = ({
       <div className="space-y-6">
         {matches.map((match, index) => {
           const isFinished = match.status === 'Finished';
+          const isSuspended = match.status === 'Suspended';
           const isHome = match.hometeam === clubName;
-          const result = isFinished ? `${match.homescore} - ${match.awayscore}` : 'VS';
+          const result = isFinished ? `${match.homescore} - ${match.awayscore}` : (isSuspended ? 'SUSP' : 'VS');
           
           return (
             <motion.div
@@ -151,7 +152,9 @@ const FixtureView: React.FC<FixtureViewProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="group relative bg-slate-800/30 border border-slate-700/30 rounded-[2rem] overflow-hidden hover:border-pink-500/30 transition-all duration-500"
+              className={`group relative bg-slate-800/30 border rounded-[2rem] overflow-hidden transition-all duration-500 ${
+                isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-slate-700/30 hover:border-pink-500/30'
+              }`}
             >
               <div className="p-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -166,7 +169,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
                   {/* Teams & Score */}
                   <div className="flex-1 flex items-center justify-center gap-4 md:gap-12">
-                    <div className={`flex-1 text-right space-y-2 ${isHome ? 'text-white' : 'text-slate-400'}`}>
+                    <div className={`flex-1 text-right space-y-2 ${isHome ? 'text-white' : 'text-slate-400'} ${isSuspended ? 'opacity-50' : ''}`}>
                       <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.hometeam}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{isHome ? 'Local' : 'Visitante'}</p>
                     </div>
@@ -175,16 +178,21 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                       <div className={`px-6 py-3 rounded-2xl font-black text-2xl md:text-3xl italic tracking-tighter border-2 transition-all duration-500 ${
                         isFinished 
                           ? 'bg-pink-600/10 border-pink-500 text-white shadow-lg shadow-pink-500/10' 
-                          : 'bg-slate-900 border-slate-700 text-slate-500'
+                          : isSuspended
+                            ? 'bg-red-600/10 border-red-500 text-red-500'
+                            : 'bg-slate-900 border-slate-700 text-slate-500'
                       }`}>
                         {result}
                       </div>
                       {isFinished && (
                         <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Finalizado</span>
                       )}
+                      {isSuspended && (
+                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest italic animate-pulse">Suspendido</span>
+                      )}
                     </div>
 
-                    <div className={`flex-1 text-left space-y-2 ${!isHome ? 'text-white' : 'text-slate-400'}`}>
+                    <div className={`flex-1 text-left space-y-2 ${!isHome ? 'text-white' : 'text-slate-400'} ${isSuspended ? 'opacity-50' : ''}`}>
                       <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.awayteam}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{!isHome ? 'Local' : 'Visitante'}</p>
                     </div>
@@ -193,11 +201,14 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-3">
                     <button
+                      disabled={isSuspended}
                       onClick={() => setSelectedMatch(match)}
                       className={`flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all ${
                         isFinished
                           ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                          : 'bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-600/20'
+                          : isSuspended
+                            ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            : 'bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-600/20'
                       }`}
                     >
                       {isFinished ? (
@@ -208,7 +219,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          CARGAR RESULTADO
+                          {isSuspended ? 'SUSPENDIDO' : 'CARGAR RESULTADO'}
                         </>
                       )}
                     </button>

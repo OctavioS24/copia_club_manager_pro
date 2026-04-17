@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
   TrendingDown, MoveRight, ShieldAlert, Target,
-  Award, Calendar, ChevronRight, History, Timer
+  Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { ClubConfig, Match, Member, MatchEvent } from '../types';
 import { db, supabase } from '../lib/supabase';
@@ -69,6 +69,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
   const [matches, setMatches] = useState<Match[]>([]);
   const [lastResults, setLastResults] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
+  const [suspendedMatches, setSuspendedMatches] = useState<Match[]>([]);
   const [playerEvents, setPlayerEvents] = useState<MatchEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
@@ -140,12 +141,14 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
         if (eventsRes.error) throw eventsRes.error;
 
         const finishedMatches = (allMatches || []).filter(m => m.status === 'Finished');
-        const upcomingMatches = (allMatches || []).filter(m => m.status === 'Scheduled');
+        const upcomingFiltered = (allMatches || []).filter(m => m.status === 'Scheduled');
+        const suspendedFiltered = (allMatches || []).filter(m => m.status === 'Suspended');
 
         setMatches(allMatches || []);
         setPlayerEvents(eventsRes.data || []);
         setLastResults(finishedMatches.slice(0, 5));
-        setUpcomingMatches(upcomingMatches.slice(0, 3));
+        setUpcomingMatches(upcomingFiltered.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5));
+        setSuspendedMatches(suspendedFiltered);
       } catch (err) {
         console.error("Error fetching stats:", err);
         setError("No se pudieron cargar las estadísticas del plantel.");
@@ -226,10 +229,13 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       });
     }
 
+    // Solo contar eventos de partidos DISPUTADOS (status === 'Finished')
+    const finishedMatchIds = new Set(matches.filter(m => m.status === 'Finished').map(m => m.id));
+
     // Combinar eventos de playerEvents (por jugador) y de matches (por categoría)
-    const allEvents = [...playerEvents];
+    const allEvents = [...playerEvents].filter(e => finishedMatchIds.has(e.match_id));
     matches.forEach(m => {
-      if (m.events) {
+      if (m.status === 'Finished' && m.events) {
         m.events.forEach(e => {
           if (!allEvents.find(ae => ae.id === e.id)) {
             allEvents.push(e);
@@ -339,7 +345,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                 <div className="flex justify-between items-start relative z-10">
                   <div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Partidos Jugados</p>
-                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.length}</h3>
+                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.filter(m => m.status === 'Finished').length}</h3>
                   </div>
                   <div className="p-5 rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
                     <Target size={24} />
@@ -487,7 +493,14 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                             <Calendar size={24} />
                           </div>
                           <div>
-                            <p className="text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[120px]">{rival}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[120px]">{rival}</p>
+                              {m.original_match_id && (
+                                <span className="bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border border-blue-500/20">
+                                  Reprogramado
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.date}</p>
                           </div>
                         </div>
@@ -508,6 +521,76 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
               </div>
             </div>
           </div>
+
+          {/* PARTIDOS SUSPENDIDOS / REPROGRAMADOS */}
+          {suspendedMatches.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 p-10 rounded-[3.5rem] shadow-sm border border-slate-200 dark:border-white/5">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-3">
+                    <AlertTriangle size={18} className="text-orange-500" />
+                    Partidos Suspendidos / Reprogramados
+                  </h3>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gestión de incidencias en el fixture</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {suspendedMatches.map((m) => {
+                  const teamName = clubConfig.name || 'Mi Equipo';
+                  const isHome = m.hometeam === teamName;
+                  const rival = isHome ? m.awayteam : m.hometeam;
+                  // A match is "rescheduled" if there exists another match referencing this one as original
+                  const newMatch = matches.find(nm => nm.original_match_id === m.id);
+                  const isRescheduled = !!newMatch;
+
+                  return (
+                    <div 
+                      key={m.id} 
+                      className="bg-slate-50/50 dark:bg-white/5 p-6 rounded-3xl border border-slate-100 dark:border-white/5 relative overflow-hidden group"
+                    >
+                      <div className={`absolute top-0 right-0 w-16 h-16 ${isRescheduled ? 'bg-blue-500/5' : 'bg-orange-500/5'} rounded-bl-full`}></div>
+                      
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isRescheduled ? 'bg-blue-500/10 text-blue-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                          {isRescheduled ? <RefreshCw size={20} /> : <AlertTriangle size={20} />}
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                             {isRescheduled ? 'Reprogramado' : 'Suspendido'}
+                          </p>
+                          <p className="text-xs font-black text-slate-800 dark:text-white uppercase truncate">{rival}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-[10px] bg-white/50 dark:bg-black/20 p-3 rounded-2xl">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider italic">Original:</span>
+                          <span className="text-slate-800 dark:text-white font-black">{m.original_date || m.date}</span>
+                        </div>
+
+                        {newMatch && (
+                          <div className="flex justify-between items-center text-[10px] bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20">
+                            <span className="text-blue-500 font-bold uppercase tracking-wider italic">Nueva Fecha:</span>
+                            <span className="text-blue-600 dark:text-blue-400 font-black">{newMatch.date}</span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-[10px] pt-2">
+                           <span className={`px-3 py-1 rounded-lg font-black uppercase tracking-widest ${isHome ? 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400' : 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 shadow-sm'}`}>
+                             {isHome ? 'L' : 'V'}
+                           </span>
+                           {!isRescheduled && (
+                             <span className="text-orange-500 font-black uppercase text-[8px] animate-pulse italic">Pendiente de Fecha</span>
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
