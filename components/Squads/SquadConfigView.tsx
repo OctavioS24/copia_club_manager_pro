@@ -38,10 +38,17 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
       try {
         // Use prop config if available and has disciplines
         if (propConfig && propConfig.disciplines && propConfig.disciplines.length > 0) {
-          const found = propConfig.disciplines.find(d => d.id === disciplineId);
-          if (found) {
-            setDiscipline(found);
-            setSelectedDiscipline(found.id);
+          const matched = propConfig.disciplines.find(d => d.id === disciplineId);
+          if (matched) {
+            const normalized: Discipline = {
+              ...matched,
+              branches: matched.branches || [
+                { gender: 'Masculino', enabled: true, categories: (matched as any).categories || [] },
+                { gender: 'Femenino', enabled: false, categories: [] }
+              ]
+            };
+            setDiscipline(normalized);
+            setSelectedDiscipline(normalized.id);
             setLoading(false);
             return;
           }
@@ -52,11 +59,19 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
         if (error) throw error;
         
         if (data) {
-          const disciplines: Discipline[] = data.disciplines || [];
-          const found = disciplines.find(d => d.id === disciplineId);
-          if (found) {
-            setDiscipline(found);
-            setSelectedDiscipline(found.id);
+          const rawDisciplines: any[] = data.disciplines || [];
+          const matched = rawDisciplines.find(d => d.id === disciplineId);
+          if (matched) {
+            // Normalizar si no tiene ramas
+            const normalized: Discipline = {
+              ...matched,
+              branches: matched.branches || [
+                { gender: 'Masculino', enabled: true, categories: matched.categories || [] },
+                { gender: 'Femenino', enabled: false, categories: [] }
+              ]
+            };
+            setDiscipline(normalized);
+            setSelectedDiscipline(normalized.id);
           }
         }
       } catch (err) {

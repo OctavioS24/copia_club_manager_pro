@@ -24,6 +24,48 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
   const [showSaved, setShowSaved] = useState(false);
   const [isEditingEnabled, setIsEditingEnabled] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  // NORMALIZACIÓN: Aseguramos que todas las disciplinas tengan la estructura de ramas
+  // Esto es vital para datos antiguos que no tenían la propiedad 'branches'
+  React.useEffect(() => {
+    let changed = false;
+    const migratedDisciplines = localConfig.disciplines.map(d => {
+      const hasBranches = d.branches && Array.isArray(d.branches);
+      
+      if (!hasBranches) {
+        changed = true;
+        // Si no tiene ramas, migramos las categorías viejas a la rama masculina
+        return {
+          ...d,
+          branches: [
+            { gender: 'Masculino' as const, enabled: true, categories: (d as any).categories || [] },
+            { gender: 'Femenino' as const, enabled: false, categories: [] }
+          ]
+        };
+      }
+      
+      // Si tiene ramas pero falta alguna (ej: solo masculino)
+      if (d.branches.length < 2) {
+        changed = true;
+        const genders = d.branches.map(b => b.gender);
+        const missing = ['Masculino', 'Femenino'].filter(g => !genders.includes(g as any));
+        const newBranches = [...d.branches];
+        missing.forEach(m => {
+          newBranches.push({ gender: m as any, enabled: false, categories: [] });
+        });
+        return { 
+          ...d, 
+          branches: newBranches.sort((a, b) => a.gender === 'Masculino' ? -1 : (b.gender === 'Masculino' ? 1 : 0)) 
+        };
+      }
+      
+      return d;
+    });
+
+    if (changed) {
+      setLocalConfig(prev => ({ ...prev, disciplines: migratedDisciplines }));
+    }
+  }, [localConfig.disciplines]);
   
   // States for Matrix View
   const [selectedDiscId, setSelectedDiscId] = useState<string | null>(config.disciplines[0]?.id || null);
@@ -283,7 +325,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
           {selectedDiscipline ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                {selectedDiscipline.branches.map(branch => (
-                 <div key={branch.gender} className={`rounded-[3.5rem] p-6 md:p-8 lg:p-12 border transition-all overflow-hidden ${branch.enabled ? 'bg-white dark:bg-[#0f1219] border-slate-200 dark:border-white/5' : 'bg-slate-100/30 dark:bg-white/5 border-transparent opacity-40 grayscale pointer-events-none'}`}>
+                 <div key={branch.gender} className={`rounded-[3.5rem] p-6 md:p-8 lg:p-12 border transition-all overflow-hidden ${branch.enabled ? 'bg-white dark:bg-[#0f1219] border-slate-200 dark:border-white/5 shadow-xl' : 'bg-slate-100/30 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 grayscale'}`}>
                     <div className="flex flex-wrap justify-between items-center mb-10 gap-4">
                         <label className={`flex items-center gap-4 ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default'}`}>
                           <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${branch.enabled ? 'bg-primary-600 border-primary-600 shadow-lg shadow-primary-500/30' : 'border-slate-300'}`}>

@@ -80,12 +80,21 @@ function App() {
       ]);
 
       if (configRes.data) {
+        const rawDisciplines: any[] = configRes.data.disciplines || [];
+        const normalizedDisciplines = rawDisciplines.map(d => ({
+          ...d,
+          branches: d.branches || [
+            { gender: 'Masculino', enabled: true, categories: d.categories || [] },
+            { gender: 'Femenino', enabled: false, categories: [] }
+          ]
+        }));
+
         setConfig({
           name: configRes.data.name || 'MI CLUB',
           logo_url: configRes.data.logo_url || '',
           primary_color: configRes.data.primary_color || '#ec4899',
           secondary_color: configRes.data.secondary_color || '#0f172a',
-          disciplines: configRes.data.disciplines || []
+          disciplines: normalizedDisciplines
         });
       }
 
