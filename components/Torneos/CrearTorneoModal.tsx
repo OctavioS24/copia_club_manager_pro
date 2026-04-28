@@ -128,8 +128,8 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-pink-500/10 rounded-xl">
-              <Trophy className="w-6 h-6 text-pink-500" />
+            <div className="p-2 bg-primary-500/10 rounded-xl">
+              <Trophy className="w-6 h-6 text-primary-500" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white uppercase tracking-tight">Crear Nuevo Torneo</h2>
@@ -152,7 +152,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Liga Cordobesa 2024"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-pink-500/50 outline-none"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
                 />
               </div>
 
@@ -162,7 +162,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as any)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-pink-500/50 outline-none"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
                   >
                     <option value="Professional">Liga / Oficial</option>
                     <option value="Internal">Copa / Interno</option>
@@ -173,7 +173,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                   <select
                     value={disciplineId}
                     onChange={(e) => setDisciplineId(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-pink-500/50 outline-none"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
                   >
                     <option value="">Seleccionar...</option>
                     {disciplines.map(d => (
@@ -192,7 +192,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                       onClick={() => setGender(g)}
                       className={`py-3 rounded-xl font-bold transition-all border ${
                         gender === g 
-                          ? 'bg-pink-600 border-pink-500 text-white shadow-lg shadow-pink-900/20' 
+                          ? 'bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/20' 
                           : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}
                     >
@@ -208,7 +208,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Categorías Participantes</label>
-                <span className="text-xs font-bold text-pink-500 bg-pink-500/10 px-2 py-1 rounded">
+                <span className="text-xs font-bold text-primary-500 bg-primary-500/10 px-2 py-1 rounded">
                   {assignedcategories.length} Seleccionadas
                 </span>
               </div>
@@ -225,7 +225,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                       onClick={() => toggleCategory(cat.id)}
                       className={`p-4 rounded-xl font-bold text-sm transition-all border flex flex-col items-center gap-2 ${
                         assignedcategories.includes(cat.id)
-                          ? 'bg-pink-600 border-pink-500 text-white shadow-lg shadow-pink-900/20'
+                          ? 'bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/20'
                           : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}
                     >
@@ -278,7 +278,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Fixture Base</label>
                 <button
                   onClick={handleAddFixture}
-                  className="flex items-center gap-2 text-xs font-bold text-pink-500 hover:text-pink-400 transition-colors"
+                  className="flex items-center gap-2 text-xs font-bold text-primary-500 hover:text-primary-400 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   AGREGAR FECHA
@@ -304,7 +304,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
                           <select
                             value={fixture.rival}
                             onChange={(e) => handleUpdateFixture(fixture.id, 'rival', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none focus:border-pink-500"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none focus:border-primary-500"
                           >
                             <option value="">Seleccionar Rival...</option>
                             {rivals
@@ -365,7 +365,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
             <button
               onClick={() => setStep(step + 1)}
               disabled={!name || (step === 1 && !disciplineId) || (step === 2 && assignedcategories.length === 0)}
-              className="flex items-center gap-2 px-8 py-3 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 disabled:hover:bg-pink-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-pink-900/20"
+              className="flex items-center gap-2 px-8 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary-900/20"
             >
               SIGUIENTE
               <ChevronRight className="w-5 h-5" />

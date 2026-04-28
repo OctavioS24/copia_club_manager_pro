@@ -147,7 +147,7 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
 
       <div className="flex flex-col lg:flex-row gap-12">
           <aside className="w-full lg:w-80 shrink-0 space-y-8">
-              <div className="bg-white dark:bg-[#0f1219] rounded-[3rem] p-8 shadow-2xl border border-slate-200 dark:border-white/5">
+              <div className="bg-white dark:bg-[#0f1219] rounded-[3rem] p-8 shadow-2xl border border-secondary-500/20">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 border-b border-slate-100 dark:border-white/5 pb-4">Filtrar por Rama</h4>
                   <div className="flex flex-col gap-3">
                       {['Masculino', 'Femenino'].map(g => (
@@ -179,7 +179,7 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
                   [...Array(6)].map((_, i) => <div key={i} className="h-96 bg-slate-200 dark:bg-white/5 rounded-[4rem] animate-pulse"></div>)
               ) : filteredAthletes.length > 0 ? (
                   filteredAthletes.map(athlete => (
-                      <div key={athlete.id} className="bg-white dark:bg-[#0f1219] rounded-[4rem] border border-slate-200 dark:border-white/5 p-10 shadow-xl hover:shadow-3xl transition-all group overflow-hidden relative">
+                      <div key={athlete.id} className="bg-white dark:bg-[#0f1219] rounded-[4rem] border border-secondary-500/20 p-10 shadow-xl hover:shadow-3xl transition-all group overflow-hidden relative">
                           <div className="flex flex-col items-center relative z-10">
                               <div className="w-36 h-36 rounded-full border-4 border-slate-50 dark:border-slate-800 p-1.5 mb-8 group-hover:scale-110 transition-transform duration-700 shadow-2xl relative">
                                   <img src={athlete.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-full" />

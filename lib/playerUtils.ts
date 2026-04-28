@@ -42,8 +42,9 @@ export function getPlayersByCategory(
       const matchesDisc = (disciplineId && aDiscId === disciplineId) || (aDisc === dTarget && dTarget !== '');
       const matchesGender = mGender === gTarget;
       const matchesCat = (categoryId && aCatId === categoryId) || (aCat === cTarget && cTarget !== '');
+      const isPlayer = assignment.role === 'PLAYER';
       
-      return matchesDisc && matchesGender && matchesCat;
+      return matchesDisc && matchesGender && matchesCat && isPlayer;
     });
   });
 }

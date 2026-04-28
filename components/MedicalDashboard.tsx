@@ -1,27 +1,31 @@
 
 import React, { useState, useEffect } from 'react';
-import { Player, MedicalRecord, MedicalHistoryItem } from '../types';
+import { Member } from '../types';
 import { 
   Activity, AlertTriangle, CheckCircle, Calendar, 
-  Plus, X, Save, Edit2, Loader2, ShieldCheck, 
-  ClipboardList, History, Clock, UserCircle
+  Edit2, Loader2, Clock, RefreshCw, Eye
 } from 'lucide-react';
 import { db } from '../lib/supabase';
+import MedicalEditModal from './CentralMedica/MedicalEditModal';
 
 interface MedicalDashboardProps {
-  players: Player[];
+  players?: Member[];
   onRefresh?: () => void;
+  readOnly?: boolean;
 }
 
 import { useCategory } from '../context/useCategory';
 
-const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayers, onRefresh }) => {
+const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ 
+  players: propPlayers, 
+  onRefresh,
+  readOnly = true 
+}) => {
   const { selectedDivision, selectedDiscipline } = useCategory();
-  const [players, setPlayers] = useState<Player[]>(propPlayers || []);
-  const [filter, setFilter] = useState<'all' | 'injured' | 'expired'>('all');
+  const [players, setPlayers] = useState<Member[]>(propPlayers || []);
+  const [filter, setFilter] = useState<'all' | 'injured' | 'expired' | 'ready' | 'notfit'>('all');
   const [showModal, setShowModal] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch players if needed
@@ -52,132 +56,159 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
     fetchPlayers();
   }, [propPlayers, selectedDivision, selectedDiscipline]);
   
-  // Estado para la nueva evaluación que se está cargando
-  const [formData, setFormData] = useState<MedicalRecord>({
-    is_fit: true,
-    last_checkup: new Date().toISOString().split('T')[0],
-    expiry_date: '',
-    notes: '',
-    history: []
-  });
-
-  const handleEditClick = (player: Player) => {
+  const handleViewClick = (player: Member) => {
     setSelectedPlayer(player);
-    const existingMedical = player.medical || { is_fit: true, last_checkup: '', expiry_date: '', notes: '', history: [] };
-    
-    setFormData({
-      ...existingMedical,
-      // Al abrir para editar, preparamos los campos para una "Nueva Evaluación"
-      // pero mantenemos el historial existente
-      last_checkup: new Date().toISOString().split('T')[0],
-      notes: '',
-      history: existingMedical.history || []
-    });
     setShowModal(true);
   };
 
   const handleSave = async () => {
-    if (!selectedPlayer) return;
-    setIsSaving(true);
-    try {
-      // Creamos el nuevo item del historial
-      const newHistoryItem: MedicalHistoryItem = {
-        id: crypto.randomUUID(),
-        date: formData.last_checkup || new Date().toISOString().split('T')[0],
-        is_fit: formData.is_fit,
-        expiry_date: formData.expiry_date,
-        notes: formData.notes,
-        professional_name: 'Staff Médico Club' // Podría ser dinámico en el futuro
-      };
-
-      // Actualizamos el objeto médico completo
-      const updatedMedical: MedicalRecord = {
-        is_fit: formData.is_fit,
-        last_checkup: formData.last_checkup,
-        expiry_date: formData.expiry_date,
-        notes: formData.notes,
-        history: [newHistoryItem, ...(formData.history || [])]
-      };
-
-      const updatedPlayer = { ...selectedPlayer, medical: updatedMedical };
-      if (formData.isFit) updatedPlayer.status = 'Active';
-      else updatedPlayer.status = 'Injured';
-      
-      await db.players.upsert(updatedPlayer);
-      if (onRefresh) onRefresh();
-      setShowModal(false);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSaving(false);
+    // Refresh local state or call parent refresh
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      // Fallback refresh
+      const { data } = await db.members.getAll();
+      if (data && selectedDivision && selectedDiscipline) {
+         const filtered = data.filter((m: any) => 
+          m.assignments?.some((a: any) => 
+            a.discipline_id === selectedDiscipline && 
+            a.category_id === selectedDivision &&
+            a.role === 'PLAYER'
+          )
+        );
+        setPlayers(filtered);
+      }
     }
+    setShowModal(false);
   };
 
-  const injuredPlayers = players.filter(p => !p.medical?.is_fit || p.status === 'Injured');
-  const expiredPlayers = players.filter(p => {
-      if (!p.medical?.expiry_date) return false;
-      return new Date(p.medical.expiry_date) < new Date();
-  });
+  const isExpired = (p: Member) => {
+    if (!p.medical?.expiry_date) return false;
+    return new Date(p.medical.expiry_date) < new Date();
+  };
 
-  const displayPlayers = filter === 'injured' ? injuredPlayers : filter === 'expired' ? expiredPlayers : players;
+  const hasActiveInjury = (p: Member) => {
+    return p.status === 'Injured';
+  };
+
+  const isNotFit = (p: Member) => {
+    return !hasActiveInjury(p) && !p.medical?.is_fit;
+  };
+
+  const isApto = (p: Member) => {
+    return !hasActiveInjury(p) && p.medical?.is_fit;
+  };
+
+  const injuredPlayersCount = players.filter(hasActiveInjury);
+  const notFitPlayersCount = players.filter(isNotFit);
+  const readyPlayersCount = players.filter(isApto);
+  const expiredPlayersCount = players.filter(isExpired);
+
+  const displayPlayers = React.useMemo(() => {
+    switch (filter) {
+      case 'injured': return injuredPlayersCount;
+      case 'notfit': return notFitPlayersCount;
+      case 'ready': return readyPlayersCount;
+      case 'expired': return expiredPlayersCount;
+      default: return players;
+    }
+  }, [filter, players, injuredPlayersCount, notFitPlayersCount, readyPlayersCount, expiredPlayersCount]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full py-40">
-        <Loader2 className="animate-spin text-primary-600" size={48} />
+      <div className="py-40 flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-primary-600 mb-4" size={48} />
+        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Sincronizando estado médico...</p>
       </div>
     );
   }
-
-  const inputClasses = "w-full p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl font-bold text-sm outline-none border border-transparent dark:border-slate-700 focus:border-primary-600/50 transition-all dark:text-slate-200 shadow-inner";
-  const labelClasses = "text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-2 block";
 
   return (
     <div className="p-4 md:p-10 h-full overflow-y-auto custom-scrollbar">
       <div className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-           <h2 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Central Médica</h2>
+           <div className="flex items-center gap-4">
+             <h2 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Central Médica</h2>
+             <button 
+               onClick={async () => {
+                 setIsLoading(true);
+                 try {
+                   const { data } = await db.members.getAll();
+                   if (data && selectedDivision && selectedDiscipline) {
+                     const filtered = data.filter((m: any) => 
+                       m.assignments?.some((a: any) => 
+                         a.discipline_id === selectedDiscipline && 
+                         a.category_id === selectedDivision &&
+                         a.role === 'PLAYER'
+                       )
+                     );
+                     setPlayers(filtered);
+                   }
+                 } finally {
+                   setIsLoading(false);
+                 }
+               }}
+               className="p-2 bg-slate-100 dark:bg-white/5 rounded-lg text-slate-400 hover:text-primary-600 transition-all"
+               title="Refrescar Datos"
+             >
+               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+             </button>
+           </div>
            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Control de Salud e Integridad Física</p>
         </div>
         
-        <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
-            <button onClick={() => setFilter('all')} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-md scale-105' : 'text-slate-400'}`}>Todos</button>
-            <button onClick={() => setFilter('injured')} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'injured' ? 'bg-white dark:bg-slate-700 text-red-500 shadow-md scale-105' : 'text-slate-400'}`}>No Aptos</button>
-            <button onClick={() => setFilter('expired')} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'expired' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-md scale-105' : 'text-slate-400'}`}>Vencidos</button>
+        <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-md' : 'text-slate-400'}`}>Todos</button>
+            <button onClick={() => setFilter('injured')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'injured' ? 'bg-white dark:bg-slate-700 text-red-500 shadow-md' : 'text-slate-400'}`}>Bajas</button>
+            <button onClick={() => setFilter('ready')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ready' ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-md' : 'text-slate-400'}`}>Listos</button>
+            <button onClick={() => setFilter('notfit')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'notfit' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-md' : 'text-slate-400'}`}>No Aptos</button>
+            <button onClick={() => setFilter('expired')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'expired' ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-md' : 'text-slate-400'}`}>Vencidos</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bajas Médicas</span>
-              <p className="text-5xl font-black text-red-600 italic mt-1">{injuredPlayers.length}</p>
+              <p className="text-5xl font-black text-red-600 italic mt-1">{injuredPlayersCount.length}</p>
             </div>
             <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={28} />
+              <Activity size={28} />
             </div>
          </div>
-         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aptos Vencidos</span>
-              <p className="text-5xl font-black text-orange-600 italic mt-1">{expiredPlayers.length}</p>
-            </div>
-            <div className="w-14 h-14 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-              <Calendar size={28} />
-            </div>
-         </div>
-         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+
+         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Atletas Listos</span>
-              <p className="text-5xl font-black text-emerald-600 italic mt-1">{players.length - injuredPlayers.length}</p>
+              <p className="text-5xl font-black text-emerald-600 italic mt-1">{readyPlayersCount.length}</p>
             </div>
             <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
               <CheckCircle size={28} />
             </div>
          </div>
+
+         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">No Aptos</span>
+              <p className="text-5xl font-black text-orange-600 italic mt-1">{notFitPlayersCount.length}</p>
+            </div>
+            <div className="w-14 h-14 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+              <AlertTriangle size={28} />
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vencidos</span>
+              <p className="text-5xl font-black text-slate-600 dark:text-slate-400 italic mt-1">{expiredPlayersCount.length}</p>
+            </div>
+            <div className="w-14 h-14 bg-slate-50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
+              <Clock size={28} />
+            </div>
+         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] shadow-xl border border-slate-200 dark:border-white/5 overflow-hidden">
+      <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] shadow-xl border border-secondary-600/30 dark:border-secondary-400/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -186,7 +217,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
                 <th className="p-8">División</th>
                 <th className="p-8">Estatus Médico</th>
                 <th className="p-8">Vencimiento</th>
-                <th className="p-8 text-right">Gestión</th>
+                <th className="p-8 text-right">Ficha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -210,27 +241,41 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
                      </div>
                   </td>
                   <td className="p-8">
-                    {player.medical?.is_fit ? (
-                       <div className="flex items-center gap-2 text-emerald-600">
-                          <CheckCircle size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Apto Competición</span>
-                       </div>
-                    ) : (
+                    {hasActiveInjury(player) ? (
                        <div className="flex items-center gap-2 text-red-600">
                           <Activity size={14} />
                           <span className="text-[9px] font-black uppercase tracking-widest">Baja Médica</span>
                        </div>
+                    ) : isNotFit(player) ? (
+                       <div className="flex items-center gap-2 text-orange-600">
+                          <AlertTriangle size={14} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">No Apto</span>
+                       </div>
+                    ) : (
+                       <div className="flex items-center gap-2 text-emerald-600">
+                          <CheckCircle size={14} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">Apto</span>
+                       </div>
                     )}
                   </td>
                   <td className="p-8">
-                     <div className="flex items-center gap-3 text-[11px] font-black text-slate-500 italic">
-                        <Calendar size={14} className="text-primary-600" />
-                        {player.medical?.expiry_date || 'N/A'}
-                     </div>
+                      <div className="flex items-center gap-3">
+                         <div className={`flex items-center gap-2 text-[11px] font-black italic ${isExpired(player) ? 'text-red-600' : 'text-slate-500'}`}>
+                            <Calendar size={14} className={isExpired(player) ? 'text-red-500' : 'text-primary-600'} />
+                            {player.medical?.expiry_date || 'N/A'}
+                         </div>
+                         {isExpired(player) && (
+                            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-[7px] font-black uppercase tracking-widest leading-none">Vencida</span>
+                         )}
+                      </div>
                   </td>
                   <td className="p-8 text-right">
-                      <button onClick={() => handleEditClick(player)} className="p-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm border border-transparent dark:border-white/5">
-                          <Edit2 size={16} />
+                      <button 
+                        onClick={() => handleViewClick(player)} 
+                        className={`p-3 bg-slate-100 dark:bg-white/5 rounded-2xl transition-all shadow-sm border border-transparent dark:border-white/5 ${readOnly ? 'text-primary-600 hover:bg-primary-600 hover:text-white' : 'text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800'}`}
+                        title={readOnly ? "Ver Ficha Médica" : "Gestionar Ficha Médica"}
+                      >
+                          {readOnly ? <Eye size={16} /> : <Edit2 size={16} />}
                       </button>
                   </td>
                 </tr>
@@ -241,165 +286,12 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({ players: propPlayer
       </div>
 
       {showModal && selectedPlayer && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
-            <div className="bg-white dark:bg-[#0f121a] rounded-none md:rounded-[3.5rem] shadow-2xl w-full max-w-6xl border border-slate-200 dark:border-white/5 flex flex-col h-full md:h-[90vh] overflow-hidden">
-                
-                {/* Header Modal */}
-                <div className="px-8 md:px-12 py-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
-                    <div className="flex items-center gap-6">
-                        <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden bg-slate-200 shadow-2xl border-4 border-white dark:border-slate-700">
-                            <img src={selectedPlayer.photourl} className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none italic">{selectedPlayer.name}</h3>
-                            <div className="flex items-center gap-3 mt-2">
-                               <span className="px-3 py-1 bg-primary-600/10 text-primary-600 text-[8px] font-black rounded-full uppercase tracking-widest">Ficha Clínica Digital</span>
-                               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {selectedPlayer.dni}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button onClick={() => setShowModal(false)} className="p-3 bg-white dark:bg-slate-700/50 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm"><X size={20} /></button>
-                </div>
-
-                {/* Body Modal Split View */}
-                <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                    
-                    {/* Left: Historial Timeline */}
-                    <div className="w-full md:w-1/2 bg-slate-50 dark:bg-slate-900/50 border-r border-slate-100 dark:border-white/5 overflow-y-auto p-8 md:p-12 custom-scrollbar">
-                        <div className="flex items-center gap-3 mb-10">
-                            <History size={20} className="text-primary-600" />
-                            <h4 className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">Historial de Evaluaciones</h4>
-                        </div>
-
-                        {formData.history && formData.history.length > 0 ? (
-                          <div className="space-y-8 relative before:absolute before:left-4 before:top-2 before:bottom-0 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                            {formData.history.map((item) => (
-                              <div key={item.id} className="relative pl-12 animate-fade-in-up">
-                                {/* Dot Indicator */}
-                                 <div className={`absolute left-2.5 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-10 ${item.is_fit ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                                
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow">
-                                   <div className="flex justify-between items-start mb-3">
-                                      <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 italic">
-                                         <Clock size={12} /> {item.date}
-                                      </div>
-                                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${item.is_fit ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
-                                         {item.is_fit ? 'Apto' : 'Baja'}
-                                      </span>
-                                   </div>
-                                   <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-4">
-                                      {item.notes || 'Sin observaciones registradas.'}
-                                   </p>
-                                   <div className="flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-50 dark:border-white/5 pt-3">
-                                      <UserCircle size={10} /> {item.professional_name}
-                                      <span className="mx-2">•</span>
-                                      Vto: {item.expiry_date || 'N/A'}
-                                   </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-20 text-center opacity-30 flex flex-col items-center">
-                             <ClipboardList size={40} className="mb-4" />
-                             <p className="text-[9px] font-black uppercase tracking-widest">Sin registros históricos previos</p>
-                          </div>
-                        )}
-                    </div>
-
-                    {/* Right: New Entry Form */}
-                    <div className="w-full md:w-1/2 p-8 md:p-12 overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center gap-3 mb-10">
-                            <Plus size={20} className="text-emerald-500" />
-                            <h4 className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">Nueva Evaluación Médica</h4>
-                        </div>
-
-                        <div className="space-y-10">
-                            {/* Estado de Aptitud */}
-                            <div className="space-y-4">
-                                <label className={labelClasses}>Dictamen de Aptitud Actual</label>
-                                <div className="grid grid-cols-2 gap-4 p-2 bg-slate-100 dark:bg-slate-800/60 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                                    <button 
-                                      onClick={() => setFormData({...formData, is_fit: true})} 
-                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${formData.is_fit ? 'bg-emerald-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
-                                    >
-                                      <ShieldCheck size={16} /> Apto Competencia
-                                    </button>
-                                    <button 
-                                      onClick={() => setFormData({...formData, is_fit: false})} 
-                                      className={`flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${!formData.is_fit ? 'bg-red-500 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:bg-white/5'}`}
-                                    >
-                                      <AlertTriangle size={16} /> Baja Médica
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Fechas */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-2">
-                                    <label className={labelClasses}>Fecha de Evaluación</label>
-                                    <div className="relative group">
-                                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-600 group-focus-within:scale-110 transition-transform" size={18} />
-                                      <input 
-                                        type="date" 
-                                        value={formData.last_checkup} 
-                                        onChange={e => setFormData({...formData, last_checkup: e.target.value})} 
-                                        className={inputClasses + " pl-12"} 
-                                      />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className={labelClasses}>Vencimiento Sugerido</label>
-                                    <div className="relative group">
-                                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 group-focus-within:scale-110 transition-transform" size={18} />
-                                      <input 
-                                        type="date" 
-                                        value={formData.expiry_date} 
-                                        onChange={e => setFormData({...formData, expiry_date: e.target.value})} 
-                                        className={inputClasses + " pl-12"} 
-                                      />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Notas y Diagnóstico */}
-                            <div className="space-y-4">
-                                <label className={labelClasses}>Diagnóstico / Observaciones Clínicas</label>
-                                <div className="relative group">
-                                  <ClipboardList className="absolute left-4 top-5 text-slate-400 group-focus-within:text-primary-600 transition-colors" size={18} />
-                                  <textarea 
-                                    rows={6} 
-                                    value={formData.notes} 
-                                    onChange={e => setFormData({...formData, notes: e.target.value})} 
-                                    className={inputClasses + " pl-12 pt-4 min-h-[180px] resize-none leading-relaxed text-sm"} 
-                                    placeholder="Describir lesión, hallazgos clínicos o tratamiento sugerido..." 
-                                  />
-                                </div>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest italic text-right px-4">Este informe quedará archivado permanentemente en el historial.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer Modal */}
-                <div className="px-8 md:px-12 py-8 border-t border-slate-100 dark:border-white/5 flex flex-col md:flex-row justify-end items-center gap-4 bg-slate-50 dark:bg-slate-800/40 shrink-0">
-                    <button 
-                      onClick={() => setShowModal(false)}
-                      className="w-full md:w-auto px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-                    >
-                      Cerrar sin Guardar
-                    </button>
-                    <button 
-                      onClick={handleSave} 
-                      disabled={isSaving} 
-                      className="w-full md:w-auto flex items-center justify-center gap-4 bg-slate-950 dark:bg-primary-600 text-white px-14 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-                    >
-                        {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                        Archivar Evaluación Médico
-                    </button>
-                </div>
-            </div>
-        </div>
+        <MedicalEditModal 
+          player={selectedPlayer}
+          readOnly={readOnly}
+          onClose={() => setShowModal(false)}
+          onSave={handleSave}
+        />
       )}
     </div>
   );

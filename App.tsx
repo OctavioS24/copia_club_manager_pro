@@ -13,6 +13,7 @@ import SquadConfigView from './components/Squads/SquadConfigView.tsx';
 import TorneosPrincipal from './components/Torneos/TorneosPrincipal.tsx';
 import TournamentMatchesPage from './components/Torneos/TournamentMatchesPage.tsx';
 import TournamentManagement from './components/TournamentManagement.tsx';
+import CentralMedica from './components/CentralMedica/CentralMedica.tsx';
 
 function App() {
   const navigate = useNavigate();
@@ -59,10 +60,46 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
     const color = config.primary_color || '#ec4899';
+    
+    // Función simple para ajustar brillo (rudimentario para no añadir dependencias)
+    const adjustColor = (hex: string, amount: number) => {
+      let r = parseInt(hex.substring(1, 3), 16);
+      let g = parseInt(hex.substring(3, 5), 16);
+      let b = parseInt(hex.substring(5, 7), 16);
+      
+      r = Math.max(0, Math.min(255, r + amount));
+      g = Math.max(0, Math.min(255, g + amount));
+      b = Math.max(0, Math.min(255, b + amount));
+      
+      return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    };
+
+    root.style.setProperty('--primary-50', adjustColor(color, 200));
+    root.style.setProperty('--primary-100', adjustColor(color, 160));
+    root.style.setProperty('--primary-200', adjustColor(color, 120));
+    root.style.setProperty('--primary-300', adjustColor(color, 80));
+    root.style.setProperty('--primary-400', adjustColor(color, 40));
     root.style.setProperty('--primary-500', color);
-    root.style.setProperty('--primary-600', color);
+    root.style.setProperty('--primary-600', adjustColor(color, -20));
+    root.style.setProperty('--primary-700', adjustColor(color, -40));
+    root.style.setProperty('--primary-800', adjustColor(color, -60));
+    root.style.setProperty('--primary-900', adjustColor(color, -80));
     root.style.setProperty('--primary-glow', `${color}33`);
-  }, [config.primary_color]);
+
+    // Secondary color shades
+    const secondaryColor = config.secondary_color || '#0f172a';
+    root.style.setProperty('--secondary-50', adjustColor(secondaryColor, 200));
+    root.style.setProperty('--secondary-100', adjustColor(secondaryColor, 160));
+    root.style.setProperty('--secondary-200', adjustColor(secondaryColor, 120));
+    root.style.setProperty('--secondary-300', adjustColor(secondaryColor, 80));
+    root.style.setProperty('--secondary-400', adjustColor(secondaryColor, 40));
+    root.style.setProperty('--secondary-500', secondaryColor);
+    root.style.setProperty('--secondary-600', adjustColor(secondaryColor, -20));
+    root.style.setProperty('--secondary-700', adjustColor(secondaryColor, -40));
+    root.style.setProperty('--secondary-800', adjustColor(secondaryColor, -60));
+    root.style.setProperty('--secondary-900', adjustColor(secondaryColor, -80));
+    root.style.setProperty('--secondary-glow', `${secondaryColor}33`);
+  }, [config.primary_color, config.secondary_color]);
 
   // Efecto de tema oscuro
   useEffect(() => {
@@ -119,6 +156,7 @@ function App() {
       fetchData(); // Recarga ligera
     } catch (e) {
       console.error("Error al guardar miembro:", e);
+      throw e;
     }
   };
 
@@ -192,6 +230,12 @@ function App() {
             </div>
           } />
 
+          <Route path="/central-medica" element={
+            <div className="pt-24">
+              <CentralMedica config={config} />
+            </div>
+          } />
+
           <Route path="/torneos" element={
             <div className="pt-24">
               <TorneosPrincipal />
@@ -261,7 +305,7 @@ function App() {
             </div>
           } />
 
-          <Route path="/squads/:disciplineId/config" element={<SquadConfigView config={config} />} />
+          <Route path="/squads/:disciplineId/config" element={<SquadConfigView config={config} members={members} />} />
         </Routes>
       </main>
     </div>

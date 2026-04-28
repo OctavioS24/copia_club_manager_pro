@@ -6,15 +6,21 @@ import {
   Trash2, Save, CreditCard, Loader2, History, TrendingUp, 
   ArrowUpRight, AlertTriangle, Clock, Receipt, 
   Camera, ExternalLink, Image as ImageIcon,
-  ChevronDown
+  ChevronDown, RefreshCw
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 
 const FeesManagement: React.FC = () => {
   const [fees, setFees] = useState<MemberFee[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [config, setConfig] = useState<ClubConfig | null>(null);
+  const [feeConfigs, setFeeConfigs] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterDiscipline, setFilterDiscipline] = useState<string>('');
+  const [filterGender, setFilterGender] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,10 +41,38 @@ const FeesManagement: React.FC = () => {
     reference: ''
   });
 
+  const [viewMode, setViewMode] = useState<'history' | 'registry' | 'settings'>('history');
+  const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [configFormData, setConfigFormData] = useState<any>({
+    discipline: '',
+    branch: '',
+    category_id: '',
+    amount: 0,
+    due_day: 10,
+    is_active: true
+  });
+
   const loadData = async () => {
     try {
-      const { data: feesData } = await db.fees.getAll();
-      const { data: membersData } = await db.members.getAll();
+      const [
+        { data: feesData, error: feesError }, 
+        { data: membersData, error: memError }, 
+        { data: configData, error: configError },
+        { data: feeConfigsData, error: feeConfigsError }
+      ] = await Promise.all([
+        db.fees.getAll(),
+        db.members.getAll(),
+        db.config.get(),
+        db.feeConfigs.getAll()
+      ]);
+      
+      if (feesError) console.error("Error loading fees:", feesError);
+      if (memError) console.error("Error loading members:", memError);
+      if (configError) console.error("Error loading config:", configError);
+      if (feeConfigsError) console.error("Error loading fee configs:", feeConfigsError);
+
+      if (configData) setConfig(configData);
+      if (feeConfigsData) setFeeConfigs(feeConfigsData);
       
       if (feesData && membersData) {
         const enrichedFees = feesData.map(f => ({
@@ -70,23 +104,135 @@ const FeesManagement: React.FC = () => {
   }, []);
 
   const stats = useMemo(() => {
-    const total = fees.reduce((acc, f) => acc + f.amount, 0);
-    const paid = fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + f.amount, 0);
+    const total = fees.reduce((acc, f) => acc + (f.amount || 0), 0);
+    const paid = fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + (f.amount || 0), 0);
     const pending = total - paid;
     const lateCount = fees.filter(f => f.status === 'Late' || (new Date(f.due_date) < new Date() && f.status !== 'Paid')).length;
     return { total, paid, pending, lateCount };
   }, [fees]);
 
-  // BUSCADOR PRINCIPAL (Tabla)
+  // Registry Mode: List of members with their status for the current period
+  const registryData = useMemo(() => {
+    let list = members;
+
+    // Filtros de miembros
+    if (filterDiscipline) {
+      list = list.filter(m => m.assignments?.some(a => a.discipline === filterDiscipline));
+    }
+    if (filterGender) {
+      list = list.filter(m => m.gender === filterGender);
+    }
+    if (filterCategory) {
+      list = list.filter(m => m.assignments?.some(a => a.category_id === filterCategory || a.category === filterCategory));
+    }
+    if (searchTerm.trim()) {
+      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      list = list.filter(m => {
+        const name = m.name.toLowerCase();
+        const dni = m.dni.toLowerCase();
+        return tokens.every(token => name.includes(token) || dni.includes(token));
+      });
+    }
+
+    return list.map(m => {
+      const fee = fees.find(f => f.member_id === m.id && f.period === selectedPeriod);
+      return { member: m, fee };
+    });
+  }, [members, fees, selectedPeriod, filterDiscipline, filterGender, filterCategory, searchTerm]);
+  
+  const suggestFee = (member: Member) => {
+    // Tomar la primera asignación
+    const assignment = member.assignments?.[0];
+    if (!assignment) return { amount: 5000, due_day: 10 };
+
+    const rate = feeConfigs.find(rc => 
+      rc.discipline === assignment.discipline && 
+      rc.branch === member.gender && 
+      (rc.category_id === assignment.category_id || rc.category_id === assignment.category)
+    );
+
+    if (rate) {
+      return { amount: rate.amount, due_day: rate.due_day };
+    }
+
+    return { amount: 5000, due_day: 10 };
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    console.log("Saving Fee Config:", configFormData);
+    try {
+      // Validaciones básicas
+      if (!configFormData.discipline || !configFormData.branch || !configFormData.category_id) {
+        throw new Error("Disciplina, Rama y Categoría son obligatorios.");
+      }
+
+      const { error } = await db.feeConfigs.upsert(configFormData);
+      if (error) throw error;
+      
+      await loadData();
+      setShowConfigModal(false);
+      setConfigFormData({ discipline: '', branch: '', category_id: '', amount: 0, due_day: 10, is_active: true });
+      alert("Configuración guardada correctamente");
+    } catch (error: any) {
+      console.error("Error saving config:", error);
+      alert("Error al guardar: " + (error.message || JSON.stringify(error)));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // BUSCADOR PRINCIPAL (Tabla) con Filtros
   const filteredFees = useMemo(() => {
-    if (!searchTerm.trim()) return fees.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-    const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-    return fees.filter(f => {
-      const memberName = (f.member?.name || '').toLowerCase();
-      const memberDni = (f.member?.dni || '').toLowerCase();
-      return tokens.every(token => memberName.includes(token) || memberDni.includes(token));
-    }).sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-  }, [fees, searchTerm]);
+    let result = fees;
+
+    // Filtro por Disciplina (Solo si member existe)
+    if (filterDiscipline) {
+      result = result.filter(f => 
+        f.member ? f.member.assignments?.some(a => a.discipline === filterDiscipline) : true
+      );
+    }
+
+    // Filtro por Rama (Género)
+    if (filterGender) {
+      result = result.filter(f => f.member ? f.member.gender === filterGender : true);
+    }
+
+    // Filtro por Categoría
+    if (filterCategory) {
+      result = result.filter(f => 
+        f.member ? f.member.assignments?.some(a => a.category_id === filterCategory || a.category === filterCategory) : true
+      );
+    }
+
+    // Filtro por Búsqueda (Nombre/DNI)
+    if (searchTerm.trim()) {
+      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      result = result.filter(f => {
+        const memberName = (f.member?.name || 'DESCONOCIDO').toLowerCase();
+        const memberDni = (f.member?.dni || '').toLowerCase();
+        return tokens.every(token => memberName.includes(token) || memberDni.includes(token));
+      });
+    }
+
+    return result.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
+  }, [fees, searchTerm, filterDiscipline, filterGender, filterCategory]);
+
+  const categories = useMemo(() => {
+    if (!config) return [];
+    if (filterDiscipline) {
+      const discipline = config.disciplines.find(d => d.name === filterDiscipline);
+      return discipline?.branches.flatMap(b => b.categories) || [];
+    }
+    return config.disciplines.flatMap(d => d.branches.flatMap(b => b.categories));
+  }, [config, filterDiscipline]);
+
+  const categoriesForModal = useMemo(() => {
+    if (!config || !configFormData.discipline) return [];
+    const discipline = config.disciplines.find(d => d.name === configFormData.discipline);
+    return discipline?.branches.flatMap(b => b.categories) || [];
+  }, [config, configFormData.discipline]);
 
   // BUSCADOR DE MIEMBROS (Dentro del Modal)
   const filteredMembersForSelect = useMemo(() => {
@@ -103,14 +249,19 @@ const FeesManagement: React.FC = () => {
     members.find(m => m.id === formData.member_id), 
   [members, formData.member_id]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, receipt_url: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      setIsSaving(true);
+      try {
+        const url = await db.fees.uploadReceipt(file);
+        setFormData(prev => ({ ...prev, receipt_url: url }));
+      } catch (error) {
+        console.error("Error al subir comprobante:", error);
+        alert("Error al subir el archivo");
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -124,13 +275,25 @@ const FeesManagement: React.FC = () => {
         status: finalStatus,
         payment_date: finalStatus === 'Paid' ? (formData.payment_date || new Date().toISOString().split('T')[0]) : null
       };
-      await db.fees.upsert(payload);
+      
+      const { error } = await db.fees.upsert(payload);
+      if (error) throw error;
+      
       await loadData();
       setShowModal(false);
-      setFormData({ status: 'Pending', amount: 5000, due_date: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0], period: new Date().toISOString().slice(0, 7), payment_method: 'Efectivo', receipt_url: '', reference: '' });
+      setFormData({ 
+        status: 'Pending', 
+        amount: 5000, 
+        due_date: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0], 
+        period: new Date().toISOString().slice(0, 7), 
+        payment_method: 'Efectivo', 
+        receipt_url: '', 
+        reference: '' 
+      });
       setMemberSearchQuery('');
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Error saving fee:", e);
+      alert(`Error al guardar: ${e.message || 'Error desconocido'}`);
     } finally {
       setIsSaving(false);
     }
@@ -170,11 +333,155 @@ const FeesManagement: React.FC = () => {
               className="w-full pl-14 pr-4 py-5 bg-white dark:bg-slate-800/80 rounded-3xl border border-slate-200 dark:border-white/5 outline-none font-black text-[11px] uppercase tracking-widest shadow-xl focus:border-primary-600/50 transition-all placeholder:text-slate-300"
             />
           </div>
-          <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-5 rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-3">
-            <Plus size={18} strokeWidth={3} /> <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
-          </button>
+          {viewMode === 'settings' ? (
+            <button 
+              onClick={() => {
+                setConfigFormData({ discipline: '', branch: '', category_id: '', amount: 0, due_day: 10, is_active: true });
+                setShowConfigModal(true);
+              }} 
+              className="bg-emerald-600 text-white px-8 py-5 rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-3"
+            >
+              <Plus size={18} strokeWidth={3} /> <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
+            </button>
+          ) : (
+            <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-5 rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-3">
+              <Plus size={18} strokeWidth={3} /> <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
+            </button>
+          )}
         </div>
       </header>
+
+      {/* Filtros Avanzados */}
+      <div className="flex flex-wrap items-center gap-4 mb-8">
+        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+          <button 
+            onClick={() => setViewMode('history')}
+            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'history' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Historial
+          </button>
+          <button 
+            onClick={() => setViewMode('registry')}
+            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Registro Mensual
+          </button>
+          <button 
+            onClick={() => setViewMode('settings')}
+            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'settings' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Configuración
+          </button>
+        </div>
+
+        {viewMode !== 'settings' && viewMode === 'registry' && (
+          <div className="flex items-center gap-2">
+             <div className="relative">
+                <input 
+                  type="month" 
+                  value={selectedPeriod} 
+                  onChange={e => setSelectedPeriod(e.target.value)}
+                  className="bg-white dark:bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                />
+             </div>
+             <button 
+               onClick={async () => {
+                 if(confirm(`¿Generar cuotas pendientes para ${selectedPeriod}?`)) {
+                   setIsSaving(true);
+                   try {
+                     const missing = registryData.filter(d => !d.fee);
+                     if (missing.length === 0) {
+                        alert("No hay cuotas pendientes para generar este mes.");
+                        return;
+                     }
+                     
+                     const newFees = missing.map(m => {
+                        const suggestion = suggestFee(m.member);
+                        return {
+                           member_id: m.member.id,
+                           period: selectedPeriod,
+                           amount: suggestion.amount,
+                           due_date: `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}`,
+                           status: 'Pending',
+                           payment_method: 'Efectivo',
+                           created_at: new Date().toISOString()
+                        };
+                     });
+                     
+                     const { error } = await db.fees.upsertMany(newFees);
+                     if (error) throw error;
+                     
+                     await loadData();
+                     alert(`${newFees.length} cuotas generadas correctamente.`);
+                   } catch (error: any) {
+                     console.error("Error al generar cuotas:", error);
+                     alert("Error al generar: " + (error.message || "Error desconocido"));
+                   } finally {
+                     setIsSaving(false);
+                   }
+                 }
+               }}
+               disabled={isSaving}
+               className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-2 text-[9px] font-black uppercase tracking-widest"
+             >
+               <RefreshCw size={14} className={isSaving ? 'animate-spin' : ''} /> Generar Cuotas
+             </button>
+          </div>
+        )}
+
+        {viewMode !== 'settings' && (
+          <>
+            <div className="relative min-w-[160px]">
+              <select 
+                value={filterDiscipline} 
+                onChange={e => { setFilterDiscipline(e.target.value); setFilterCategory(''); }}
+                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+              >
+                <option value="">TODAS LAS DISCIPLINAS</option>
+                {config?.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            <div className="relative min-w-[160px]">
+              <select 
+                value={filterGender} 
+                onChange={e => setFilterGender(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+              >
+                <option value="">TODAS LAS RAMAS</option>
+                <option value="Masculino">MASCULINO</option>
+                <option value="Femenino">FEMENINO</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            <div className="relative min-w-[200px]">
+              <select 
+                value={filterCategory} 
+                onChange={e => setFilterCategory(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+              >
+                <option value="">TODAS LAS CATEGORÍAS</option>
+                {Array.from(new Set(categories.map(c => c.name))).map(catName => {
+                  const cat = categories.find(c => c.name === catName);
+                  return <option key={cat?.id} value={cat?.id}>{catName}</option>;
+                })}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            {(filterDiscipline || filterGender || filterCategory || searchTerm) && (
+              <button 
+                onClick={() => { setFilterDiscipline(''); setFilterGender(''); setFilterCategory(''); setSearchTerm(''); }}
+                className="p-3 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 text-[9px] font-black uppercase tracking-widest"
+              >
+                <X size={14} /> Limpiar Filtros
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -199,58 +506,197 @@ const FeesManagement: React.FC = () => {
 
       <div className="bg-white dark:bg-slate-800/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
-                <th className="px-8 py-6">Socio / Miembro</th>
-                <th className="px-8 py-6">Periodo</th>
-                <th className="px-8 py-6">Monto</th>
-                <th className="px-8 py-6 text-center">Estado</th>
-                <th className="px-8 py-6 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {filteredFees.map(fee => (
-                <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
-                        <img src={fee.member?.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name}</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {fee.member?.dni}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{fee.period}</span>
-                      <span className="text-[8px] text-slate-400 font-bold uppercase">{fee.payment_method || 'Sin definir'}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-black text-slate-800 dark:text-white italic">${fee.amount.toLocaleString()}</span>
-                      {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-center">
-                    {getStatusBadge(fee.status, fee.due_date)}
-                  </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex justify-end gap-2">
-                      {fee.status !== 'Paid' && (
-                        <button onClick={() => markAsPaid(fee)} className="p-2.5 bg-emerald-500 text-white rounded-xl hover:scale-110 transition-all shadow-lg shadow-emerald-500/20"><Check size={16} strokeWidth={3} /></button>
-                      )}
-                      <button onClick={() => setSelectedMemberHistory(fee.member || null)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"><History size={16} /></button>
-                      <button onClick={async () => { if(confirm('¿Eliminar registro?')) { await db.fees.delete(fee.id); loadData(); } }} className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
+          {viewMode === 'history' ? (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                  <th className="px-8 py-6">Socio / Miembro</th>
+                  <th className="px-8 py-6">Periodo</th>
+                  <th className="px-8 py-6">Monto</th>
+                  <th className="px-8 py-6 text-center">Estado</th>
+                  <th className="px-8 py-6 text-right">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {filteredFees.map(fee => (
+                  <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
+                          <img src={fee.member?.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {fee.member?.dni || '---'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{fee.period}</span>
+                        <span className="text-[8px] text-slate-400 font-bold uppercase">{fee.payment_method || 'Sin definir'}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-black text-slate-800 dark:text-white italic">${(fee.amount || 0).toLocaleString()}</span>
+                        {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                      {getStatusBadge(fee.status, fee.due_date)}
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex justify-end gap-2">
+                        {fee.status !== 'Paid' && (
+                          <button onClick={() => markAsPaid(fee)} className="p-2.5 bg-emerald-500 text-white rounded-xl hover:scale-110 transition-all shadow-lg shadow-emerald-500/20"><Check size={16} strokeWidth={3} /></button>
+                        )}
+                        <button onClick={() => setSelectedMemberHistory(fee.member || null)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"><History size={16} /></button>
+                        <button onClick={async () => { if(confirm('¿Eliminar registro?')) { await db.fees.delete(fee.id); loadData(); } }} className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : viewMode === 'registry' ? (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                  <th className="px-8 py-6">Miembro</th>
+                  <th className="px-8 py-6">Vencimiento</th>
+                  <th className="px-8 py-6 text-center">Estado para {selectedPeriod}</th>
+                  <th className="px-8 py-6 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {registryData.map(({ member, fee }) => (
+                  <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
+                          <img src={member.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                        {fee ? fee.due_date : 'PENDIENTE GENERAR'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                      {fee ? getStatusBadge(fee.status, fee.due_date) : (
+                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-400 text-[8px] font-black uppercase rounded-full border border-slate-200 dark:border-white/5">Sin Registro</span>
+                      )}
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex justify-end gap-2">
+                        {!fee || fee.status !== 'Paid' ? (
+                          <button 
+                            onClick={() => {
+                              const suggestion = fee ? null : suggestFee(member);
+                              const dueDate = fee ? fee.due_date : (
+                                suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
+                              );
+
+                              setFormData({
+                                ...formData,
+                                ...(fee || {}),
+                                member_id: member.id,
+                                period: selectedPeriod,
+                                amount: fee?.amount || suggestion?.amount || 5000,
+                                due_date: dueDate
+                              });
+                              setShowModal(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
+                          >
+                            <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500 tracking-widest pr-4 italic">
+                            <Check size={14} strokeWidth={3} /> Pago Confirmado
+                          </div>
+                        )}
+                        <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"><History size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                  <th className="px-8 py-6">Disciplina</th>
+                  <th className="px-8 py-6">Rama</th>
+                  <th className="px-8 py-6">Categoría</th>
+                  <th className="px-8 py-6">Monto</th>
+                  <th className="px-8 py-6">Vencimiento</th>
+                  <th className="px-8 py-6 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {feeConfigs.length > 0 ? feeConfigs.map(configFee => (
+                  <tr key={configFee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                    <td className="px-8 py-6">
+                       <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest">{configFee.discipline}</span>
+                    </td>
+                    <td className="px-8 py-6">
+                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{configFee.branch}</span>
+                    </td>
+                    <td className="px-8 py-6">
+                       <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{configFee.category_id}</span>
+                    </td>
+                    <td className="px-8 py-6">
+                       <span className="text-lg font-black text-slate-800 dark:text-white italic">${configFee.amount.toLocaleString()}</span>
+                    </td>
+                    <td className="px-8 py-6">
+                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Día {configFee.due_day}</span>
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                       <div className="flex justify-end gap-2">
+                         <button 
+                           onClick={() => {
+                             setConfigFormData(configFee);
+                             setShowConfigModal(true);
+                           }} 
+                           className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                         >
+                           <ArrowUpRight size={16} />
+                         </button>
+                         <button 
+                           onClick={async () => {
+                             if(confirm('¿Eliminar esta tarifa?')) {
+                               await db.feeConfigs.delete(configFee.id);
+                               loadData();
+                             }
+                           }} 
+                           className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
+                         >
+                           <Trash2 size={16} />
+                         </button>
+                       </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-20 text-center">
+                      <div className="flex flex-col items-center gap-4 opacity-30">
+                        <DollarSign size={48} className="text-slate-400" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay tarifas configuradas</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -365,7 +811,11 @@ const FeesManagement: React.FC = () => {
                      >
                         {formData.receipt_url ? (
                            <div className="flex flex-col items-center gap-2">
-                              {formData.receipt_url.startsWith('data:image') ? <img src={formData.receipt_url} className="w-20 h-20 object-cover rounded-xl shadow-lg" /> : <FileText size={40} className="text-primary-600" />}
+                              {formData.receipt_url.includes('images') || formData.receipt_url.startsWith('data:image') ? (
+                                <img src={formData.receipt_url} className="w-20 h-20 object-cover rounded-xl shadow-lg" />
+                              ) : (
+                                <Receipt size={40} className="text-primary-600" />
+                              )}
                               <span className="text-[9px] font-black uppercase text-primary-600">Cargado con éxito</span>
                            </div>
                         ) : (
@@ -436,6 +886,120 @@ const FeesManagement: React.FC = () => {
                 ))}
               </div>
            </div>
+        </div>
+      )}
+
+      {/* MODAL: Configuración de Tarifas */}
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg"><Save size={20} /></div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Configurar Tarifa</h3>
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Definir cuota base</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowConfigModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-red-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <form onSubmit={handleSaveConfig} className="p-8 space-y-6">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Disciplina</label>
+                  <select
+                    required
+                    value={configFormData.discipline}
+                    onChange={e => setConfigFormData({ ...configFormData, discipline: e.target.value })}
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {config?.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Rama</label>
+                    <select
+                      required
+                      value={configFormData.branch}
+                      onChange={e => setConfigFormData({ ...configFormData, branch: e.target.value })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Masculino">Masculino</option>
+                      <option value="Femenino">Femenino</option>
+                      <option value="Mixto">Mixto</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Categoría</label>
+                    <select
+                      required
+                      value={configFormData.category_id}
+                      onChange={e => setConfigFormData({ ...configFormData, category_id: e.target.value })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {categoriesForModal.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Monto ($)</label>
+                    <input
+                      required
+                      type="number"
+                      value={configFormData.amount}
+                      onChange={e => setConfigFormData({ ...configFormData, amount: Number(e.target.value) })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Vencimiento (Día)</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      max="28"
+                      value={configFormData.due_day}
+                      onChange={e => setConfigFormData({ ...configFormData, due_day: Number(e.target.value) })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="flex-1 px-8 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Guardar Tarifa
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

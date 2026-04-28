@@ -108,7 +108,7 @@ const CrearTorneo: React.FC<CrearTorneoProps> = ({ onClose, onSuccess, clubConfi
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white dark:bg-[#0f121a] w-full max-w-2xl rounded-[3rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col"
+          className="bg-white dark:bg-[#0f121a] w-full max-w-2xl rounded-[3rem] shadow-2xl border border-secondary-500/30 overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
@@ -243,7 +243,7 @@ const CrearTorneo: React.FC<CrearTorneoProps> = ({ onClose, onSuccess, clubConfi
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-[2] py-5 bg-primary-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-primary-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+              className="flex-[2] py-5 bg-secondary-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-secondary-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
             >
               {isSubmitting ? (
                 <Loader2 className="animate-spin" size={20} />

@@ -80,10 +80,14 @@ export const updateMatchResult = async (
   if (events.length > 0) {
     const eventsToInsert = events.map(e => ({
       match_id: matchId,
-      playerid: e.playerid || e.playerId || (e as any).player_id,
+      playerid: e.player_id || (e as any).playerid || (e as any).playerId,
+      player_name: e.player_name,
       type: e.type,
       minute: e.minute,
       notes: e.notes,
+      is_rival: e.is_rival || false,
+      squad_player_id: (e as any).squad_player_id,
+      additional_data: e.additional_data || {},
       id: e.id || crypto.randomUUID()
     }));
     const { error: eventsError } = await supabase

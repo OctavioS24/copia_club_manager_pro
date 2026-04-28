@@ -135,7 +135,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ activeTab }) => {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[60vh]">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-secondary-500/20 overflow-hidden min-h-[60vh]">
         {activeTab === 'fixtures' && (
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-950/50 text-slate-400 font-black uppercase tracking-widest text-[10px] border-b border-slate-100 dark:border-white/5">
@@ -175,7 +175,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ activeTab }) => {
               <div 
                 key={team.id} 
                 onClick={() => setSelectedTeam(team)}
-                className="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-primary-500/30 transition-all cursor-pointer group"
+                className="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-secondary-500/10 shadow-sm hover:shadow-xl hover:border-primary-500/30 transition-all cursor-pointer group"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-primary-600 group-hover:scale-110 transition-transform">

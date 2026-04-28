@@ -117,15 +117,13 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       try {
         const disc = clubConfig.disciplines.find(d => d.id === selectedDiscipline);
         const discName = disc?.name || 'FUTBOL';
-        const [configData, playerIds] = await Promise.all([
-          getDisciplineConfig(discName),
-          Promise.resolve(squadPlayers.map(p => p.id))
+        const [configData] = await Promise.all([
+          getDisciplineConfig(discName)
         ]);
 
         setDisciplineConfig(configData);
 
         // Fetch matches for this specific category
-        // We check by ID primarily
         const { data: allMatches, error: matchesError } = await supabase
           .from('matches')
           .select('*, events:match_events(*)')
@@ -134,18 +132,12 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
         if (matchesError) throw matchesError;
 
-        const [eventsRes] = await Promise.all([
-          playerIds.length > 0 ? db.matchEvents.getByPlayerIds(playerIds) : Promise.resolve({ data: [] })
-        ]);
-
-        if (eventsRes.error) throw eventsRes.error;
-
         const finishedMatches = (allMatches || []).filter(m => m.status === 'Finished');
         const upcomingFiltered = (allMatches || []).filter(m => m.status === 'Scheduled');
         const suspendedFiltered = (allMatches || []).filter(m => m.status === 'Suspended');
 
         setMatches(allMatches || []);
-        setPlayerEvents(eventsRes.data || []);
+        setPlayerEvents([]); // We will use match events instead
         setLastResults(finishedMatches.slice(0, 5));
         setUpcomingMatches(upcomingFiltered.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5));
         setSuspendedMatches(suspendedFiltered);
@@ -372,7 +364,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
             {!disciplineConfig && (
               <>
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500">
+                  <div className="w-16 h-16 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500">
                     <Award size={32} />
                   </div>
                   <div>

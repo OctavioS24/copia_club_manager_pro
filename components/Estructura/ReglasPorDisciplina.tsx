@@ -43,6 +43,15 @@ const ICON_OPTIONS = [
   { name: 'Trophy', icon: Trophy },
 ];
 
+const ADDITIONAL_FIELDS_OPTIONS = [
+  { key: 'minuto', label: 'Minuto' },
+  { key: 'cuarto', label: 'Cuarto' },
+  { key: 'set', label: 'Set' },
+  { key: 'game', label: 'Game' },
+  { key: 'tiempo', label: 'Tiempo' },
+  { key: 'periodo', label: 'Período' },
+];
+
 const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }) => {
   const [selectedDisc, setSelectedDisc] = useState<string>(disciplines[0]?.name || 'FUTBOL');
   const [config, setConfig] = useState<DisciplineConfig | null>(null);
@@ -96,7 +105,10 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
       name: 'NUEVO EVENTO',
       icon: 'Activity',
       color: '#3b82f6',
-      statsKey: 'GOLES_TOTALES'
+      statsKey: 'GOLES_TOTALES',
+      affects_score: false,
+      score_value: 1,
+      scope: 'BOTH'
     };
     setConfig({
       ...config,
@@ -124,6 +136,23 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
       setConfig({
         ...config,
         dashboard_stats: [...config.dashboard_stats, key]
+      });
+    }
+  };
+
+  const toggleAdditionalField = (field: string) => {
+    if (!config) return;
+    const currentFields = config.additional_fields || [];
+    const exists = currentFields.includes(field);
+    if (exists) {
+      setConfig({
+        ...config,
+        additional_fields: currentFields.filter(f => f !== field)
+      });
+    } else {
+      setConfig({
+        ...config,
+        additional_fields: [...currentFields, field]
       });
     }
   };
@@ -246,6 +275,35 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
             </div>
           </div>
 
+          {/* CAMPOS ADICIONALES (GLOBAL) */}
+          <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
+            <div className="flex items-center gap-4 mb-10">
+              <div className="w-12 h-12 rounded-2xl bg-slate-500/10 flex items-center justify-center text-slate-500">
+                <Settings2 size={20} />
+              </div>
+              <h3 className="font-black text-2xl uppercase tracking-tighter dark:text-white italic">Campos Adicionales de Partido</h3>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              {ADDITIONAL_FIELDS_OPTIONS.map(field => {
+                const isActive = config.additional_fields?.includes(field.key);
+                return (
+                  <button 
+                    key={field.key}
+                    onClick={() => toggleAdditionalField(field.key)}
+                    className={`flex items-center gap-4 px-6 py-4 rounded-2xl border transition-all ${isActive ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent text-slate-500 hover:border-slate-200'}`}
+                  >
+                    <div className={`w-5 h-5 rounded flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}>
+                      {isActive && <CheckCircle size={12} />}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{field.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-6 text-[9px] text-slate-400 italic">Habilita estos campos para que aparezcan al cargar un resultado (ej: minuto del gol, cuarto del tanto, etc).</p>
+          </div>
+
           {/* TIPOS DE EVENTO */}
           <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
             <div className="flex justify-between items-center mb-10">
@@ -306,6 +364,21 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                         </select>
                       </div>
                       <div className="space-y-2">
+                        <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Alcance</label>
+                        <select 
+                          value={event.scope || 'BOTH'}
+                          onChange={e => setConfig({
+                            ...config,
+                            event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, scope: e.target.value as any } : ev)
+                          })}
+                          className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                        >
+                          <option value="BOTH">TODOS</option>
+                          <option value="OWN">MI CLUB (Jugador)</option>
+                          <option value="RIVAL">RIVAL (Equipo)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Color</label>
                         <input 
                           type="color"
@@ -316,6 +389,31 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                           })}
                           className="w-full h-8 rounded-xl cursor-pointer bg-transparent border-none p-0"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Suma al Marcador</label>
+                        <div className="flex items-center gap-2">
+                           <button 
+                             onClick={() => setConfig({
+                               ...config,
+                               event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, affects_score: !ev.affects_score } : ev)
+                             })}
+                             className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase transition-all ${event.affects_score ? 'bg-amber-500 text-white shadow-lg' : 'bg-slate-200 text-slate-400'}`}
+                           >
+                             {event.affects_score ? 'SÍ' : 'NO'}
+                           </button>
+                           {event.affects_score && (
+                             <input 
+                               type="number"
+                               value={event.score_value || 0}
+                               onChange={e => setConfig({
+                                 ...config,
+                                 event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, score_value: parseInt(e.target.value) || 0 } : ev)
+                               })}
+                               className="w-16 bg-white dark:bg-slate-800 p-2 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                             />
+                           )}
+                        </div>
                       </div>
                     </div>
 

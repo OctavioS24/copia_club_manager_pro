@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Player, ClubConfig, Metric, MedicalHistoryItem } from '../types.ts';
+import { Player, ClubConfig, Metric, MedicalHistoryItem, PlayerInjury } from '../types.ts';
 import { 
   X, Save, Edit3, Heart, 
   Loader2, CheckCircle, Fingerprint, 
-  BarChart3, Target, Info, History, Clock, UserCircle
+  BarChart3, Target, Info, History, Clock, UserCircle,
+  AlertTriangle, Stethoscope
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { db } from '../lib/supabase.ts';
@@ -23,6 +24,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [player, setPlayer] = useState<Player>(initialPlayer);
+  const [injuries, setInjuries] = useState<PlayerInjury[]>([]);
+  const [isLoadingInjuries, setIsLoadingInjuries] = useState(false);
 
   // Resolución robusta de métricas desde la matriz
   const currentMetrics = useMemo(() => {
@@ -65,6 +68,23 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
         setPlayer(prev => ({ ...prev, overallrating: overall }));
     }
   }, [player.stats, currentMetrics, player.overallrating]);
+
+  useEffect(() => {
+    const fetchInjuries = async () => {
+      if (activeTab === 'medical_record') {
+        setIsLoadingInjuries(true);
+        try {
+          const { data } = await db.medical.getPlayerInjuries(player.id);
+          if (data) setInjuries(data);
+        } catch (err) {
+          console.error("Error fetching injuries in PlayerCard:", err);
+        } finally {
+          setIsLoadingInjuries(false);
+        }
+      }
+    };
+    fetchInjuries();
+  }, [player.id, activeTab]);
 
   const radarData = currentMetrics.map(m => ({
     subject: m.name,
@@ -292,11 +312,55 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
                     </div>
                   </div>
 
+                  {/* Listado de Lesiones (Enfermería) */}
+                  <div className="mt-16">
+                     <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                           <Stethoscope size={18} className="text-rose-500" />
+                           <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial de Lesiones (Enfermería)</h5>
+                        </div>
+                        {isLoadingInjuries && <Loader2 size={14} className="animate-spin text-primary-600" />}
+                     </div>
+
+                     <div className="space-y-4">
+                        {injuries.length > 0 ? (
+                          injuries.map(injury => (
+                            <div key={injury.id} className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 relative group/injury">
+                               <div className="flex items-center gap-4 mb-4">
+                                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 shrink-0">
+                                     <AlertTriangle size={18} />
+                                  </div>
+                                  <div>
+                                     <h6 className="text-[11px] font-black uppercase text-slate-800 dark:text-white leading-none">
+                                        {injury.injury_type?.name || 'Lesión'}
+                                     </h6>
+                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        Inicio: {injury.injury_date} {injury.release_date ? `| Alta: ${injury.release_date}` : '| EN TRATAMIENTO'}
+                                     </p>
+                                  </div>
+                               </div>
+                               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium italic px-2">
+                                  "{injury.comment || 'Sin descripción detallada'}"
+                                </p>
+                               <div className="mt-4 flex items-center justify-between px-2 text-[9px] font-black uppercase text-slate-400">
+                                  <span className="flex items-center gap-1"><Clock size={12} /> Recup: {injury.estimated_recovery || 'N/A'}</span>
+                                  {!injury.release_date && <span className="text-red-500 animate-pulse">BAJA ACTIVA</span>}
+                               </div>
+                            </div>
+                          ))
+                        ) : !isLoadingInjuries && (
+                          <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[2.5rem] opacity-30">
+                             <p className="text-[9px] font-black uppercase tracking-widest">Sin registro de lesiones en enfermería</p>
+                          </div>
+                        )}
+                     </div>
+                  </div>
+
                   {/* Historial Timeline en la ficha del jugador */}
-                  <div className="mt-12">
+                  <div className="mt-16">
                      <div className="flex items-center gap-3 mb-8">
                         <History size={18} className="text-primary-600" />
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial Médico Completo</h5>
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial Médico de Aptitud</h5>
                      </div>
                      
                      <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-0 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">

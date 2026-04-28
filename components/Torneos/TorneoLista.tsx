@@ -85,7 +85,7 @@ const TorneoLista: React.FC = () => {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic flex items-center gap-4">
-             <Trophy size={40} className="text-pink-600" />
+             <Trophy size={40} className="text-primary-600" />
              Módulo de Torneos
           </h2>
           <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-1 ml-1">Gestión de competencias y fixtures</p>
@@ -93,7 +93,7 @@ const TorneoLista: React.FC = () => {
         <div className="flex gap-4">
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="bg-pink-600 text-white px-10 py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-pink-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+            className="bg-primary-600 text-white px-10 py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
           >
             <Plus size={18} strokeWidth={3} /> Crear nuevo torneo
           </button>
@@ -107,13 +107,13 @@ const TorneoLista: React.FC = () => {
           placeholder="BUSCAR TORNEO..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-pink-600 transition-all"
+          className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all"
         />
       </div>
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-40 gap-4">
-          <Loader2 className="animate-spin text-pink-600" size={40} />
+          <Loader2 className="animate-spin text-primary-600" size={40} />
           <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando torneos...</p>
         </div>
       ) : (
@@ -122,11 +122,11 @@ const TorneoLista: React.FC = () => {
             <motion.div 
               key={tournament.id}
               whileHover={{ y: -5 }}
-              className="bg-slate-800 border border-slate-700 rounded-[2.5rem] p-8 flex flex-col gap-6 group hover:border-pink-600/50 transition-all"
+              className="bg-slate-800 border border-secondary-500/20 rounded-[2.5rem] p-8 flex flex-col gap-6 group hover:border-primary-600/50 transition-all"
             >
               <div className="flex justify-between items-start">
-                <div className="p-3 bg-pink-600/10 rounded-2xl">
-                  <Trophy className="text-pink-600" size={24} />
+                <div className="p-3 bg-primary-600/10 rounded-2xl">
+                  <Trophy className="text-primary-600" size={24} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
@@ -153,7 +153,7 @@ const TorneoLista: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white group-hover:text-pink-600 transition-colors">
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white group-hover:text-primary-600 transition-colors">
                   {tournament.name}
                 </h3>
                 <div className="flex items-center gap-2 mt-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
@@ -176,7 +176,7 @@ const TorneoLista: React.FC = () => {
 
               <button 
                 onClick={() => setSelectedTournament(tournament)}
-                className="mt-auto w-full py-4 bg-slate-700 hover:bg-pink-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
+                className="mt-auto w-full py-4 bg-slate-700 hover:bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
               >
                 Ver partidos <ChevronRight size={14} />
               </button>
@@ -205,7 +205,7 @@ const TorneoLista: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            className="bg-slate-900 border border-secondary-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl"
           >
             <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
               <Trash2 className="w-8 h-8 text-red-500" />

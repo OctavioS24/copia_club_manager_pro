@@ -3,8 +3,9 @@ CREATE TABLE IF NOT EXISTS public.discipline_config (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "discipline" TEXT NOT NULL UNIQUE,
     "scoring_rules" JSONB NOT NULL,  -- { win, draw, loss }
-    "event_types" JSONB NOT NULL,     -- [{ name, icon, color, statsKey }]
+    "event_types" JSONB NOT NULL,     -- [{ name, icon, color, statsKey, affects_score, score_value, scope }]
     "dashboard_stats" JSONB NOT NULL, -- ["PUNTOS_ACUMULADOS", "GOLES_TOTALES", etc]
+    "additional_fields" JSONB DEFAULT '[]'::jsonb, -- ["minuto", "cuarto", etc]
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

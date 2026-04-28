@@ -23,6 +23,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const [activeTab, setActiveTab] = useState<ModalTab>('identity');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [availablePositions, setAvailablePositions] = useState<Record<string, DisciplinePosition[]>>({});
   const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +69,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const handleEdit = (member: Member) => {
     setSelectedMember(member);
+    setSaveError(null);
     setFormData({
       ...member,
       tutor: member.tutor || { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
@@ -78,6 +80,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const handleNew = () => {
     setSelectedMember(null);
+    setSaveError(null);
     setFormData({
       name: '', dni: '', gender: 'Masculino', birthdate: '', email: '', phone: '',
       photourl: '', address: '', city: '', province: '', postalcode: '',
@@ -102,7 +105,17 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const handleSave = async () => {
     if (!formData.name || !formData.dni) return alert("Nombre y DNI son obligatorios");
+    
+    // Check for duplicate DNI on client side first
+    const duplicateDni = members.find(m => m.dni === formData.dni && m.id !== (selectedMember?.id || ''));
+    if (duplicateDni) {
+      setSaveError(`ALERTA: EL DNI ${formData.dni} YA PERTENECE A OTRO MIEMBRO (${duplicateDni.name})`);
+      setActiveTab('identity');
+      return;
+    }
+
     setIsSaving(true);
+    setSaveError(null);
     try {
       // Destructure to remove tutor if it's not in the database schema
       const dataToSave = { ...formData };
@@ -116,8 +129,14 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
       await onSaveMember(memberToSave);
       setShowModal(false);
-    } catch (e) { 
+    } catch (e: any) { 
       console.error("Error al guardar:", e);
+      if (e.code === '23505' || e.message?.includes('members_dni_key')) {
+        setSaveError(`ERROR: YA EXISTE UN MIEMBRO CON EL DNI ${formData.dni}.`);
+        setActiveTab('identity');
+      } else {
+        setSaveError("OCURRIÓ UN ERROR AL GUARDAR. POR FAVOR REINTENTE.");
+      }
     } finally { 
       setIsSaving(false); 
     }
@@ -459,7 +478,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 
                                 <div className="space-y-1">
                                   <label className={labelClasses}>Categoría</label>
-                                  <select value={as.category} onChange={e => updateAssignment(idx, 'category', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
+                                  <select value={as.category_id || as.category} onChange={e => updateAssignment(idx, 'category', e.target.value)} className={selectClasses + " p-3 rounded-xl text-[10px]"}>
                                     <option value="">-- Seleccionar Categoría --</option>
                                     {availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                   </select>
@@ -543,6 +562,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
               </div>
             </div>
 
+            {saveError && (
+              <div className="px-6 md:px-10 py-3 bg-red-500/10 border-t border-red-500/20 flex items-center gap-3 animate-fade-in">
+                <AlertCircle className="text-red-500 shrink-0" size={16} />
+                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-red-500 leading-tight">{saveError}</p>
+              </div>
+            )}
             <div className="px-6 md:px-10 py-5 border-t border-slate-100 dark:border-slate-700/50 flex justify-end bg-slate-50 dark:bg-slate-800/40 shrink-0">
               <button 
                 onClick={handleSave} 

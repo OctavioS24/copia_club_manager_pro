@@ -9,6 +9,7 @@ import { db } from '../../lib/supabase';
 import { getPlayersByCategory } from '../../lib/playerUtils';
 import CargarResultadoModal from './CargarResultadoModal';
 import AgregarFechaModal from './AgregarFechaModal';
+import ConvocatoriaModal from './ConvocatoriaModal';
 
 interface VerPartidosProps {
   tournament: Tournament;
@@ -23,6 +24,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showSquadModal, setShowSquadModal] = useState(false);
   const [showAddFechaModal, setShowAddFechaModal] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [categoryPlayers, setCategoryPlayers] = useState<Player[]>([]);
@@ -104,6 +106,29 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
     setShowResultModal(true);
   };
 
+  const handleOpenSquadModal = async (match: Match) => {
+    setSelectedMatch(match);
+    // Load players for this category
+    try {
+      const { data } = await db.players.getAll();
+      if (data) {
+        const discipline = clubConfig.disciplines.find(d => d.id === tournament.discipline_id);
+        const filtered = getPlayersByCategory(
+          data as any,
+          discipline?.name || '',
+          tournament.gender,
+          getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || ''),
+          tournament.discipline_id,
+          match.categoryid || (match as any).category_id || (match as any).category
+        );
+        setCategoryPlayers(filtered as any);
+      }
+    } catch (error) {
+      console.error('Error loading players:', error);
+    }
+    setShowSquadModal(true);
+  };
+
   const handleResumeDate = async (date: string) => {
     try {
       await resumeFullDate(tournament.id, date);
@@ -159,12 +184,12 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
         <div className="space-y-1">
           <button 
             onClick={onBack}
-            className="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition-colors uppercase font-black text-[10px] tracking-widest"
+            className="flex items-center gap-2 text-slate-400 hover:text-primary-500 transition-colors uppercase font-black text-[10px] tracking-widest"
           >
             <ArrowLeft size={14} /> Volver
           </button>
           <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
-             <Trophy size={32} className="text-pink-600" />
+             <Trophy size={32} className="text-primary-600" />
              {tournament.name} - Partidos
           </h2>
         </div>
@@ -190,7 +215,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
       <div className="space-y-8">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="animate-spin text-pink-600" size={32} />
+            <Loader2 className="animate-spin text-primary-600" size={32} />
             <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando partidos...</p>
           </div>
         ) : sortedDates.length > 0 ? (
@@ -203,7 +228,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
               <div key={date} className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                 <div className="bg-slate-800/50 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-pink-600/20 rounded-lg flex items-center justify-center text-pink-500 font-black italic text-sm">
+                    <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center text-primary-500 font-black italic text-sm">
                       {index + 1}
                     </div>
                     <div>
@@ -273,23 +298,32 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                         </td>
                         <td className="px-3 py-2 text-center">
                           <div className="inline-flex items-center gap-1.5 text-sm font-black italic">
-                            <span className={match.status === 'Finished' ? 'text-pink-500' : 'text-slate-600'}>
+                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-600'}>
                               {match.status === 'Finished' ? match.homescore : '0'}
                             </span>
                             <span className="text-slate-800">-</span>
-                            <span className={match.status === 'Finished' ? 'text-pink-500' : 'text-slate-600'}>
+                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-600'}>
                               {match.status === 'Finished' ? match.awayscore : '0'}
                             </span>
                           </div>
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                          <div className="flex items-center justify-center gap-1.5 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={() => handleOpenSquadModal(match)}
+                              className="p-1 px-3 bg-primary-600/10 hover:bg-primary-600 text-primary-600 hover:text-white rounded-lg transition-all flex items-center gap-2 border border-primary-600/20 shadow-sm"
+                              title="Armar Convocatoria / Alineación"
+                            >
+                              <Users size={14} />
+                              <span className="text-[9px] font-black uppercase tracking-tight">Plantilla</span>
+                            </button>
+                            <div className="w-px h-6 bg-slate-800 mx-1 opacity-0 group-hover:opacity-100" />
                             <button 
                               onClick={() => handleOpenResultModal(match)}
-                              className={`p-1 rounded-md transition-all ${
+                              className={`p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all ${
                                 match.status === 'Finished' 
-                                  ? 'text-slate-500 hover:text-pink-500' 
-                                  : 'text-pink-500 hover:bg-pink-500/10'
+                                  ? 'text-slate-500 hover:text-primary-500' 
+                                  : 'text-primary-500 hover:bg-primary-500/10'
                               }`}
                               title={match.status === 'Finished' ? 'Editar Resultado' : 'Cargar Resultado'}
                             >
@@ -330,7 +364,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
 
         <button 
           onClick={() => setShowAddFechaModal(true)}
-          className="w-full py-6 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 hover:text-pink-500 hover:border-pink-500/50 transition-all flex flex-col items-center justify-center gap-2 group"
+          className="w-full py-6 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 hover:text-primary-500 hover:border-primary-500/50 transition-all flex flex-col items-center justify-center gap-2 group"
         >
           <Plus size={24} className="group-hover:scale-110 transition-transform" />
           <span className="font-black uppercase tracking-widest text-[10px]">Agregar Nueva Fecha</span>
@@ -339,8 +373,9 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
 
       {/* Modals */}
       <AnimatePresence>
-        {showResultModal && selectedMatch && (
+        {showResultModal && selectedMatch && !showSquadModal && (
           <CargarResultadoModal 
+            key="resultado-modal"
             match={selectedMatch}
             players={categoryPlayers}
             onClose={() => setShowResultModal(false)}
@@ -350,8 +385,22 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             }}
           />
         )}
+        {showSquadModal && selectedMatch && !showResultModal && (
+          <ConvocatoriaModal 
+            key="squad-modal"
+            match={selectedMatch}
+            players={categoryPlayers as any}
+            discipline={clubConfig.disciplines.find(d => d.id === tournament.discipline_id)?.name || 'FUTBOL'}
+            onClose={() => setShowSquadModal(false)}
+            onSuccess={() => {
+              setShowSquadModal(false);
+              loadMatches();
+            }}
+          />
+        )}
         {showAddFechaModal && (
           <AgregarFechaModal 
+            key="add-fecha-modal"
             tournamentId={tournament.id}
             categories={tournament.assigned_categories || []}
             rivals={rivals}

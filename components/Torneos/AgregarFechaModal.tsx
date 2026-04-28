@@ -60,8 +60,8 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
         <div className="p-8 border-b border-slate-800 bg-slate-900/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-pink-600/10 rounded-2xl">
-                <Calendar className="text-pink-600" size={24} />
+              <div className="p-3 bg-primary-600/10 rounded-2xl">
+                <Calendar className="text-primary-600" size={24} />
               </div>
               <div>
                 <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Agregar Nueva Fecha</h2>
@@ -83,7 +83,7 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
               <select
                 value={rival}
                 onChange={(e) => setRival(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-pink-600 transition-all"
+                className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all"
                 required
               >
                 <option value="">SELECCIONAR RIVAL...</option>
@@ -101,7 +101,7 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-pink-600 transition-all"
+                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all"
                 required
               />
             </div>
@@ -110,7 +110,7 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
               <select
                 value={condition}
                 onChange={(e) => setCondition(e.target.value as any)}
-                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-pink-600 transition-all"
+                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all"
               >
                 <option value="Local">Local</option>
                 <option value="Visitante">Visitante</option>
@@ -122,7 +122,7 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !rival}
-              className="w-full py-5 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg shadow-pink-600/20 flex items-center justify-center gap-3"
+              className="w-full py-5 bg-primary-600 hover:bg-pink-700 disabled:opacity-50 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg shadow-pink-600/20 flex items-center justify-center gap-3"
             >
               {isSubmitting ? (
                 <>

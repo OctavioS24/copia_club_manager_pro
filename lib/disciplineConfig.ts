@@ -12,6 +12,9 @@ export interface EventType {
   icon: string;
   color: string;
   statsKey: string;
+  affects_score?: boolean;
+  score_value?: number;
+  scope?: 'OWN' | 'RIVAL' | 'BOTH';
 }
 
 export interface DisciplineConfig {
@@ -20,6 +23,7 @@ export interface DisciplineConfig {
   scoring_rules: ScoringRules;
   event_types: EventType[];
   dashboard_stats: string[];
+  additional_fields?: string[];
   updated_at?: string;
 }
 
@@ -27,28 +31,33 @@ export const DEFAULT_CONFIGS: Record<string, Partial<DisciplineConfig>> = {
   'FUTBOL': {
     scoring_rules: { win: 3, draw: 1, loss: 0 },
     event_types: [
-      { id: '1', name: 'GOL', icon: 'Goal', color: '#10b981', statsKey: 'GOLES_TOTALES' },
-      { id: '2', name: 'TARJETA AMARILLA', icon: 'Square', color: '#f59e0b', statsKey: 'TARJETAS_AMARILLAS' },
-      { id: '3', name: 'TARJETA ROJA', icon: 'Square', color: '#ef4444', statsKey: 'TARJETAS_ROJAS' },
+      { id: '1', name: 'GOL', icon: 'Goal', color: '#10b981', statsKey: 'GOLES_TOTALES', affects_score: true, score_value: 1, scope: 'BOTH' },
+      { id: '2', name: 'TARJETA AMARILLA', icon: 'Square', color: '#f59e0b', statsKey: 'TARJETAS_AMARILLAS', scope: 'OWN' },
+      { id: '3', name: 'TARJETA ROJA', icon: 'Square', color: '#ef4444', statsKey: 'TARJETAS_ROJAS', scope: 'OWN' },
     ],
-    dashboard_stats: ['PUNTOS_ACUMULADOS', 'GOLES_TOTALES', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL', 'TARJETAS_AMARILLAS', 'TARJETAS_ROJAS']
+    dashboard_stats: ['PUNTOS_ACUMULADOS', 'GOLES_TOTALES', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL', 'TARJETAS_AMARILLAS', 'TARJETAS_ROJAS'],
+    additional_fields: ['minuto']
   },
   'BASQUET': {
-    scoring_rules: { win: 2, draw: 1, loss: 1 }, // En básquet suele ser 2 por ganar, 1 por perder
+    scoring_rules: { win: 2, draw: 1, loss: 1 }, 
     event_types: [
-      { id: '1', name: 'PUNTO', icon: 'Target', color: '#f59e0b', statsKey: 'PUNTOS_TOTALES' },
-      { id: '2', name: 'FALTA', icon: 'AlertTriangle', color: '#ef4444', statsKey: 'FALTAS_TOTALES' },
+      { id: '1', name: 'PUNTO +1', icon: 'Target', color: '#f59e0b', statsKey: 'PUNTOS_TOTALES', affects_score: true, score_value: 1, scope: 'BOTH' },
+      { id: '2', name: 'PUNTO +2', icon: 'Target', color: '#3b82f6', statsKey: 'PUNTOS_TOTALES', affects_score: true, score_value: 2, scope: 'BOTH' },
+      { id: '3', name: 'PUNTO +3', icon: 'Target', color: '#ef4444', statsKey: 'PUNTOS_TOTALES', affects_score: true, score_value: 3, scope: 'BOTH' },
+      { id: '4', name: 'FALTA', icon: 'AlertTriangle', color: '#ef4444', statsKey: 'FALTAS_TOTALES', scope: 'BOTH' },
     ],
-    dashboard_stats: ['PUNTOS_TOTALES', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL', 'FALTAS_TOTALES']
+    dashboard_stats: ['PUNTOS_TOTALES', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL', 'FALTAS_TOTALES'],
+    additional_fields: ['cuarto', 'tiempo']
   },
   'RUGBY': {
     scoring_rules: { win: 4, draw: 2, loss: 0 },
     event_types: [
-      { id: '1', name: 'ENSAYO', icon: 'Trophy', color: '#10b981', statsKey: 'ENSAYOS' },
-      { id: '2', name: 'CONVERSIÓN', icon: 'Target', color: '#3b82f6', statsKey: 'PUNTOS_TOTALES' },
-      { id: '3', name: 'PENAL', icon: 'Target', color: '#f59e0b', statsKey: 'PUNTOS_TOTALES' },
+      { id: '1', name: 'ENSAYO', icon: 'Trophy', color: '#10b981', statsKey: 'ENSAYOS', affects_score: true, score_value: 5, scope: 'BOTH' },
+      { id: '2', name: 'CONVERSIÓN', icon: 'Target', color: '#3b82f6', statsKey: 'PUNTOS_TOTALES', affects_score: true, score_value: 2, scope: 'BOTH' },
+      { id: '3', name: 'PENAL', icon: 'Target', color: '#f59e0b', statsKey: 'PUNTOS_TOTALES', affects_score: true, score_value: 3, scope: 'BOTH' },
     ],
-    dashboard_stats: ['PUNTOS_ACUMULADOS', 'ENSAYOS', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL']
+    dashboard_stats: ['PUNTOS_ACUMULADOS', 'ENSAYOS', 'PARTIDOS_JUGADOS', 'RACHA_ACTUAL'],
+    additional_fields: ['minuto', 'tiempo']
   }
 };
 

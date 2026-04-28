@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabase';
 import { useCategory } from '../../context/useCategory';
 import { getPlayersByCategory } from '../../lib/playerUtils';
 import CargarResultadoModal from './CargarResultadoModal';
+import ConvocatoriaModal from './ConvocatoriaModal';
+import { Users } from 'lucide-react';
 
 interface FixtureViewProps {
   disciplineId?: string;
@@ -34,6 +36,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [showSquadModal, setShowSquadModal] = useState(false);
   const [clubName, setClubName] = useState('MI CLUB');
 
   const fetchData = React.useCallback(async () => {
@@ -94,7 +97,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500 gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-pink-500" />
+        <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
         <p className="font-black text-xs tracking-widest uppercase">Cargando Fixture...</p>
       </div>
     );
@@ -103,7 +106,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   if (matches.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-slate-800/10 rounded-[3rem] border border-dashed border-slate-700/50">
-        <Trophy size={64} className="mb-6 opacity-20 text-pink-500" />
+        <Trophy size={64} className="mb-6 opacity-20 text-primary-500" />
         <h3 className="text-xl font-black italic uppercase tracking-tighter mb-2">No hay fixture asignado</h3>
         <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Crea un torneo y asigna esta categoría para ver el fixture</p>
       </div>
@@ -115,13 +118,13 @@ const FixtureView: React.FC<FixtureViewProps> = ({
       {/* Header Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-800/40 border border-slate-700/50 rounded-[2.5rem] p-8">
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-pink-600 rounded-3xl flex items-center justify-center shadow-lg shadow-pink-600/20">
+          <div className="w-16 h-16 bg-primary-600 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-600/20">
             <Trophy className="w-8 h-8 text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Fixture de Competencia</h2>
             <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] mt-1">
-              Temporada 2024 <span className="text-pink-500 mx-2">|</span> {matches.length} Fechas Programadas
+              Temporada 2024 <span className="text-primary-500 mx-2">|</span> {matches.length} Fechas Programadas
             </p>
           </div>
         </div>
@@ -133,7 +136,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
           </div>
           <div className="bg-slate-900/50 px-6 py-3 rounded-2xl border border-slate-700/50 text-center">
             <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase mb-1">Pendientes</p>
-            <p className="text-xl font-black text-pink-500">{matches.filter(m => m.status === 'Scheduled').length}</p>
+            <p className="text-xl font-black text-primary-500">{matches.filter(m => m.status === 'Scheduled').length}</p>
           </div>
         </div>
       </div>
@@ -153,14 +156,14 @@ const FixtureView: React.FC<FixtureViewProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               className={`group relative bg-slate-800/30 border rounded-[2rem] overflow-hidden transition-all duration-500 ${
-                isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-slate-700/30 hover:border-pink-500/30'
+                isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-secondary-500/20 hover:border-secondary-500/50'
               }`}
             >
               <div className="p-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                   {/* Date & Round */}
                   <div className="flex flex-col items-center md:items-start gap-2 min-w-[120px]">
-                    <span className="text-[10px] font-black text-pink-500 uppercase tracking-[0.3em]">Fecha {index + 1}</span>
+                    <span className="text-[10px] font-black text-primary-500 uppercase tracking-[0.3em]">Fecha {index + 1}</span>
                     <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
                       <Calendar className="w-4 h-4" />
                       {new Date(match.date).toLocaleDateString()}
@@ -177,7 +180,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                     <div className="flex flex-col items-center gap-2">
                       <div className={`px-6 py-3 rounded-2xl font-black text-2xl md:text-3xl italic tracking-tighter border-2 transition-all duration-500 ${
                         isFinished 
-                          ? 'bg-pink-600/10 border-pink-500 text-white shadow-lg shadow-pink-500/10' 
+                          ? 'bg-primary-600/10 border-secondary-500/50 text-white shadow-lg shadow-primary-500/10' 
                           : isSuspended
                             ? 'bg-red-600/10 border-red-500 text-red-500'
                             : 'bg-slate-900 border-slate-700 text-slate-500'
@@ -200,6 +203,18 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-3">
+                    {!isFinished && !isSuspended && (
+                      <button
+                        onClick={() => {
+                          setSelectedMatch(match);
+                          setShowSquadModal(true);
+                        }}
+                        className="flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all bg-slate-700 hover:bg-slate-600 text-white"
+                      >
+                        <Users className="w-4 h-4" />
+                        CONVOCATORIA
+                      </button>
+                    )}
                     <button
                       disabled={isSuspended}
                       onClick={() => setSelectedMatch(match)}
@@ -208,7 +223,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                           ? 'bg-slate-700 hover:bg-slate-600 text-white'
                           : isSuspended
                             ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                            : 'bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-600/20'
+                            : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20'
                       }`}
                     >
                       {isFinished ? (
@@ -251,13 +266,32 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
       {/* Result Modal */}
       <AnimatePresence>
-        {selectedMatch && (
+        {selectedMatch && !showSquadModal && (
           <CargarResultadoModal
+            key="resultado-modal"
             match={selectedMatch}
             players={players}
+            isMyClubHome={selectedMatch.hometeam === clubName}
             onClose={() => setSelectedMatch(null)}
             onSuccess={() => {
               setSelectedMatch(null);
+              fetchData();
+            }}
+          />
+        )}
+        {selectedMatch && showSquadModal && (
+          <ConvocatoriaModal 
+            key="squad-modal"
+            match={selectedMatch}
+            players={players}
+            discipline={contextDisciplineId ? clubName : 'FUTBOL'} // Fallback
+            onClose={() => {
+              setSelectedMatch(null);
+              setShowSquadModal(false);
+            }}
+            onSuccess={() => {
+              setSelectedMatch(null);
+              setShowSquadModal(false);
               fetchData();
             }}
           />

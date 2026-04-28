@@ -103,6 +103,8 @@ export interface MedicalHistoryItem {
   expiry_date: string;
   notes: string;
   professional_name: string;
+  emac_date?: string;
+  process_number?: string;
 }
 
 export interface MedicalRecord {
@@ -110,7 +112,26 @@ export interface MedicalRecord {
   last_checkup: string;
   expiry_date: string;
   notes: string;
+  emac_date?: string;
+  process_number?: string;
   history: MedicalHistoryItem[];
+}
+
+export interface InjuryType {
+  id: string;
+  name: string;
+}
+
+export interface PlayerInjury {
+  id: string;
+  player_id: string;
+  type_id: string;
+  injury_date: string;
+  comment?: string;
+  attachments?: string[];
+  estimated_recovery?: string;
+  release_date?: string;
+  injury_type?: InjuryType;
 }
 
 export interface Player {
@@ -256,11 +277,36 @@ export interface Match {
   category_id?: string;
 }
 
+export interface MatchSquad {
+  id: string;
+  match_id: string;
+  tournament_id?: string;
+  category_id?: string;
+  discipline: string;
+  notes?: string;
+  players?: MatchSquadPlayer[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MatchSquadPlayer {
+  id: string;
+  squad_id: string;
+  player_id: string;
+  is_starting: boolean;
+  minutes_played: number;
+  player?: Member;
+}
+
 export interface MatchEvent {
   id: string;
   match_id: string;
-  player_id: string;
+  player_id?: string;
+  player_name?: string;
   type: MatchEventType;
   minute?: number;
   notes?: string;
+  is_rival?: boolean;
+  squad_player_id?: string;
+  additional_data?: Record<string, any>;
 }

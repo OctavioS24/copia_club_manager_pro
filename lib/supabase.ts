@@ -54,57 +54,103 @@ export const db = {
     
     upsert: async (member: any) => {
       // Mapeamos las claves de camelCase a lowercase para coincidir con la DB
-      const mappedMember = {
-        id: member.id,
-        name: member.name,
-        dni: member.dni,
-        gender: member.gender,
-        birthdate: member.birthDate || member.birthdate,
-        email: member.email,
-        phone: member.phone,
-        photourl: member.photoUrl || member.photourl,
-        address: member.address,
-        city: member.city,
-        province: member.province,
-        postalcode: member.postalCode || member.postalcode,
-        bloodtype: member.bloodType || member.bloodtype,
-        medicalinsurance: member.medicalInsurance || member.medicalinsurance,
-        weight: member.weight,
-        height: member.height,
-        tutor: member.tutor,
-        assignments: member.assignments,
-        status: member.status,
-        systemrole: member.systemRole || member.systemrole,
-        canlogin: member.canLogin || member.canlogin,
-        username: member.username,
-        overallrating: member.overallRating || member.overallrating,
-        stats: member.stats,
-        medical: member.medical,
-        created_at: member.created_at
-      };
+    const mappedMember = {
+      id: member.id,
+      name: member.name,
+      dni: member.dni,
+      gender: member.gender,
+      birthdate: member.birthDate || member.birthdate,
+      email: member.email,
+      phone: member.phone,
+      photourl: member.photoUrl || member.photourl,
+      address: member.address,
+      city: member.city,
+      province: member.province,
+      postalcode: member.postalCode || member.postalcode,
+      bloodtype: member.bloodType || member.bloodtype,
+      medicalinsurance: member.medicalInsurance || member.medicalinsurance,
+      weight: member.weight,
+      height: member.height,
+      tutor: member.tutor,
+      assignments: member.assignments,
+      status: member.status,
+      systemrole: member.systemRole || member.systemrole,
+      canlogin: member.canLogin || member.canlogin,
+      username: member.username,
+      overallrating: member.overallRating || member.overallrating,
+      stats: member.stats,
+      medical: member.medical,
+      created_at: member.created_at
+    };
 
-      // Limpiamos campos undefined
-      const cleanMember = Object.fromEntries(
-        Object.entries(mappedMember).filter(([, v]) => v !== undefined)
-      );
-      
-      const { data, error } = await supabase
-        .from('members')
-        .upsert(cleanMember);
-      
-      if (error) {
-        console.error("Error detallado de Supabase (Members):", error.message);
-        throw error;
-      }
-      return { data, error: null };
-    },
-      
-    delete: (id: string) => supabase
+    // Limpiamos campos undefined
+    const cleanMember = Object.fromEntries(
+      Object.entries(mappedMember).filter(([, v]) => v !== undefined)
+    );
+    
+    const { data, error } = await supabase
       .from('members')
-      .delete()
-      .eq('id', id)
+      .upsert(cleanMember);
+    
+    if (error) {
+      console.error("Error detallado de Supabase (Members):", error.message);
+      throw error;
+    }
+    return { data, error: null };
   },
-  tournaments: {
+    
+  delete: (id: string) => supabase
+    .from('members')
+    .delete()
+    .eq('id', id)
+},
+medical: {
+  getInjuryTypes: () => supabase
+    .from('injury_types')
+    .select('*')
+    .order('name', { ascending: true }),
+  
+  upsertInjuryType: (type: any) => supabase
+    .from('injury_types')
+    .upsert(type),
+  
+  getPlayerInjuries: (playerId: string) => supabase
+    .from('player_injuries')
+    .select('*, injury_type:injury_types(*)')
+    .eq('player_id', playerId)
+    .order('injury_date', { ascending: false }),
+  
+  upsertInjury: async (injury: any) => {
+    const cleanInjury = { ...injury };
+    delete cleanInjury.injury_type;
+    if (cleanInjury.release_date === '') cleanInjury.release_date = null;
+    return supabase.from('player_injuries').upsert(cleanInjury);
+  },
+
+  deleteInjury: (id: string) => supabase
+    .from('player_injuries')
+    .delete()
+    .eq('id', id),
+
+  uploadAttachment: async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `medical/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('medical_attachments')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('medical_attachments')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  }
+},
+tournaments: {
     getAll: () => supabase
       .from('tournaments')
       .select('*')
@@ -215,9 +261,12 @@ export const db = {
         events:match_events (
           id,
           playerid,
+          player_name,
           type,
           minute,
-          notes
+          notes,
+          is_rival,
+          additional_data
         )
       `)
       .eq('tournamentid', tournamentId)
@@ -284,9 +333,12 @@ export const db = {
         const eventsToSave = incidents.map((inc: any) => ({
           match_id: mData.id,
           playerid: inc.player_id || inc.playerId || inc.playerid,
+          player_name: inc.player_name || inc.playerName,
           type: inc.type,
-          minute: parseInt(inc.minute) || 0,
-          notes: inc.notes || ''
+          minute: parseInt(inc.minute || inc.additional_data?.minuto) || 0,
+          notes: inc.notes || '',
+          is_rival: inc.is_rival || false,
+          additional_data: inc.additional_data || {}
         }));
         await supabase.from('match_events').insert(eventsToSave);
       }
@@ -329,9 +381,7 @@ export const db = {
       .select('*')
       .order('name', { ascending: true }),
     
-    upsert: (player: any) => supabase
-      .from('members')
-      .upsert(player),
+    upsert: (player: any) => db.members.upsert(player),
       
     delete: (id: string) => supabase
       .from('members')
@@ -341,14 +391,88 @@ export const db = {
   fees: {
     getAll: () => supabase
       .from('fees')
-      .select('*, player:members(*)'),
+      .select('*')
+      .order('due_date', { ascending: false }),
     
-    upsert: (fee: any) => supabase
-      .from('fees')
-      .upsert(fee),
+    getDebtsByPlayer: (playerId: string) => {
+      const today = new Date().toISOString().split('T')[0];
+      return supabase
+        .from('fees')
+        .select('*')
+        .eq('member_id', playerId)
+        .eq('status', 'Pending')
+        .lt('due_date', today);
+    },
+
+    getAllDebts: () => {
+      const today = new Date().toISOString().split('T')[0];
+      return supabase
+        .from('fees')
+        .select('member_id')
+        .eq('status', 'Pending')
+        .lt('due_date', today);
+    },
+    
+    upsert: (fee: any) => {
+      const cleanFee = { ...fee };
+      delete cleanFee.member;
+      delete cleanFee.player;
+      return supabase
+        .from('fees')
+        .upsert(cleanFee);
+    },
+
+    upsertMany: (fees: any[]) => {
+      const cleanFees = fees.map(f => {
+        const cf = { ...f };
+        delete cf.member;
+        delete cf.player;
+        return cf;
+      });
+      return supabase
+        .from('fees')
+        .upsert(cleanFees);
+    },
+
+    uploadReceipt: async (file: File) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('fees_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('fees_attachments')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    },
     
     delete: (id: string) => supabase
       .from('fees')
+      .delete()
+      .eq('id', id)
+  },
+  feeConfigs: {
+    getAll: () => supabase
+      .from('fee_configs')
+      .select('*')
+      .order('discipline', { ascending: true }),
+    
+    upsert: (config: any) => supabase
+      .from('fee_configs')
+      .upsert(config),
+
+    upsertMany: (configs: any[]) => supabase
+      .from('fee_configs')
+      .upsert(configs),
+    
+    delete: (id: string) => supabase
+      .from('fee_configs')
       .delete()
       .eq('id', id)
   },

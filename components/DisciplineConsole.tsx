@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Discipline, ClubConfig, Member, Player } from '../types';
 import { 
   BarChart3, Users, CalendarCheck2, Stethoscope, ChevronLeft, 
-  Activity, Trophy, Loader2,
+  Activity, Trophy, 
   ChevronUp, ChevronDown
 } from 'lucide-react';
 import PlantelDashboard from './PlantelDashboard';
@@ -12,7 +12,6 @@ import MedicalDashboard from './MedicalDashboard';
 import PlayerCard from './PlayerCard';
 import PlantelLista from './PlantelLista';
 import FixtureView from './Torneos/FixtureView';
-import { db } from '../lib/supabase';
 
 interface DisciplineConsoleProps {
   discipline: Discipline;
@@ -27,8 +26,6 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
   const [selectedGender, setSelectedGender] = useState<'Masculino' | 'Femenino'>('Masculino');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [persistedPlayers, setPersistedPlayers] = useState<Player[]>([]);
-  const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(true);
 
   const activeBranch = useMemo(() => 
@@ -38,69 +35,48 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
   useEffect(() => {
     if (activeBranch && activeBranch.categories.length > 0) {
       if (!activeBranch.categories.find(c => c.id === selectedCategoryId)) {
-        setSelectedCategoryId(activeBranch.categories[0].id);
+        // Use timeout to move setState out of the synchronous render/effect cycle
+        setTimeout(() => {
+          setSelectedCategoryId(activeBranch.categories[0].id);
+        }, 0);
       }
     }
   }, [activeBranch, selectedCategoryId]);
 
-  const fetchPlayersData = React.useCallback(async () => {
-    if (!selectedCategoryId || !activeBranch) return;
-    setIsLoadingPlayers(true);
-    try {
-      const categoryName = activeBranch.categories.find(c => c.id === selectedCategoryId)?.name;
-      const { data } = await db.players.getAll();
-      if (data) {
-        const filtered = data.filter(p => {
-          const matchesDisc = p.discipline === discipline.name;
-          const matchesCat = p.category === categoryName;
-          return matchesDisc && matchesCat;
-        });
-        setPersistedPlayers(filtered);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingPlayers(false);
-    }
-  }, [selectedCategoryId, activeBranch, discipline.name]);
-
-  useEffect(() => {
-    fetchPlayersData();
-  }, [selectedCategoryId, discipline.name, selectedGender, fetchPlayersData]);
-
-  const displayPlayers = useMemo(() => {
+  const displayPlayers: Player[] = useMemo(() => {
     if (!selectedCategoryId) return [];
     
+    // Filter members based on category and discipline assignments
     const assignedMembers = members.filter(m => {
       if (!m.assignments) return false;
       return m.assignments.some((a: any) => {
         const aDiscId = a.discipline_id || a.disciplineId;
         const aCatId = a.category_id || a.categoryId;
-        return aDiscId === discipline.id && aCatId === selectedCategoryId && a.role === 'PLAYER';
+        return aDiscId === discipline.id && aCatId === selectedCategoryId && (a.role === 'PLAYER' || a.role === 'JUGADOR');
       });
     });
 
     return assignedMembers.map(m => {
-      const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
       const categoryName = activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || '';
       return {
-        id: m.id, // Usamos el ID del miembro como base
+        id: m.id,
         name: m.name,
         dni: m.dni,
-        number: savedData?.number || '00',
-        position: savedData?.position || 'N/A',
+        number: m.number || '00',
+        position: m.position || 'N/A',
         discipline: discipline.name,
         gender: m.gender,
         category: categoryName,
-        photoUrl: m.photoUrl,
+        photoUrl: m.photourl || m.photoUrl,
+        photourl: m.photourl || m.photoUrl,
         email: m.email,
-        overallRating: savedData?.overallRating || 0,
-        stats: savedData?.stats || {},
-        medical: savedData?.medical || { isFit: true, expiryDate: '' },
-        status: savedData?.status || 'Active'
+        overallRating: m.overallrating || m.overallRating || 0,
+        stats: m.stats || {},
+        medical: m.medical || { is_fit: true, expiry_date: '' },
+        status: m.status || 'Active'
       };
     });
-  }, [members, discipline.id, discipline.name, selectedCategoryId, persistedPlayers, activeBranch]);
+  }, [members, discipline.id, discipline.name, selectedCategoryId, activeBranch]);
 
   const subTabs = [
     { id: 'summary', label: 'Dashboard', icon: BarChart3 },
@@ -184,34 +160,25 @@ const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubC
 
       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#080a0f] p-4 md:p-8 custom-scrollbar">
         <div className="max-w-7xl mx-auto">
-          {isLoadingPlayers ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <Loader2 className="animate-spin text-primary-600 mb-2" size={24} />
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Sincronizando...</p>
-            </div>
-          ) : (
-            <>
-              {activeSubTab === 'summary' && <PlantelDashboard clubConfig={clubConfig} members={members} />}
-              {activeSubTab === 'players' && (
-                <PlantelLista 
-                  disciplineId={discipline.id}
-                  categoryId={selectedCategoryId}
-                  disciplineName={discipline.name}
-                  categoryName={activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || ''}
-                  onPlayerClick={(p) => setSelectedPlayer(p)}
-                />
-              )}
-              {activeSubTab === 'attendance' && <Asistencia players={displayPlayers} forceSelectedDisc={discipline.name} />}
-              {activeSubTab === 'fixture' && (
-                <FixtureView 
-                  disciplineId={discipline.id} 
-                  categoryId={selectedCategoryId}
-                  gender={selectedGender}
-                />
-              )}
-              {activeSubTab === 'medical' && <MedicalDashboard players={displayPlayers} onRefresh={fetchPlayersData} />}
-            </>
+          {activeSubTab === 'summary' && <PlantelDashboard clubConfig={clubConfig} members={members} />}
+          {activeSubTab === 'players' && (
+            <PlantelLista 
+              disciplineId={discipline.id}
+              categoryId={selectedCategoryId}
+              disciplineName={discipline.name}
+              categoryName={activeBranch?.categories.find(c => c.id === selectedCategoryId)?.name || ''}
+              onPlayerClick={(p) => setSelectedPlayer(p)}
+            />
           )}
+          {activeSubTab === 'attendance' && <Asistencia players={displayPlayers} forceSelectedDisc={discipline.name} />}
+          {activeSubTab === 'fixture' && (
+            <FixtureView 
+              disciplineId={discipline.id} 
+              categoryId={selectedCategoryId}
+              gender={selectedGender}
+            />
+          )}
+          {activeSubTab === 'medical' && <MedicalDashboard players={displayPlayers} onRefresh={onRefresh} />}
         </div>
       </div>
 

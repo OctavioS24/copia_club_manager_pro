@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Tournament, Match, Player, Category, Discipline, ClubConfig, TournamentParticipant, Member, Rival, MatchFixture } from '../types';
 import { 
   Trophy, Plus, Calendar, Trash2, X, ChevronRight, Edit3, 
@@ -15,6 +16,9 @@ import {
   suspendFullDate, resumeFullDate, 
   updateMatchStatus 
 } from '../lib/torneos';
+
+import ConvocatoriaModal from './Torneos/ConvocatoriaModal';
+import { getPlayersByCategory } from '../lib/playerUtils';
 
 interface TournamentManagementProps {
   discipline: Discipline;
@@ -56,8 +60,10 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
-  const [viewMode, setViewMode] = useState<'fixture' | 'groups' | 'bracket' | 'participants' | 'fixture_base'>('fixture');
+  const [viewMode, setViewMode] = useState<'fixture' | 'groups' | 'bracket' | 'participants' | 'fixture_base' | 'lineups'>('fixture');
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showSquadModal, setShowSquadModal] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [tournamentToDelete, setTournamentToDelete] = useState<{id: string, name: string} | null>(null);
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
@@ -538,7 +544,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                       { id: 'fixture_base', label: 'Fixture Base', icon: TableIcon },
                       { id: 'groups', label: 'Tablas', icon: ListOrdered, show: activeTournament.settings.has_groups },
                       { id: 'bracket', label: 'Playoffs', icon: GitBranch, show: activeTournament.settings.has_playoffs },
-                      { id: 'participants', label: 'Equipos', icon: Users, show: true }
+                      { id: 'participants', label: 'Equipos', icon: Users, show: true },
+                      { id: 'lineups', label: 'Planillas', icon: UserCircle, show: true }
                     ].map(item => (item.show !== false) && (
                       <button key={item.id} onClick={() => setViewMode(item.id as any)} className={`w-full p-4 rounded-2xl flex items-center gap-4 text-[11px] font-black uppercase transition-all ${viewMode === item.id ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>
                         <item.icon size={16} /> {item.label}
@@ -556,7 +563,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                   <div className="space-y-8 animate-fade-in">
                     <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
                       <div>
-                        <span className="px-4 py-1.5 bg-pink-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{activeTournament.name}</span>
+                        <span className="px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{activeTournament.name}</span>
                         <h3 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mt-3">Fixture Base</h3>
                         <p className="text-slate-400 text-[10px] font-bold uppercase mt-2">Define el orden de partidos para replicar en todas las categorías</p>
                       </div>
@@ -569,7 +576,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                         </button>
                         <button 
                           onClick={saveFixtureBase}
-                          className="bg-pink-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
+                          className="bg-primary-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
                         >
                           <CheckCircle size={16} /> Guardar Base
                         </button>
@@ -647,6 +654,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                 )}
                 {viewMode === 'fixture' && (
                   <>
+                     {/* Convocatoria Modal Integration within Fixture View */}
                      <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8">
                         <div className="flex-1">
                           <span className="px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{activeTournament.name}</span>
@@ -740,6 +748,17 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                       {!m.is_overridden && (
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                           <button 
+                                            onClick={(e) => { 
+                                              e.stopPropagation(); 
+                                              setSelectedMatch(m); 
+                                              setShowSquadModal(true); 
+                                            }} 
+                                            className="p-2 rounded-lg bg-primary-600/10 text-primary-600 hover:bg-primary-600 hover:text-white"
+                                            title="Armar Convocatoria"
+                                          >
+                                            <Users size={14} />
+                                          </button>
+                                          <button 
                                             onClick={(e) => { e.stopPropagation(); handleToggleSuspension(m.id, m.status); }} 
                                             className={`p-2 rounded-lg transition-colors ${m.status === 'Suspended' ? 'text-green-500 bg-green-500/10' : 'text-orange-500 bg-orange-500/10'}`}
                                             title={m.status === 'Suspended' ? 'Reanudar' : 'Suspender'}
@@ -787,6 +806,41 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                      ))}
                   </div>
                 )}
+                {viewMode === 'lineups' && (
+                   <div className="space-y-6">
+                      <div className="bg-white dark:bg-[#0f1219]/40 p-10 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-sm">
+                        <h3 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Gestión de Planillas</h3>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase mt-2">Selecciona un partido para definir convocados y titulares</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        {matches.filter(m => !m.is_overridden).map(m => (
+                          <div 
+                            key={m.id} 
+                            onClick={() => { setSelectedMatch(m); setShowSquadModal(true); }}
+                            className="bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-10 group hover:border-primary-600 hover:bg-slate-50 transition-all cursor-pointer"
+                          >
+                             <div className="flex-1 text-right">
+                                <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.home_team}</p>
+                             </div>
+                             <div className="flex flex-col items-center gap-2">
+                                <div className="bg-slate-100 dark:bg-white/5 px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                  {new Date(m.date).toLocaleDateString()}
+                                </div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-primary-600">
+                                  {discipline?.branches.flatMap(b => b.categories).find(c => c.id === (m.categoryid || (m as any).category_id || (m as any).category))?.name || (m.categoryid || (m as any).category_id || (m as any).category) || 'Categoría'}
+                                </div>
+                             </div>
+                             <div className="flex-1 text-left">
+                                <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.away_team}</p>
+                             </div>
+                             <div className="p-3 bg-primary-600 text-white rounded-2xl shadow-lg shadow-primary-600/20">
+                               <Users size={20} />
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+                 )}
              </div>
            ) : (
              <div className="py-40 text-center bg-white dark:bg-[#0f1219]/30 rounded-[4rem] border-4 border-dashed border-slate-200 dark:border-white/5 flex flex-col items-center justify-center">
@@ -1139,6 +1193,37 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
           getRivals().then(setRivals); // Refresh rivals list
         }} />
       )}
+
+      <AnimatePresence>
+        {selectedMatch && showSquadModal && (
+          <ConvocatoriaModal 
+            match={selectedMatch}
+            players={allMembers.filter(m => {
+              const catId = selectedMatch.categoryid || (selectedMatch as any).category_id || (selectedMatch as any).category;
+              const catObj = discipline?.branches.flatMap(b => b.categories).find(c => c.id === catId);
+              
+              return getPlayersByCategory(
+                [m],
+                discipline?.name || '',
+                gender,
+                catObj?.name || '',
+                discipline?.id,
+                catId
+              ).length > 0;
+            }) as any}
+            discipline={discipline?.name || 'FUTBOL'}
+            onClose={() => {
+              setSelectedMatch(null);
+              setShowSquadModal(false);
+            }}
+            onSuccess={() => {
+              setSelectedMatch(null);
+              setShowSquadModal(false);
+              loadInitialData();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

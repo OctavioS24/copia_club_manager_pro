@@ -18,7 +18,7 @@ interface MasterDataProps {
 }
 
 const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
-  const [activeTab, setActiveTab] = useState<'disciplines' | 'matrix' | 'identity' | 'positions' | 'rules' | 'rivals'>('disciplines');
+  const [activeTab, setActiveTab] = useState<'disciplines' | 'matrix' | 'identity' | 'positions' | 'rules' | 'rivals'>('identity');
   const [localConfig, setLocalConfig] = useState<ClubConfig>(config);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
@@ -163,12 +163,12 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
           </h2>
           <div className="flex gap-6 mt-10 overflow-x-auto no-scrollbar pb-2">
             {[
-              { id: 'disciplines', label: '1. Disciplinas', icon: Shield },
-              { id: 'matrix', label: '2. Matriz Deportiva', icon: Database },
-              { id: 'identity', label: '3. Identidad Club', icon: Palette },
-              { id: 'positions', label: '4. Puestos', icon: LayoutGrid },
-              { id: 'rules', label: '5. Reglas', icon: Settings2 },
-              { id: 'rivals', label: '6. Rivales', icon: Shield }
+              { id: 'identity', label: '1. Identidad Club', icon: Palette },
+              { id: 'disciplines', label: '2. Disciplinas', icon: Shield },
+              { id: 'rules', label: '3. Reglas', icon: Settings2 },
+              { id: 'matrix', label: '4. Matriz Deportiva', icon: Database },
+              { id: 'rivals', label: '5. Rivales', icon: Shield },
+              { id: 'positions', label: '6. Puestos', icon: LayoutGrid }
             ].map(tab => (
               <button 
                 key={tab.id}
@@ -193,7 +193,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
           <button 
             onClick={handleSave} 
             disabled={isSaving || !isEditingEnabled}
-            className={`flex-1 lg:flex-none flex items-center justify-center gap-4 px-10 py-4 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-primary-600 text-white hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:hover:scale-100'}`}
+            className={`flex-1 lg:flex-none flex items-center justify-center gap-4 px-10 py-4 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-secondary-600 text-white hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:hover:scale-100'}`}
           >
             {isSaving ? <Loader2 className="animate-spin" size={18} /> : (showSaved ? <CheckCircle size={18} /> : <Save size={18} />)}
             <span>{isSaving ? 'Guardando' : (showSaved ? 'Guardado' : 'Guardar Cambios')}</span>
@@ -201,7 +201,94 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
         </div>
       </header>
 
-      {/* --- TAB 1: DISCIPLINAS --- */}
+      {/* --- TAB 1: IDENTIDAD --- */}
+      {activeTab === 'identity' && (
+        <div className="bg-white dark:bg-[#0f1219] rounded-[4rem] border border-slate-200 dark:border-white/5 p-16 animate-fade-in shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24">
+            <div className="space-y-12">
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Nombre de la Institución</label>
+                {isEditingEnabled ? (
+                  <input 
+                    value={localConfig.name}
+                    onChange={e => setLocalConfig({...localConfig, name: e.target.value.toUpperCase()})}
+                    className="w-full bg-slate-50 dark:bg-white/5 p-8 rounded-[2.5rem] font-black text-4xl uppercase tracking-tighter dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all shadow-inner"
+                    placeholder="NOMBRE DEL CLUB"
+                  />
+                ) : (
+                  <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                    <h3 className="font-black text-4xl uppercase tracking-tighter dark:text-white leading-none">{localConfig.name}</h3>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-10">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Principal</label>
+                  <div className={`flex items-center gap-6 p-6 rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
+                    <input 
+                      type="color" 
+                      disabled={!isEditingEnabled}
+                      value={localConfig.primary_color} 
+                      onChange={e => setLocalConfig({...localConfig, primary_color: e.target.value})} 
+                      className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
+                    />
+                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.primary_color}</span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Fondo</label>
+                  <div className={`flex items-center gap-6 p-6 rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
+                    <input 
+                      type="color" 
+                      disabled={!isEditingEnabled}
+                      value={localConfig.secondary_color} 
+                      onChange={e => setLocalConfig({...localConfig, secondary_color: e.target.value})} 
+                      className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
+                    />
+                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.secondary_color}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={`flex flex-col items-center justify-center p-16 rounded-[4rem] border-4 border-dashed relative group transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10' : 'bg-transparent border-transparent'}`}>
+              <input type="file" ref={fileInputRef} onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => setLocalConfig({...localConfig, logo_url: reader.result as string});
+                  reader.readAsDataURL(file);
+                }
+              }} accept="image/*" className="hidden" />
+              
+              <div className="w-64 h-64 rounded-full bg-white dark:bg-slate-900 shadow-3xl flex items-center justify-center overflow-hidden mb-12 border-8 border-white dark:border-slate-800 relative group">
+                {localConfig.logo_url ? (
+                  <img src={localConfig.logo_url} className="w-full h-full object-contain p-8" />
+                ) : (
+                  <Shield size={80} className="text-slate-100 dark:text-slate-800" />
+                )}
+                {isEditingEnabled && (
+                  <div onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-primary-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera size={48} className="text-white" />
+                  </div>
+                )}
+              </div>
+              
+              {isEditingEnabled && (
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-12 py-5 bg-slate-900 dark:bg-primary-600 text-white rounded-full font-bold uppercase text-[10px] tracking-widest shadow-2xl hover:scale-105 transition-all"
+                >
+                  Actualizar Escudo Club
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TAB 2: DISCIPLINAS --- */}
       {activeTab === 'disciplines' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in">
           {localConfig.disciplines.map(disc => (
@@ -267,7 +354,12 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
         </div>
       )}
 
-      {/* --- TAB 2: MATRIZ DEPORTIVA --- */}
+      {/* --- TAB 3: REGLAS POR DISCIPLINA --- */}
+      {activeTab === 'rules' && (
+        <ReglasPorDisciplina disciplines={localConfig.disciplines} />
+      )}
+
+      {/* --- TAB 4: MATRIZ DEPORTIVA --- */}
       {activeTab === 'matrix' && (
         <div className="space-y-12 animate-fade-in">
           {/* Header de selección de disciplina */}
@@ -345,7 +437,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                               {branch.enabled && <CheckCircle size={16} className="text-white" />}
                           </div>
                           <h4 className="font-black uppercase text-2xl tracking-tighter dark:text-white flex items-center gap-3 italic truncate">
-                             <User size={24} className={branch.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'} />
+                             <User size={24} className={branch.gender === 'Masculino' ? 'text-blue-500' : 'text-primary-500'} />
                              Rama {branch.gender}
                           </h4>
                         </label>
@@ -434,7 +526,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                               <div className="flex flex-col items-end shrink-0">
                                                 <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Impacto</span>
                                                 <input 
-                                                  type="number" 
+                                                  type="color" 
                                                   disabled={!isEditingEnabled}
                                                   value={metric.weight}
                                                   onChange={e => setLocalConfig({...localConfig, disciplines: localConfig.disciplines.map(d => d.id === selectedDiscipline.id ? {...d, branches: d.branches.map(b => b.gender === branch.gender ? {...b, categories: b.categories.map(c => c.id === cat.id ? {...c, metrics: c.metrics.map(m => m.id === metric.id ? {...m, weight: parseInt(e.target.value) || 1} : m)} : c)} : b)} : d)})}
@@ -484,105 +576,14 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
         </div>
       )}
 
-      {/* --- TAB 3: IDENTIDAD --- */}
-      {activeTab === 'identity' && (
-        <div className="bg-white dark:bg-[#0f1219] rounded-[4rem] border border-slate-200 dark:border-white/5 p-16 animate-fade-in shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24">
-            <div className="space-y-12">
-              <div className="space-y-4">
-                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Nombre de la Institución</label>
-                {isEditingEnabled ? (
-                  <input 
-                    value={localConfig.name}
-                    onChange={e => setLocalConfig({...localConfig, name: e.target.value.toUpperCase()})}
-                    className="w-full bg-slate-50 dark:bg-white/5 p-8 rounded-[2.5rem] font-black text-4xl uppercase tracking-tighter dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all shadow-inner"
-                    placeholder="NOMBRE DEL CLUB"
-                  />
-                ) : (
-                  <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                    <h3 className="font-black text-4xl uppercase tracking-tighter dark:text-white leading-none">{localConfig.name}</h3>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-10">
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Principal</label>
-                  <div className={`flex items-center gap-6 p-6 rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
-                    <input 
-                      type="color" 
-                      disabled={!isEditingEnabled}
-                      value={localConfig.primary_color} 
-                      onChange={e => setLocalConfig({...localConfig, primary_color: e.target.value})} 
-                      className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
-                    />
-                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.primary_color}</span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Fondo</label>
-                  <div className={`flex items-center gap-6 p-6 rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
-                    <input 
-                      type="color" 
-                      disabled={!isEditingEnabled}
-                      value={localConfig.secondary_color} 
-                      onChange={e => setLocalConfig({...localConfig, secondary_color: e.target.value})} 
-                      className={`w-16 h-16 rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
-                    />
-                    <span className="font-mono text-sm font-bold text-slate-500 uppercase">{localConfig.secondary_color}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className={`flex flex-col items-center justify-center p-16 rounded-[4rem] border-4 border-dashed relative group transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10' : 'bg-transparent border-transparent'}`}>
-              <input type="file" ref={fileInputRef} onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => setLocalConfig({...localConfig, logo_url: reader.result as string});
-                  reader.readAsDataURL(file);
-                }
-              }} accept="image/*" className="hidden" />
-              
-              <div className="w-64 h-64 rounded-full bg-white dark:bg-slate-900 shadow-3xl flex items-center justify-center overflow-hidden mb-12 border-8 border-white dark:border-slate-800 relative group">
-                {localConfig.logo_url ? (
-                  <img src={localConfig.logo_url} className="w-full h-full object-contain p-8" />
-                ) : (
-                  <Shield size={80} className="text-slate-100 dark:text-slate-800" />
-                )}
-                {isEditingEnabled && (
-                  <div onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-primary-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <Camera size={48} className="text-white" />
-                  </div>
-                )}
-              </div>
-              
-              {isEditingEnabled && (
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-12 py-5 bg-slate-900 dark:bg-primary-600 text-white rounded-full font-bold uppercase text-[10px] tracking-widest shadow-2xl hover:scale-105 transition-all"
-                >
-                  Actualizar Escudo Club
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* --- TAB 4: PUESTOS POR DISCIPLINA --- */}
-      {activeTab === 'positions' && (
-        <PosicionesPorDisciplina disciplines={localConfig.disciplines} />
-      )}
-
-      {/* --- TAB 5: REGLAS POR DISCIPLINA --- */}
-      {activeTab === 'rules' && (
-        <ReglasPorDisciplina disciplines={localConfig.disciplines} />
-      )}
-
-      {/* --- TAB 6: RIVALES POR DISCIPLINA --- */}
+      {/* --- TAB 5: RIVALES POR DISCIPLINA --- */}
       {activeTab === 'rivals' && (
         <RivalesPorDisciplina disciplines={localConfig.disciplines} />
+      )}
+
+      {/* --- TAB 6: PUESTOS POR DISCIPLINA --- */}
+      {activeTab === 'positions' && (
+        <PosicionesPorDisciplina disciplines={localConfig.disciplines} />
       )}
     </div>
   );

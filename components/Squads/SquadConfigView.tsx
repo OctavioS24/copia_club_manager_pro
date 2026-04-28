@@ -12,12 +12,14 @@ import PlantelLista from '../PlantelLista';
 import Asistencia from '../Asistencia';
 import FixtureView from '../Torneos/FixtureView';
 import MedicalDashboard from '../MedicalDashboard';
+import SquadsTab from './SquadsTab';
 
 interface SquadConfigViewProps {
   config?: ClubConfig;
+  members?: Member[];
 }
 
-const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig }) => {
+const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, members: propMembers }) => {
   const { disciplineId } = useParams<{ disciplineId: string }>();
   const navigate = useNavigate();
   const { 
@@ -121,7 +123,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-pink-500 animate-spin" />
+        <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
       </div>
     );
   }
@@ -132,7 +134,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
         <h1 className="text-2xl font-bold mb-4">Disciplina no encontrada</h1>
         <button 
           onClick={() => navigate('/')}
-          className="bg-pink-600 hover:bg-pink-700 px-6 py-2 rounded-xl transition-colors"
+          className="bg-primary-600 hover:bg-primary-700 px-6 py-2 rounded-xl transition-colors"
         >
           Volver al Inicio
         </button>
@@ -157,15 +159,17 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
 
     switch (activeTab) {
       case 'dashboard':
-        return <PlantelDashboard />;
+        return <PlantelDashboard clubConfig={propConfig!} members={propMembers || []} />;
       case 'plantel':
         return <PlantelLista />;
       case 'asistencia':
         return <Asistencia />;
       case 'fixture':
         return <FixtureView />;
+      case 'squads':
+        return <SquadsTab />;
       case 'medico':
-        return <MedicalDashboard />;
+        return <MedicalDashboard readOnly={true} />;
       default:
         return <PlantelDashboard />;
     }
@@ -176,6 +180,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
     { id: 'plantel', label: 'PLANTEL', icon: Users },
     { id: 'asistencia', label: 'ASISTENCIA', icon: CalendarCheck },
     { id: 'fixture', label: 'FIXTURE', icon: Trophy },
+    { id: 'squads', label: 'CONVOCATORIAS', icon: Users },
     { id: 'medico', label: 'MÉDICO', icon: Activity },
   ];
 
@@ -198,7 +203,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
                     <select 
                       value={selectedGender || ''}
                       onChange={(e) => handleGenderChange(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all cursor-pointer"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer"
                     >
                       <option value="" disabled>Seleccionar Rama</option>
                       {discipline.branches.filter(b => b.enabled).map(branch => (
@@ -218,7 +223,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
                       disabled={!selectedGender}
                       value={selectedDivision || ''}
                       onChange={(e) => handleDivisionChange(e.target.value)}
-                      className={`w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all cursor-pointer ${!selectedGender ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer ${!selectedGender ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <option value="" disabled>Seleccionar División</option>
                       {categories.map(cat => (
@@ -247,8 +252,8 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig })
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 group ${
                         isActive 
-                          ? 'bg-pink-600 shadow-lg shadow-pink-600/20 text-white' 
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-pink-500'
+                          ? 'bg-primary-600 shadow-lg shadow-primary-600/20 text-white' 
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-primary-500'
                       }`}
                     >
                       <Icon size={24} className={`mb-3 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />

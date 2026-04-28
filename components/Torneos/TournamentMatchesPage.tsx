@@ -43,7 +43,7 @@ const TournamentMatchesPage: React.FC<TournamentMatchesPageProps> = ({ clubConfi
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
-        <Loader2 className="animate-spin text-pink-600" size={40} />
+        <Loader2 className="animate-spin text-primary-600" size={40} />
         <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando torneo...</p>
       </div>
     );
