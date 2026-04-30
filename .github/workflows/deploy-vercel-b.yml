@@ -10,19 +10,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20 # O la versión que uses
-
-      - name: Install Dependencies
-        run: npm install # Esto asegura que todas las librerías estén listas
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
       - name: Deploy to Vercel
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        run: |
+          git config --global user.email "plegma.caab@gmail.com"
+          git config --global user.name "plegma-caab"
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes --force
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
