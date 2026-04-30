@@ -10,6 +10,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # O la versión que uses
+
+      - name: Install Dependencies
+        run: npm install # Esto asegura que todas las librerías estén listas
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
