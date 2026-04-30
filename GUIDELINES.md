@@ -12,7 +12,7 @@ Para evitar errores **400 (Bad Request)**, se debe respetar estrictamente el mod
 *   **camelCase:** Para todos los campos que mapean directamente a las interfaces de TypeScript/UI (`birthDate`, `photoUrl`, `overallRating`, `tournamentId`, `homeTeam`).
 *   **SQL Syntax:** Al crear o modificar columnas camelCase, usa siempre comillas: `ALTER TABLE members ADD COLUMN "newField" TEXT;`.
 
----
+--- 
 
 ## 2. 🎨 Arquitectura de Componentes y Estilo Visual
 La App utiliza un estilo **"Premium Dark Editorial"**. No se deben introducir componentes que rompan esta estética.
