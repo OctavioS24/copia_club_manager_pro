@@ -14,24 +14,24 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      # 1. Este paso descarga las variables (Supabase, etc.) desde Vercel 
+      # a un archivo .env temporal que NO se sube al repo.
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
+      # 2. El Build ahora lee automáticamente ese archivo .env temporal
       - name: Build Project Artifacts
-        # Añadimos debug para ver errores ocultos
-        run: vercel build --prod --debug --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      # 3. Se despliega el resultado final
       - name: Deploy Project Artifacts to Vercel
-        # Añadimos --scope con el Org ID para asegurar que va a la cuenta del cliente
-        run: vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }}
+        run: vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
