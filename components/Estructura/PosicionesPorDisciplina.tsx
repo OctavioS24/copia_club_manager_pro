@@ -91,37 +91,42 @@ const PosicionesPorDisciplina: React.FC<PosicionesPorDisciplinaProps> = ({ disci
   return (
     <div className="space-y-12 animate-fade-in">
       {/* Selector de Disciplina */}
-      <div className="bg-white dark:bg-[#0f1219] p-8 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-2xl">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-primary-600/10 rounded-2xl flex items-center justify-center text-primary-600 shadow-inner">
-            <LayoutGrid size={24} />
+      <div className="bg-white dark:bg-[#0f1219] p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl">
+        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-600 shadow-inner shrink-0">
+            <LayoutGrid size={20} md:size={24} />
           </div>
-          <div className="flex-1">
-            <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina Seleccionada</h4>
-            <select 
-              value={selectedDiscipline}
-              onChange={(e) => setSelectedDiscipline(e.target.value)}
-              className="w-full bg-transparent font-black text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer"
-            >
-              {disciplines.map(d => (
-                <option key={d.id} value={d.name} className="bg-slate-900 text-white font-sans text-sm p-4">
-                  {d.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col min-w-0 flex-1">
+            <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina Seleccionada</h4>
+            <div className="relative group">
+              <select 
+                value={selectedDiscipline}
+                onChange={(e) => setSelectedDiscipline(e.target.value)}
+                className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
+              >
+                {disciplines.map(d => (
+                  <option key={d.id} value={d.name} className="bg-slate-900 text-white font-sans text-sm p-4 text-[10px] uppercase tracking-widest font-bold">
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-primary-600 transition-colors">
+                <ChevronDown size={22} className="md:size-24" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Lista de Puestos */}
-      <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-sm">
-        <div className="flex items-center justify-between mb-10">
-          <h3 className="text-2xl font-black uppercase tracking-tighter dark:text-white italic flex items-center gap-3">
-            <Shield size={24} className="text-primary-600" />
-            Puestos para {selectedDiscipline}
+      <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-200 dark:border-white/5 p-6 md:p-12 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 md:mb-10">
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter dark:text-white italic flex items-center gap-3">
+            <Shield size={20} md:size={24} className="text-primary-600 flex-shrink-0" />
+            <span className="truncate">Puestos para {selectedDiscipline}</span>
           </h3>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            {positions.length} Puestos Configurados
+          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {positions.length} Configurados
           </span>
         </div>
 

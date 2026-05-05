@@ -280,67 +280,62 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       ) : (
         <div className="space-y-8 animate-fade-in">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PUNTOS_ACUMULADOS')) && (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-primary-600/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-primary-600/5 rounded-bl-full"></div>
+              <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-primary-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-primary-600/5 rounded-bl-full"></div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Puntos Acumulados</p>
-                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{points} <span className="text-xs not-italic text-slate-400 ml-1">PTS</span></h3>
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-3">Puntos Acumulados</p>
+                    <h3 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{points} <span className="text-[10px] md:text-xs not-italic text-slate-400 ml-1">PTS</span></h3>
                   </div>
-                  <div className="p-5 rounded-2xl bg-primary-600/10 text-primary-600 group-hover:scale-110 transition-transform shadow-lg shadow-primary-600/5">
-                    <Trophy size={24} />
+                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-primary-600/10 text-primary-600 group-hover:scale-110 transition-transform shadow-lg shadow-primary-600/5">
+                    <Trophy size={20} md:size={24} />
                   </div>
                 </div>
               </div>
             )}
 
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('RACHA_ACTUAL')) && (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-emerald-600/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/5 rounded-bl-full"></div>
+              <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-emerald-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-emerald-600/5 rounded-bl-full"></div>
                 <div className="flex justify-between items-start relative z-10">
                   <div className="flex-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Racha Actual</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-1.5">
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-3">Racha Actual</p>
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="flex gap-1">
                         {visualStreak.length > 0 ? visualStreak.map((s, i) => (
-                          <div key={i} className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center text-white text-[10px] font-black shadow-lg shadow-black/10`}>
+                          <div key={i} className={`w-7 h-7 md:w-8 md:h-8 rounded-lg ${s.color} flex items-center justify-center text-white text-[9px] md:text-[10px] font-black shadow-lg shadow-black/10`}>
                             {s.result}
                           </div>
                         )) : (
-                          <span className="text-xs font-black text-slate-300">SIN DATOS</span>
+                          <span className="text-[10px] font-black text-slate-300 uppercase">Sin Datos</span>
                         )}
                       </div>
                       {trend !== 'neutral' && (
-                        <div className={`p-2 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
-                          {trend === 'up' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-                        </div>
-                      )}
-                      {trend === 'neutral' && visualStreak.length > 0 && (
-                        <div className="p-2 rounded-full bg-slate-500/20 text-slate-500">
-                          <MoveRight size={18} />
+                        <div className={`p-1.5 md:p-2 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
+                          {trend === 'up' ? <TrendingUp size={16} md:size={18} /> : <TrendingDown size={16} md:size={18} />}
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="p-5 rounded-2xl bg-emerald-600/10 text-emerald-600 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-600/5">
-                    <Activity size={24} />
+                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-emerald-600/10 text-emerald-600 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-600/5">
+                    <Activity size={20} md:size={24} />
                   </div>
                 </div>
               </div>
             )}
 
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PARTIDOS_JUGADOS')) && (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-blue-600/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/5 rounded-bl-full"></div>
+              <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 hover:border-blue-600/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-blue-600/5 rounded-bl-full"></div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Partidos Jugados</p>
-                    <h3 className="text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.filter(m => m.status === 'Finished').length}</h3>
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-3">Partidos Jugados</p>
+                    <h3 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white italic tracking-tighter">{matches.filter(m => m.status === 'Finished').length}</h3>
                   </div>
-                  <div className="p-5 rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
-                    <Target size={24} />
+                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
+                    <Target size={20} md:size={24} />
                   </div>
                 </div>
               </div>
@@ -348,15 +343,15 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
           </div>
 
           {/* Estadísticas Personales del Plantel */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => (
-              <div key={et.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-6">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
-                  <Award size={32} />
+              <div key={et.id} className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center gap-4 md:gap-6">
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
+                  <Award size={24} md:size={32} />
                 </div>
-                <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{et.name}S TOTALES</p>
-                  <h4 className="text-3xl font-black text-slate-800 dark:text-white italic">{squadStats[et.statsKey] || 0}</h4>
+                <div className="min-w-0">
+                  <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{et.name}S TOTALES</p>
+                  <h4 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white italic">{squadStats[et.statsKey] || 0}</h4>
                 </div>
               </div>
             ))}
@@ -429,19 +424,19 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                         className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all"
                       >
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black italic shadow-lg ${isWin ? 'bg-emerald-500' : isDraw ? 'bg-amber-500' : 'bg-red-500'}`}>
+                          <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[1rem] md:rounded-2xl flex items-center justify-center text-white font-black italic shadow-lg shrink-0 ${isWin ? 'bg-emerald-500' : isDraw ? 'bg-amber-500' : 'bg-red-500'}`}>
                             {isWin ? 'G' : isDraw ? 'E' : 'P'}
                           </div>
-                          <div>
-                            <p className="text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[120px]">{rival}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.date}</p>
+                          <div className="min-w-0">
+                            <p className="text-[11px] md:text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[100px] md:max-w-[120px]">{rival}</p>
+                            <p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.date}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-xl font-black italic text-slate-800 dark:text-white">
+                        <div className="flex items-center gap-3 md:gap-6">
+                          <div className="text-base md:text-xl font-black italic text-slate-800 dark:text-white">
                             {m.homescore} - {m.awayscore}
                           </div>
-                          <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
+                          <ChevronRight size={14} md:size={16} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
                         </div>
                       </div>
                     );
@@ -481,26 +476,26 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                         className="group flex items-center justify-between p-6 bg-slate-50/50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5 hover:border-primary-600/30 transition-all"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-primary-600/10 rounded-2xl flex items-center justify-center text-primary-600">
-                            <Calendar size={24} />
+                          <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-600 shrink-0">
+                            <Calendar size={20} md:size={24} />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[120px]">{rival}</p>
+                              <p className="text-[11px] md:text-xs font-black text-slate-800 dark:text-white uppercase truncate max-w-[80px] md:max-w-[120px]">{rival}</p>
                               {m.original_match_id && (
-                                <span className="bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border border-blue-500/20">
-                                  Reprogramado
+                                <span className="bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded text-[6px] md:text-[7px] font-black uppercase tracking-widest border border-blue-500/20 shrink-0">
+                                  Reprog.
                                 </span>
                               )}
                             </div>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.date}</p>
+                            <p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-widest">{m.date}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${isHome ? 'bg-blue-500/10 text-blue-500' : 'bg-slate-500/10 text-slate-400'}`}>
-                            {isHome ? 'Local' : 'Visitante'}
+                        <div className="flex items-center gap-3 md:gap-6 shrink-0">
+                          <span className={`px-2 md:px-4 py-1.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest ${isHome ? 'bg-blue-500/10 text-blue-500' : 'bg-slate-500/10 text-slate-400'}`}>
+                            {isHome ? 'Local' : 'Visit.'}
                           </span>
-                          <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
+                          <ChevronRight size={14} md:size={16} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
                         </div>
                       </div>
                     );

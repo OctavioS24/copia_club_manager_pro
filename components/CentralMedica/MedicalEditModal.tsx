@@ -303,69 +303,69 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
     }
   };
 
-  const inputClasses = "w-full p-6 bg-slate-50 dark:bg-slate-800/60 rounded-3xl font-black text-xs uppercase tracking-widest outline-none border border-transparent dark:border-slate-700 focus:border-primary-600/50 transition-all dark:text-slate-200 shadow-inner";
-  const labelClasses = "text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-3 block";
+  const inputClasses = "w-full p-4 md:p-6 bg-slate-50 dark:bg-slate-800/60 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-xs uppercase tracking-widest outline-none border border-transparent dark:border-slate-700 focus:border-primary-600/50 transition-all dark:text-slate-200 shadow-inner";
+  const labelClasses = "text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-2 md:mb-3 block";
 
   return (
     <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
       <div className="bg-white dark:bg-[#0f121a] rounded-none md:rounded-[4rem] shadow-2xl w-full max-w-7xl border border-secondary-600/30 dark:border-secondary-400/20 flex flex-col h-full md:h-[90vh] overflow-hidden">
         
         {/* Header */}
-        <div className="px-8 md:px-16 py-10 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 shrink-0">
-          <div className="flex items-center gap-8">
-            <div className="w-24 h-24 rounded-[2rem] bg-slate-200 overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 shrink-0">
+        <div className="px-6 md:px-16 py-6 md:py-10 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 dark:bg-white/5 shrink-0 relative gap-4 sm:gap-8">
+          <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 md:gap-8 w-full sm:w-auto">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-200 overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 shrink-0">
               <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
             </div>
-            <div>
-              <h3 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none italic">{player.name}</h3>
-              <div className="flex items-center gap-4 mt-3">
-                <span className="px-4 py-1 bg-primary-600 text-white text-[9px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-primary-600/20">Ficha Médico-Deportiva</span>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">DNI: {player.dni}</span>
+            <div className="min-w-0">
+              <h3 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none italic truncate max-w-[250px] sm:max-w-none">{player.name}</h3>
+              <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 md:gap-4 mt-3">
+                <span className="px-3 md:px-4 py-1 bg-primary-600 text-white text-[8px] md:text-[9px] font-black rounded-full uppercase tracking-[0.15em] md:tracking-[0.2em] shadow-lg shadow-primary-600/20">Ficha Médico-Deportiva</span>
+                <span className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] md:tracking-[0.2em]">DNI: {player.dni}</span>
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-4 bg-white dark:bg-white/5 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-xl"><X size={24} /></button>
+          <button onClick={onClose} className="absolute sm:relative top-6 right-6 sm:top-0 sm:right-0 p-3 md:p-4 bg-white dark:bg-white/5 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-xl"><X size={20} md:size={24} /></button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-slate-50 dark:bg-white/[0.02] px-8 md:px-16 py-4 border-b border-slate-100 dark:border-white/5 flex gap-4 shrink-0 overflow-x-auto no-scrollbar">
+        <div className="bg-slate-50 dark:bg-white/[0.02] px-6 md:px-16 py-3 md:py-4 border-b border-slate-100 dark:border-white/5 flex gap-2 md:gap-4 shrink-0 overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setActiveSubTab('ficha')}
-            className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-3 ${activeSubTab === 'ficha' ? 'bg-primary-600 text-white shadow-xl shadow-primary-600/20' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5'}`}
+            className={`px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 md:gap-3 shrink-0 ${activeSubTab === 'ficha' ? 'bg-primary-600 text-white shadow-xl shadow-primary-600/20' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5'}`}
           >
-            <ShieldCheck size={18} /> Sección 1: Ficha Médica
+            <ShieldCheck size={16} md:size={18} /> <span className="hidden sm:inline">Sección 1:</span> Ficha Médica
           </button>
           <button 
             onClick={() => setActiveSubTab('enfermeria')}
-            className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-3 ${activeSubTab === 'enfermeria' ? 'bg-primary-600 text-white shadow-xl shadow-primary-600/20' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5'}`}
+            className={`px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 md:gap-3 shrink-0 ${activeSubTab === 'enfermeria' ? 'bg-primary-600 text-white shadow-xl shadow-primary-600/20' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5'}`}
           >
-            <Stethoscope size={18} /> Sección 2: Enfermería (Lesiones)
+            <Stethoscope size={16} md:size={18} /> <span className="hidden sm:inline">Sección 2:</span> Enfermería
           </button>
         </div>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {activeSubTab === 'ficha' ? (
-            <div className="p-8 md:p-16 flex flex-col lg:flex-row gap-16">
+            <div className="p-6 md:p-16 flex flex-col lg:flex-row gap-10 md:gap-16">
               {/* Left Column: Form */}
-              <div className="flex-1 space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="md:col-span-2 space-y-4">
+              <div className="flex-1 space-y-8 md:space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <div className="md:col-span-2 space-y-3 md:space-y-4">
                     <label className={labelClasses}>Estado de Aptitud</label>
-                    <div className="grid grid-cols-2 gap-4 p-2 bg-slate-100 dark:bg-white/5 rounded-[2.5rem] border border-secondary-600/20 dark:border-secondary-400/10 shadow-inner">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4 p-1.5 md:p-2 bg-slate-100 dark:bg-white/5 rounded-2xl md:rounded-[2.5rem] border border-secondary-600/20 dark:border-secondary-400/10 shadow-inner">
                       <button 
                         disabled={readOnly}
                         onClick={() => setFichaData({...fichaData, is_fit: true})}
-                        className={`py-6 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${fichaData.is_fit ? 'bg-emerald-500 text-white shadow-2xl scale-105' : 'text-slate-400 opacity-60 hover:opacity-100'} ${readOnly ? 'cursor-default' : ''}`}
+                        className={`py-4 md:py-6 rounded-xl md:rounded-3xl font-black uppercase text-[9px] md:text-[10px] tracking-[0.15em] md:tracking-[0.2em] transition-all flex items-center justify-center gap-2 md:gap-3 ${fichaData.is_fit ? 'bg-emerald-500 text-white shadow-2xl scale-105' : 'text-slate-400 opacity-60 hover:opacity-100'} ${readOnly ? 'cursor-default' : ''}`}
                       >
-                        <ShieldCheck size={18} /> Apto Médico
+                        <ShieldCheck size={16} md:size={18} /> Apto Médico
                       </button>
                       <button 
                         disabled={readOnly}
                         onClick={() => setFichaData({...fichaData, is_fit: false})}
-                        className={`py-6 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${!fichaData.is_fit ? 'bg-red-500 text-white shadow-2xl scale-105' : 'text-slate-400 opacity-60 hover:opacity-100'} ${readOnly ? 'cursor-default' : ''}`}
+                        className={`py-4 md:py-6 rounded-xl md:rounded-3xl font-black uppercase text-[9px] md:text-[10px] tracking-[0.15em] md:tracking-[0.2em] transition-all flex items-center justify-center gap-2 md:gap-3 ${!fichaData.is_fit ? 'bg-red-500 text-white shadow-2xl scale-105' : 'text-slate-400 opacity-60 hover:opacity-100'} ${readOnly ? 'cursor-default' : ''}`}
                       >
-                        <AlertTriangle size={18} /> No Apto
+                        <AlertTriangle size={16} md:size={18} /> No Apto
                       </button>
                     </div>
                   </div>
@@ -413,44 +413,44 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
                     </div>
                   </div>
 
-                  <div className="md:col-span-2 space-y-4">
+                  <div className="md:col-span-2 space-y-3 md:space-y-4">
                     <label className={labelClasses}>Observaciones Médicas</label>
                     <textarea 
-                      rows={6}
+                      rows={4}
                       readOnly={readOnly}
                       value={fichaData.notes}
                       onChange={e => setFichaData({...fichaData, notes: e.target.value})}
-                      className={inputClasses + " min-h-[150px] p-8 leading-relaxed resize-none"}
+                      className={inputClasses + " min-h-[120px] md:min-h-[150px] p-6 md:p-8 leading-relaxed resize-none"}
                       placeholder="Hallazgos específicos, contraindicaciones, etc."
                     />
                   </div>
                 </div>
 
                 {!readOnly && (
-                  <div className="pt-8">
+                  <div className="pt-4 md:pt-8">
                     <button 
                       onClick={handleSaveFicha}
                       disabled={isSaving}
-                      className="w-full py-6 bg-primary-600 text-white rounded-3xl font-black uppercase text-[11px] tracking-[0.3em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                      className="w-full py-5 md:py-6 bg-primary-600 text-white rounded-2xl md:rounded-3xl font-black uppercase text-[10px] md:text-[11px] tracking-[0.25em] md:tracking-[0.3em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                     >
-                      {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} className="mr-2 inline" />}
-                      Guardar Ficha Médica
+                      {isSaving ? <Loader2 className="animate-spin" size={18} md:size={20} /> : <Save size={18} md:size={20} className="mr-2 inline" />}
+                      Guardar Ficha
                     </button>
                   </div>
                 )}
               </div>
 
               {/* Right Column: History */}
-              <div className="w-full lg:w-96 space-y-10">
+              <div className="w-full lg:w-96 space-y-8 md:space-y-10">
                 <div className="flex items-center gap-3">
-                  <History size={20} className="text-primary-600" />
-                  <h4 className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">Historial Reciente</h4>
+                  <History size={18} md:size={20} className="text-primary-600" />
+                  <h4 className="text-[10px] md:text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">Historial</h4>
                 </div>
                 
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-6">
                   {fichaData.history && fichaData.history.length > 0 ? (
                     fichaData.history.slice(0, 8).map((item) => (
-                      <div key={item.id} className="bg-white dark:bg-white/[0.03] p-6 rounded-3xl border border-slate-100 dark:border-white/5 animate-fade-in shadow-sm relative group/history">
+                      <div key={item.id} className="bg-white dark:bg-white/[0.03] p-5 md:p-6 rounded-[1.5rem] md:rounded-3xl border border-slate-100 dark:border-white/5 animate-fade-in shadow-sm relative group/history">
                         <button 
                           onClick={() => handleDeleteHistoryItem(item.id)}
                           className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full opacity-0 group-hover/history:opacity-100 transition-all flex items-center justify-center shadow-lg transform hover:scale-110 z-10"
@@ -478,32 +478,32 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
               </div>
             </div>
           ) : (
-            <div className="p-8 md:p-16 space-y-12">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-                <div>
-                  <h4 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Registro de Lesiones y Bajas</h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Control de integridad física (Enfermería)</p>
+            <div className="p-6 md:p-16 space-y-10 md:space-y-12">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 md:gap-8">
+                <div className="text-center sm:text-left">
+                  <h4 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Lesiones y Bajas</h4>
+                  <p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Control de integridad física</p>
                 </div>
                 {!isAddingInjury && (
                   <button 
                     onClick={() => setIsAddingInjury(true)}
-                    className="px-10 py-5 bg-slate-950 dark:bg-white/5 rounded-full font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-2xl flex items-center gap-3 text-white"
+                    className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-slate-950 dark:bg-white/5 rounded-full font-black uppercase text-[9px] md:text-[10px] tracking-widest hover:scale-105 transition-all shadow-2xl flex items-center justify-center gap-3 text-white"
                   >
-                    <Plus size={16} /> Notificar Nueva Lesión
+                    <Plus size={16} /> Notificar Lesión
                   </button>
                 )}
               </div>
 
               {isAddingInjury && (
-                <div className="bg-slate-50 dark:bg-white/[0.03] p-10 md:p-16 rounded-[4rem] border-2 border-secondary-600/30 shadow-2xl animate-fade-in">
-                  <div className="flex justify-between items-center mb-12">
-                    <h5 className="text-lg font-black uppercase tracking-widest text-primary-600 flex items-center gap-3">
-                      <Stethoscope size={24} /> Nueva Entrada de Enfermería
+                <div className="bg-slate-50 dark:bg-white/[0.03] p-6 md:p-16 rounded-[2rem] md:rounded-[4rem] border-2 border-secondary-600/30 shadow-2xl animate-fade-in">
+                  <div className="flex justify-between items-center mb-8 md:mb-12">
+                    <h5 className="text-base md:text-lg font-black uppercase tracking-widest text-primary-600 flex items-center gap-3">
+                      <Stethoscope size={20} md:size={24} /> Entrada de Enfermería
                     </h5>
-                    <button onClick={() => setIsAddingInjury(false)} className="text-slate-400 hover:text-red-500"><X size={24} /></button>
+                    <button onClick={() => setIsAddingInjury(false)} className="text-slate-400 hover:text-red-500"><X size={20} md:size={24} /></button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                     <div className="space-y-4">
                       <label className={labelClasses}>Tipo de Lesión</label>
                       <select 
@@ -580,26 +580,26 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
                     </div>
                   </div>
 
-                  <div className="mt-12 flex justify-end gap-6">
-                    <button onClick={() => setIsAddingInjury(false)} className="px-10 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">Cancelar</button>
+                  <div className="mt-8 md:mt-12 flex flex-col sm:flex-row justify-end gap-3 md:gap-6">
+                    <button onClick={() => setIsAddingInjury(false)} className="order-2 sm:order-1 px-6 md:px-10 py-4 md:py-5 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">Cancelar</button>
                     <button 
                       onClick={handleAddInjury}
                       disabled={isSaving}
-                      className="px-14 py-5 bg-secondary-600 text-white rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+                      className="order-1 sm:order-2 px-8 md:px-14 py-4 md:py-5 bg-secondary-600 text-white rounded-xl md:rounded-3xl font-black uppercase text-[9px] md:text-[10px] tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50"
                     >
-                      {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} 
-                      Archivar Nueva Lesión
+                      {isSaving ? <Loader2 className="animate-spin" size={14} md:size={16} /> : <Save size={14} md:size={16} />} 
+                      Archivar Lesión
                     </button>
                   </div>
                 </div>
               )}
 
               {/* Injury List */}
-              <div className="space-y-8">
+              <div className="space-y-6 md:space-y-8">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <ClipboardList size={22} className="text-primary-600" />
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Historial de Lesiones</h4>
+                    <ClipboardList size={18} md:size={22} className="text-primary-600" />
+                    <h4 className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-400">Historial de Lesiones</h4>
                   </div>
                   <button 
                     onClick={async () => {
@@ -622,10 +622,10 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                    {injuries.length > 0 ? (
                      injuries.map(injury => (
-                       <div key={injury.id} className="bg-white dark:bg-[#0f121a] p-10 rounded-[3rem] border border-secondary-600/20 dark:border-secondary-400/10 shadow-xl hover:border-primary-600/30 transition-all flex flex-col group/injury relative">
+                       <div key={injury.id} className="bg-white dark:bg-[#0f121a] p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-secondary-600/20 dark:border-secondary-400/10 shadow-xl hover:border-primary-600/30 transition-all flex flex-col group/injury relative">
                           <button 
                             onClick={async (e) => {
                               e.stopPropagation();
@@ -639,41 +639,41 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
                                 }
                               }
                             }}
-                            className="absolute top-6 right-6 p-2 bg-red-50 dark:bg-red-500/10 text-red-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl transition-all shadow-sm z-10"
+                            className="absolute top-4 right-4 md:top-6 md:right-6 p-1.5 md:p-2 bg-red-50 dark:bg-red-500/10 text-red-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg md:rounded-xl transition-all shadow-sm z-10"
                             title="Eliminar lesión"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} md:size={16} />
                           </button>
 
-                          <div className="flex items-center gap-5 mb-8">
-                             <div className="w-14 h-14 bg-red-600/10 rounded-2xl flex items-center justify-center text-red-600 shrink-0">
-                                <AlertTriangle size={24} />
+                          <div className="flex items-center gap-4 md:gap-5 mb-6 md:mb-8">
+                             <div className="w-12 h-12 md:w-14 md:h-14 bg-red-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-red-600 shrink-0">
+                                <AlertTriangle size={20} md:size={24} />
                              </div>
-                             <div>
-                                <h5 className="font-black text-xl uppercase tracking-tighter text-slate-800 dark:text-white italic leading-none">{injury.injury_type?.name || 'LESION'}</h5>
-                                <div className="flex items-center gap-3 mt-2">
-                                   <Calendar size={12} className="text-slate-400" />
-                                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{injury.injury_date}</span>
+                             <div className="min-w-0">
+                                <h5 className="font-black text-lg md:text-xl uppercase tracking-tighter text-slate-800 dark:text-white italic leading-none truncate">{injury.injury_type?.name || 'LESION'}</h5>
+                                <div className="flex items-center gap-2 md:gap-3 mt-1.5 md:mt-2">
+                                   <Calendar size={10} md:size={12} className="text-slate-400" />
+                                   <span className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest">{injury.injury_date}</span>
                                 </div>
                              </div>
                           </div>
 
-                          <div className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl mb-8 flex-1">
-                             <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed">
-                                {injury.comment || 'Sin comentarios adicionales registrados.'}
+                          <div className="bg-slate-50 dark:bg-white/[0.02] p-4 md:p-6 rounded-xl md:rounded-2xl mb-6 md:mb-8 flex-1">
+                             <p className="text-[11px] md:text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed">
+                                {injury.comment || 'Sin comentarios registrados.'}
                              </p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-50 dark:border-white/5">
+                          <div className="grid grid-cols-2 gap-4 md:gap-6 pt-4 md:pt-6 border-t border-slate-50 dark:border-white/5">
                              <div>
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Recuperación</span>
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-800 dark:text-white">
-                                   <Clock size={12} className="text-primary-600" />
+                                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Recuperación</span>
+                                <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[10px] font-black text-slate-800 dark:text-white">
+                                   <Clock size={10} md:size={12} className="text-primary-600" />
                                    {injury.estimated_recovery || 'N/A'}
                                 </div>
                              </div>
                              <div>
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alta Médica</span>
+                                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alta Médica</span>
                                 <div className="flex items-center gap-2">
                                    <input 
                                      type="date"
@@ -684,7 +684,7 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
                                        await db.medical.upsertInjury(newInjury);
                                        await syncPlayerStatusAfterInjuryUpdate();
                                      }}
-                                     className="text-xs font-black bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/10 rounded-lg px-2 py-1 outline-none focus:border-emerald-500 transition-colors w-full"
+                                     className="text-[10px] font-black bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/10 rounded-lg px-1.5 py-1 outline-none focus:border-emerald-500 transition-colors w-full"
                                    />
                                 </div>
                              </div>

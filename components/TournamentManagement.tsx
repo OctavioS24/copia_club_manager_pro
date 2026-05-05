@@ -7,7 +7,8 @@ import {
   Users, Loader2, CheckCircle2,
   ListOrdered, Search, Layout, UserCircle, 
   GitBranch, Table as TableIcon, Award, ChevronLeft, 
-  Settings2, Shield, UserMinus, CheckCircle, Activity
+  Settings2, Shield, UserMinus, CheckCircle, Activity,
+  RefreshCcw, AlertTriangle
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 import CrearTorneo from './Torneos/CrearTorneo';
@@ -488,45 +489,45 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h2 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic flex items-center gap-4">
-             <Trophy size={40} className="text-primary-600" />
+        <div className="w-full">
+          <h2 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic flex items-center gap-3 md:gap-4">
+             <Trophy size={32} className="text-primary-600 shrink-0" />
              Competiciones
           </h2>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-1 ml-1">Central de Torneos Plegma Sport</p>
+          <p className="text-slate-400 font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-[10px] mt-1 ml-1">Central de Torneos Plegma Sport</p>
         </div>
         <button 
           onClick={() => setShowCreateModal(true)}
-          className="bg-primary-600 text-white px-10 py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+          className="w-full md:w-auto bg-primary-600 text-white px-8 md:px-10 py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] md:text-[11px] tracking-widest shadow-2xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
         >
           <Plus size={18} strokeWidth={3} /> Nuevo Torneo
         </button>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-10">
-        <aside className="w-full lg:w-80 shrink-0 space-y-6">
-          <div className="bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
-             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-3">
+      <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
+        <aside className="w-full lg:w-80 shrink-0 space-y-4 md:space-y-6">
+          <div className="bg-white dark:bg-[#0f1219]/60 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
+             <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 md:mb-8 flex items-center gap-3">
                <Layout size={14} className="text-primary-600" /> Mis Torneos
              </h4>
-             <div className="space-y-3">
+             <div className="space-y-2 md:space-y-3">
                 {tournaments.map(t => (
                   <div key={t.id} className="relative group/t">
                     <button 
                       onClick={() => { setActiveTournament(t); setViewMode('fixture'); }}
-                      className={`w-full p-5 pr-14 rounded-3xl flex flex-col items-start transition-all relative border-2 ${activeTournament?.id === t.id ? 'bg-primary-600 border-primary-600 text-white shadow-xl scale-[1.02]' : 'bg-transparent border-slate-100 dark:border-white/5 text-slate-500 hover:bg-slate-50'}`}
+                      className={`w-full p-4 md:p-5 pr-14 rounded-2xl md:rounded-3xl flex flex-col items-start transition-all relative border-2 ${activeTournament?.id === t.id ? 'bg-primary-600 border-primary-600 text-white shadow-xl scale-[1.02]' : 'bg-transparent border-slate-100 dark:border-white/5 text-slate-500 hover:bg-slate-50'}`}
                     >
-                      <span className="text-xs font-black uppercase tracking-tight italic truncate w-full text-left">{t.name}</span>
-                      <span className={`text-[8px] font-black uppercase tracking-widest mt-2 ${activeTournament?.id === t.id ? 'text-white/60' : 'text-primary-600'}`}>
+                      <span className="text-[11px] md:text-xs font-black uppercase tracking-tight italic truncate w-full text-left">{t.name}</span>
+                      <span className={`text-[7px] md:text-[8px] font-black uppercase tracking-widest mt-1 md:mt-2 ${activeTournament?.id === t.id ? 'text-white/60' : 'text-primary-600'}`}>
                         {t.type === 'Professional' ? 'Liga Profesional' : 'Torneo del Club'}
                       </span>
                     </button>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover/t:opacity-100 transition-opacity z-10">
-                       <button onClick={(e) => handleEditTournament(t, e)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary-600">
-                          <Edit3 size={14} />
+                    <div className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 md:gap-2 opacity-100 md:opacity-0 group-hover/t:opacity-100 transition-opacity z-10">
+                       <button onClick={(e) => handleEditTournament(t, e)} className="p-2 md:p-2 rounded-lg bg-white/10 md:bg-slate-100 dark:md:bg-slate-800 text-slate-400 hover:text-primary-600">
+                          <Edit3 size={12} />
                        </button>
-                       <button onClick={(e) => { e.stopPropagation(); setTournamentToDelete({ id: t.id, name: t.name }); }} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-500">
-                          <Trash2 size={14} />
+                       <button onClick={(e) => { e.stopPropagation(); setTournamentToDelete({ id: t.id, name: t.name }); }} className="p-2 md:p-2 rounded-lg bg-white/10 md:bg-slate-100 dark:md:bg-slate-800 text-slate-400 hover:text-red-500">
+                          <Trash2 size={12} />
                        </button>
                     </div>
                   </div>
@@ -534,11 +535,11 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
              </div>
           </div>
           {activeTournament && (
-            <div className="bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-3">
+            <div className="bg-white dark:bg-[#0f1219]/60 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
+                <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 md:mb-8 flex items-center gap-3">
                   <Settings2 size={14} className="text-primary-600" /> Gestión Activa
                 </h4>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
                     {[
                       { id: 'fixture', label: 'Resultados', icon: Calendar },
                       { id: 'fixture_base', label: 'Fixture Base', icon: TableIcon },
@@ -547,8 +548,8 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                       { id: 'participants', label: 'Equipos', icon: Users, show: true },
                       { id: 'lineups', label: 'Planillas', icon: UserCircle, show: true }
                     ].map(item => (item.show !== false) && (
-                      <button key={item.id} onClick={() => setViewMode(item.id as any)} className={`w-full p-4 rounded-2xl flex items-center gap-4 text-[11px] font-black uppercase transition-all ${viewMode === item.id ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>
-                        <item.icon size={16} /> {item.label}
+                      <button key={item.id} onClick={() => setViewMode(item.id as any)} className={`p-3 md:p-4 rounded-xl md:rounded-2xl flex items-center justify-center lg:justify-start gap-2 md:gap-4 text-[9px] md:text-[11px] font-black uppercase transition-all ${viewMode === item.id ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}>
+                        <item.icon size={14} /> <span className="hidden sm:inline">{item.label}</span><span className="sm:hidden">{item.label.slice(0, 4)}</span>
                       </button>
                     ))}
                 </div>
@@ -705,55 +706,66 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{dateMatches.length} Partidos</p>
                                   </div>
                                 </div>
-                                <button
+                                 <button
                                   onClick={() => handleToggleFullDateSuspension(date, !hasScheduled)}
-                                  className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${
+                                  className={`p-2.5 md:px-6 md:py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center gap-2 ${
                                     !hasScheduled
                                       ? 'bg-green-600/10 text-green-600 border border-green-600/20'
                                       : 'bg-red-600/10 text-red-600 border border-red-600/20'
                                   }`}
+                                  title={!hasScheduled ? 'Reanudar Fecha' : 'Suspender Fecha'}
                                 >
-                                  {!hasScheduled ? 'Reanudar Fecha' : 'Suspender Fecha'}
+                                  {!hasScheduled ? (
+                                    <>
+                                      <RefreshCcw size={14} className="md:size-[12px]" />
+                                      <span className="hidden md:inline">Reanudar Fecha</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertTriangle size={14} className="md:size-[12px]" />
+                                      <span className="hidden md:inline">Suspender Fecha</span>
+                                    </>
+                                  )}
                                 </button>
                               </div>
 
                               <div className="grid grid-cols-1 gap-4">
                                 {dateMatches.map(m => (
-                                  <div key={m.id} className={`bg-white dark:bg-[#0f1219]/60 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-10 group hover:border-primary-600/30 transition-all cursor-pointer relative ${m.is_overridden ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                                      <div className="flex-1 text-right" onClick={() => !m.is_overridden && handleEditMatch(m)}>
-                                         <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.home_team}</p>
-                                         <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Local</p>
+                                  <div key={m.id} className={`bg-white dark:bg-[#0f1219]/60 p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6 md:gap-10 group hover:border-primary-600/30 transition-all cursor-pointer relative ${m.is_overridden ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                                      <div className="flex-1 w-full text-center sm:text-right" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <p className="text-base md:text-lg font-black uppercase italic text-slate-800 dark:text-white truncate">{m.home_team}</p>
+                                         <p className="text-[7px] md:text-[8px] font-bold text-slate-400 uppercase mt-1">Local</p>
                                       </div>
-                                      <div className="flex flex-col items-center gap-2" onClick={() => !m.is_overridden && handleEditMatch(m)}>
-                                         <div className={`bg-slate-100 dark:bg-white/5 px-6 py-3 rounded-2xl flex items-center gap-5 text-2xl font-black italic shadow-inner ${m.status === 'Suspended' ? 'opacity-50' : ''}`}>
-                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.home_score || (m as any).homescore) : '-'}</span>
-                                            <span className="text-[10px] text-slate-400 not-italic uppercase tracking-widest">VS</span>
-                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.away_score || (m as any).awayscore) : '-'}</span>
+                                      <div className="flex flex-col items-center gap-2 shrink-0" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <div className={`bg-slate-100 dark:bg-white/5 px-5 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl flex items-center gap-4 md:gap-5 text-xl md:text-2xl font-black italic shadow-inner ${m.status === 'Suspended' ? 'opacity-50' : ''}`}>
+                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.home_score || (m as any).homescore) : '0'}</span>
+                                            <span className="text-[9px] text-slate-400 not-italic uppercase tracking-widest">VS</span>
+                                            <span className={m.status === 'Finished' ? 'text-primary-600' : 'text-slate-300'}>{m.status === 'Finished' ? (m.away_score || (m as any).awayscore) : '0'}</span>
                                          </div>
-                                         <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+                                         <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest">
                                             {m.status === 'Suspended' ? (
-                                              <span className="text-red-500 flex items-center gap-1 italic"><X size={12} /> {m.is_overridden ? 'REPROGRAMADO' : 'SUSPENDIDO'}</span>
+                                              <span className="text-red-500 flex items-center gap-1 italic"><X size={10} md:size={12} /> {m.is_overridden ? 'REPROGRAMADO' : 'SUSPENDIDO'}</span>
                                             ) : (
                                               <span className="text-slate-400 italic">
                                                 {discipline?.branches.flatMap(b => b.categories).find(c => c.id === (m.categoryid || (m as any).category_id || (m as any).category))?.name || (m.categoryid || (m as any).category_id || (m as any).category) || 'Categoría'}
-                                             </span>
+                                              </span>
                                             )}
                                          </div>
                                       </div>
-                                      <div className="flex-1 text-left" onClick={() => !m.is_overridden && handleEditMatch(m)}>
-                                         <p className="text-lg font-black uppercase italic text-slate-800 dark:text-white">{m.away_team}</p>
-                                         <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Visitante</p>
+                                      <div className="flex-1 w-full text-center sm:text-left" onClick={() => !m.is_overridden && handleEditMatch(m)}>
+                                         <p className="text-base md:text-lg font-black uppercase italic text-slate-800 dark:text-white truncate">{m.away_team}</p>
+                                         <p className="text-[7px] md:text-[8px] font-bold text-slate-400 uppercase mt-1">Visitante</p>
                                       </div>
                                       
                                       {!m.is_overridden && (
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                        <div className="flex sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2 flex-row sm:flex-col gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all border-t sm:border-t-0 border-slate-100 dark:border-white/5 pt-4 sm:pt-0 w-full sm:w-auto justify-center">
                                           <button 
                                             onClick={(e) => { 
                                               e.stopPropagation(); 
                                               setSelectedMatch(m); 
                                               setShowSquadModal(true); 
                                             }} 
-                                            className="p-2 rounded-lg bg-primary-600/10 text-primary-600 hover:bg-primary-600 hover:text-white"
+                                            className="p-2 rounded-lg bg-primary-600/10 text-primary-600 hover:bg-primary-600 hover:text-white transition-colors"
                                             title="Armar Convocatoria"
                                           >
                                             <Users size={14} />
@@ -768,7 +780,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                           {m.status === 'Suspended' && (
                                             <button 
                                               onClick={(e) => { e.stopPropagation(); setReschedulingMatch(m); setRescheduleDate(m.date); }} 
-                                              className="p-2 rounded-lg bg-blue-500/10 text-blue-500"
+                                              className="p-2 rounded-lg bg-blue-500/10 text-blue-500 transition-colors"
                                               title="Reprogramar"
                                             >
                                               <Calendar size={14} />
@@ -776,7 +788,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                           )}
                                           <button 
                                             onClick={(e) => handleDeleteMatch(m.id, e)} 
-                                            className="p-2 rounded-lg bg-red-500/10 text-red-500"
+                                            className="p-2 rounded-lg bg-red-500/10 text-red-500 transition-colors"
                                           >
                                             <Trash2 size={14} />
                                           </button>

@@ -169,18 +169,18 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
   return (
     <div className="space-y-12 animate-fade-in pb-20">
       {/* Selector de Disciplina */}
-      <div className="bg-white dark:bg-[#0f1219] p-8 rounded-[3rem] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
-        <div className="flex items-center gap-6 w-full md:w-auto">
-          <div className="w-16 h-16 bg-primary-600/10 rounded-2xl flex items-center justify-center text-primary-600 shadow-inner shrink-0">
-            <Settings2 size={24} />
+      <div className="bg-white dark:bg-[#0f1219] p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl">
+        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-600 shadow-inner shrink-0">
+            <Settings2 size={20} md:size={24} />
           </div>
           <div className="flex flex-col min-w-0 flex-1">
-            <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina a Configurar</h4>
+            <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina a Configurar</h4>
             <div className="relative group min-w-0">
               <select 
                 value={selectedDisc}
                 onChange={e => setSelectedDisc(e.target.value)}
-                className="w-full bg-transparent font-black text-xl md:text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
+                className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
               >
                 {disciplines.map(d => (
                   <option key={d.id} value={d.name} className="bg-white dark:bg-[#1a1f2b] dark:text-white font-sans text-sm p-4 uppercase tracking-widest font-bold">
@@ -198,32 +198,32 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className={`flex-1 lg:flex-none flex items-center justify-center gap-4 px-10 py-4 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-primary-600 text-white hover:scale-105 active:scale-95 disabled:opacity-30'}`}
+          className={`w-full md:w-auto flex items-center justify-center gap-3 md:gap-4 px-6 md:px-10 py-4 rounded-xl md:rounded-[1.5rem] font-bold uppercase text-[9px] md:text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-primary-600 text-white hover:scale-105 active:scale-95 disabled:opacity-30'}`}
         >
-          {isSaving ? <Loader2 className="animate-spin" size={18} /> : (showSaved ? <CheckCircle size={18} /> : <Save size={18} />)}
-          <span>{isSaving ? 'Guardando' : (showSaved ? 'Guardado' : 'Guardar Configuración')}</span>
+          {isSaving ? <Loader2 className="animate-spin" size={16} md:size={18} /> : (showSaved ? <CheckCircle size={16} md:size={18} /> : <Save size={16} md:size={18} />)}
+          <span>{isSaving ? 'Guardando' : (showSaved ? 'Guardado' : 'Guardar')}</span>
         </button>
       </div>
 
       {config && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 md:gap-10">
           {/* REGLAS DE PUNTUACIÓN */}
-          <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <Trophy size={20} />
+          <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm">
+            <div className="flex items-center gap-4 mb-8 md:mb-10">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Trophy size={18} md:size={20} />
               </div>
-              <h3 className="font-black text-2xl uppercase tracking-tighter dark:text-white italic">Reglas de Puntuación</h3>
+              <h3 className="font-black text-xl md:text-2xl uppercase tracking-tighter dark:text-white italic">Puntuación</h3>
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-3 md:gap-6">
               {[
-                { key: 'win', label: 'Victoria', color: 'text-emerald-500' },
-                { key: 'draw', label: 'Empate', color: 'text-amber-500' },
-                { key: 'loss', label: 'Derrota', color: 'text-red-500' }
+                { key: 'win', label: 'Victor.', color: 'text-emerald-500' },
+                { key: 'draw', label: 'Empat.', color: 'text-amber-500' },
+                { key: 'loss', label: 'Derrot.', color: 'text-red-500' }
               ].map(rule => (
-                <div key={rule.key} className="space-y-3">
-                  <label className={`text-[9px] font-bold uppercase tracking-widest ${rule.color} ml-2`}>{rule.label}</label>
+                <div key={rule.key} className="space-y-2 md:space-y-3">
+                  <label className={`text-[8px] md:text-[9px] font-bold uppercase tracking-widest ${rule.color} ml-1`}>{rule.label}</label>
                   <div className="relative">
                     <input 
                       type="number"
@@ -235,40 +235,40 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                           [rule.key]: parseInt(e.target.value) || 0
                         }
                       })}
-                      className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-2xl font-black text-2xl text-center dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all"
+                      className="w-full bg-slate-50 dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-2xl font-black text-xl md:text-2xl text-center dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all shadow-inner"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[8px] font-bold text-slate-400 uppercase tracking-widest">pts</span>
+                    <span className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 text-[7px] md:text-[8px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">pts</span>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="mt-8 text-[9px] text-slate-400 flex items-center gap-2 italic">
-              <Info size={12} /> Estos puntos se usarán para calcular la tabla de posiciones automáticamente.
+            <p className="mt-6 md:mt-8 text-[8px] md:text-[9px] text-slate-400 flex items-center gap-2 italic">
+              <Info size={12} /> Cálculo automático de posiciones.
             </p>
           </div>
 
           {/* ESTADÍSTICAS DASHBOARD */}
-          <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="w-12 h-12 rounded-2xl bg-primary-600/10 flex items-center justify-center text-primary-600">
-                <BarChart3 size={20} />
+          <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm">
+            <div className="flex items-center gap-4 mb-8 md:mb-10">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-primary-600/10 flex items-center justify-center text-primary-600">
+                <BarChart3 size={18} md:size={20} />
               </div>
-              <h3 className="font-black text-2xl uppercase tracking-tighter dark:text-white italic">Estadísticas Dashboard</h3>
+              <h3 className="font-black text-xl md:text-2xl uppercase tracking-tighter dark:text-white italic">KPIs Dashboard</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-2 no-scrollbar">
+            <div className="grid grid-cols-2 gap-2 md:gap-3 max-h-[180px] md:max-h-[200px] overflow-y-auto pr-2 no-scrollbar">
               {STATS_OPTIONS.map(stat => {
                 const isActive = config.dashboard_stats.includes(stat.key);
                 return (
                   <button 
                     key={stat.key}
                     onClick={() => toggleStat(stat.key)}
-                    className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${isActive ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-slate-50 dark:bg-white/5 border-transparent text-slate-500 hover:border-slate-300'}`}
+                    className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all text-left ${isActive ? 'bg-primary-600 border-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-slate-50 dark:bg-white/5 border-transparent text-slate-500 hover:border-slate-300'}`}
                   >
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}>
-                      {isActive && <CheckCircle size={12} />}
+                    <div className={`w-5 h-5 md:w-6 md:h-6 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}>
+                      {isActive && <CheckCircle size={10} md:size={12} />}
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest">{stat.label}</span>
+                    <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest truncate">{stat.label}</span>
                   </button>
                 );
               })}
@@ -276,67 +276,66 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
           </div>
 
           {/* CAMPOS ADICIONALES (GLOBAL) */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="w-12 h-12 rounded-2xl bg-slate-500/10 flex items-center justify-center text-slate-500">
-                <Settings2 size={20} />
+          <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm">
+            <div className="flex items-center gap-4 mb-8 md:mb-10">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-500/10 flex items-center justify-center text-slate-500">
+                <Settings2 size={18} md:size={20} />
               </div>
-              <h3 className="font-black text-2xl uppercase tracking-tighter dark:text-white italic">Campos Adicionales de Partido</h3>
+              <h3 className="font-black text-xl md:text-2xl uppercase tracking-tighter dark:text-white italic">Campos Adicionales</h3>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-2 md:gap-4">
               {ADDITIONAL_FIELDS_OPTIONS.map(field => {
                 const isActive = config.additional_fields?.includes(field.key);
                 return (
                   <button 
                     key={field.key}
                     onClick={() => toggleAdditionalField(field.key)}
-                    className={`flex items-center gap-4 px-6 py-4 rounded-2xl border transition-all ${isActive ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent text-slate-500 hover:border-slate-200'}`}
+                    className={`flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all ${isActive ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent text-slate-500 hover:border-slate-200'}`}
                   >
-                    <div className={`w-5 h-5 rounded flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}>
-                      {isActive && <CheckCircle size={12} />}
+                    <div className={`w-4 h-4 md:w-5 md:h-5 rounded flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}>
+                      {isActive && <CheckCircle size={10} md:size={12} />}
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{field.label}</span>
+                    <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em]">{field.label}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="mt-6 text-[9px] text-slate-400 italic">Habilita estos campos para que aparezcan al cargar un resultado (ej: minuto del gol, cuarto del tanto, etc).</p>
           </div>
 
           {/* TIPOS DE EVENTO */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[3.5rem] p-10 border border-slate-200 dark:border-white/5 shadow-sm">
-            <div className="flex justify-between items-center mb-10">
+          <div className="lg:col-span-2 bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 md:mb-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <Activity size={20} />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                  <Activity size={18} md:size={20} />
                 </div>
-                <h3 className="font-black text-2xl uppercase tracking-tighter dark:text-white italic">Tipos de Evento</h3>
+                <h3 className="font-black text-xl md:text-2xl uppercase tracking-tighter dark:text-white italic">Eventos</h3>
               </div>
               <button 
                 onClick={addEventType}
-                className="flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-full text-[9px] font-bold uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-4 bg-slate-900 text-white rounded-full text-[9px] font-bold uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
               >
-                <Plus size={14} /> Agregar Tipo de Evento
+                <Plus size={14} /> Agregar Evento
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {config.event_types.map(event => (
-                <div key={event.id} className="bg-slate-50 dark:bg-white/5 p-6 rounded-3xl border border-slate-100 dark:border-white/5 relative group">
+                <div key={event.id} className="bg-slate-50 dark:bg-white/5 p-5 md:p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 relative group">
                   <button 
                     onClick={() => removeEventType(event.id)}
-                    className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} md:size={16} />
                   </button>
 
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-inner" style={{ backgroundColor: `${event.color}20`, color: event.color }}>
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${event.color}20`, color: event.color }}>
                         {(() => {
                           const IconComp = ICON_OPTIONS.find(i => i.name === event.icon)?.icon || Activity;
-                          return <IconComp size={24} />;
+                          return <IconComp size={20} md:size={24} />;
                         })()}
                       </div>
                       <input 
@@ -345,12 +344,12 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                           ...config,
                           event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, name: e.target.value.toUpperCase() } : ev)
                         })}
-                        className="flex-1 bg-transparent font-black text-lg uppercase tracking-tighter dark:text-white outline-none border-b border-transparent focus:border-primary-600"
+                        className="flex-1 bg-transparent font-black text-base md:text-lg uppercase tracking-tighter dark:text-white outline-none border-b border-transparent focus:border-primary-600 truncate px-1"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
                         <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Icono</label>
                         <select 
                           value={event.icon}
@@ -358,12 +357,12 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                             ...config,
                             event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, icon: e.target.value } : ev)
                           })}
-                          className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                          className="w-full bg-white dark:bg-slate-800 p-2 rounded-lg text-[8px] md:text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5 appearance-none"
                         >
                           {ICON_OPTIONS.map(opt => <option key={opt.name} value={opt.name}>{opt.name}</option>)}
                         </select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Alcance</label>
                         <select 
                           value={event.scope || 'BOTH'}
@@ -371,14 +370,14 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                             ...config,
                             event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, scope: e.target.value as any } : ev)
                           })}
-                          className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                          className="w-full bg-white dark:bg-slate-800 p-2 rounded-lg text-[8px] md:text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5 appearance-none"
                         >
                           <option value="BOTH">TODOS</option>
-                          <option value="OWN">MI CLUB (Jugador)</option>
-                          <option value="RIVAL">RIVAL (Equipo)</option>
+                          <option value="OWN">JUGADOR</option>
+                          <option value="RIVAL">RIVAL</option>
                         </select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Color</label>
                         <input 
                           type="color"
@@ -387,18 +386,18 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                             ...config,
                             event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, color: e.target.value } : ev)
                           })}
-                          className="w-full h-8 rounded-xl cursor-pointer bg-transparent border-none p-0"
+                          className="w-full h-8 rounded-lg cursor-pointer bg-transparent border-none p-0"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Suma al Marcador</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Marcador</label>
                         <div className="flex items-center gap-2">
                            <button 
                              onClick={() => setConfig({
                                ...config,
                                event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, affects_score: !ev.affects_score } : ev)
                              })}
-                             className={`px-3 py-2 rounded-lg text-[8px] font-bold uppercase transition-all ${event.affects_score ? 'bg-amber-500 text-white shadow-lg' : 'bg-slate-200 text-slate-400'}`}
+                             className={`flex-1 py-2 rounded-lg text-[7px] md:text-[8px] font-bold uppercase transition-all ${event.affects_score ? 'bg-amber-500 text-white shadow-lg' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}
                            >
                              {event.affects_score ? 'SÍ' : 'NO'}
                            </button>
@@ -410,22 +409,22 @@ const ReglasPorDisciplina: React.FC<ReglasPorDisciplinaProps> = ({ disciplines }
                                  ...config,
                                  event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, score_value: parseInt(e.target.value) || 0 } : ev)
                                })}
-                               className="w-16 bg-white dark:bg-slate-800 p-2 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                               className="w-12 bg-white dark:bg-slate-800 p-2 rounded-lg text-[8px] md:text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5 text-center"
                              />
                            )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Suma para Estadística</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[7px] font-bold uppercase tracking-widest text-slate-400 ml-1">Estadística</label>
                       <select 
                         value={event.statsKey}
                         onChange={e => setConfig({
                           ...config,
                           event_types: config.event_types.map(ev => ev.id === event.id ? { ...ev, statsKey: e.target.value } : ev)
                         })}
-                        className="w-full bg-white dark:bg-slate-800 p-3 rounded-xl text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5"
+                        className="w-full bg-white dark:bg-slate-800 p-2.5 rounded-lg text-[8px] md:text-[9px] font-bold outline-none border border-slate-200 dark:border-white/5 appearance-none"
                       >
                         {STATS_OPTIONS.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
                       </select>

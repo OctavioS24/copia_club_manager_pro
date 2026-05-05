@@ -199,90 +199,103 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center pt-20 pb-6 px-4 md:pt-24 md:pb-12 pointer-events-auto">
+      <div 
+        className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl" 
+        onClick={onClose}
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-slate-900 border border-secondary-500/30 rounded-[3rem] w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-slate-900 border border-white/5 rounded-[2rem] md:rounded-[3rem] w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] md:max-h-[85vh] relative z-10"
       >
         {/* Header */}
-        <div className="p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary-600/10 rounded-2xl">
-              <Award className="text-primary-600" size={24} />
+        <div className="p-6 md:p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="p-2.5 md:p-3 bg-primary-600/10 rounded-xl md:rounded-2xl">
+              <Award className="text-primary-600 w-5 h-5 md:w-6 md:h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Cargar Resultado</h2>
-              <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">{match.hometeam} vs {match.awayteam}</p>
+              <h2 className="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter">Cargar Resultado</h2>
+              <p className="text-slate-500 font-bold text-[8px] md:text-[10px] uppercase tracking-widest truncate max-w-[150px] md:max-w-none">{match.hometeam} vs {match.awayteam}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
-            <X className="w-6 h-6 text-slate-500" />
+            <X className="w-5 h-5 md:w-6 md:h-6 text-slate-500" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar">
+        <div className="p-4 md:p-10 space-y-6 md:space-y-10 overflow-y-auto custom-scrollbar">
           {/* Scoreboard */}
           <div className="relative group">
-            <div className="flex items-center justify-center gap-12 bg-slate-800/50 p-10 rounded-[2.5rem] border border-slate-700/50 shadow-inner">
-              <div className="flex flex-col items-center gap-4">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{match.hometeam}</p>
+            <div className="flex items-center justify-center gap-4 sm:gap-16 bg-slate-800/30 p-4 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-white/5 shadow-inner">
+              <div className="flex flex-col items-center gap-2 md:gap-3 flex-1 sm:flex-none">
+                <p className="text-[9px] md:text-xs font-black text-slate-500 uppercase tracking-widest truncate max-w-[80px] md:max-w-none">{match.hometeam}</p>
                 <input 
                   type="number" 
                   value={homeScore}
                   readOnly
-                  className="w-24 h-24 bg-slate-900 border-2 border-primary-600/50 rounded-3xl text-center text-4xl font-black text-white outline-none cursor-default shadow-xl"
+                  className="w-16 h-16 sm:w-32 sm:h-32 bg-slate-950 border-2 border-primary-600/30 rounded-2xl md:rounded-[2.5rem] text-center text-2xl sm:text-6xl font-black text-white outline-none cursor-default shadow-2xl"
                 />
+                <span className="text-[7px] font-bold text-primary-500/50 uppercase tracking-widest sm:hidden">Local</span>
               </div>
-              <div className="text-2xl font-black text-slate-600 italic uppercase tracking-tighter">VS</div>
-              <div className="flex flex-col items-center gap-4">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{match.awayteam}</p>
+
+              <div className="flex flex-col items-center justify-center shrink-0">
+                <span className="text-lg md:text-4xl font-black text-slate-700 italic uppercase tracking-tighter">VS</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2 md:gap-3 flex-1 sm:flex-none">
+                <p className="text-[9px] md:text-xs font-black text-slate-500 uppercase tracking-widest truncate max-w-[80px] md:max-w-none">{match.awayteam}</p>
                 <input 
                   type="number" 
                   value={awayScore}
                   readOnly
-                  className="w-24 h-24 bg-slate-900 border-2 border-primary-600/50 rounded-3xl text-center text-4xl font-black text-white outline-none cursor-default shadow-xl"
+                  className="w-16 h-16 sm:w-32 sm:h-32 bg-slate-950 border-2 border-primary-600/30 rounded-2xl md:rounded-[2.5rem] text-center text-2xl sm:text-6xl font-black text-white outline-none cursor-default shadow-2xl"
                 />
+                <span className="text-[7px] font-bold text-slate-500/50 uppercase tracking-widest sm:hidden">Visitante</span>
               </div>
               
               <button 
                 onClick={recalculateScore} 
-                className="absolute right-6 top-6 p-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-500 hover:text-primary-500 hover:border-primary-500 transition-all group/btn"
-                title="Recalcular marcador basado en eventos"
+                className="absolute right-3 top-3 md:right-8 md:top-8 p-2 md:p-3 bg-slate-950 border border-slate-700 rounded-xl md:rounded-2xl text-slate-500 hover:text-primary-500 hover:border-primary-500 transition-all group/btn shadow-xl"
+                title="Recalcular marcador"
               >
-                <RefreshCw size={16} className="group-hover/btn:rotate-180 transition-all duration-500" />
+                <RefreshCw size={14} className="md:size-4 group-hover/btn:rotate-180 transition-all duration-500" />
               </button>
             </div>
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 border border-slate-700 rounded-full text-[8px] font-black uppercase tracking-widest text-primary-500 shadow-xl opacity-0 group-hover:opacity-100 transition-all">
-              Actualización automática activada
+            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 border border-slate-700 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-primary-500 shadow-xl opacity-0 group-hover:opacity-100 transition-all z-10">
+              Sincronizado
             </div>
           </div>
 
           {/* Events Section */}
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Clock size={14} className="text-primary-600" /> Eventos del Partido
-              </h3>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-primary-600 rounded-full" />
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Clock size={14} className="text-primary-600" /> Eventos del Partido
+                </h3>
+              </div>
+              <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/5">
                 <button 
                   onClick={() => {
                     setIsRivalEvent(false);
                     setShowEventForm(true);
                   }}
-                  className="bg-primary-600/10 hover:bg-primary-600 text-primary-600 hover:text-white px-4 py-3 rounded-xl font-black uppercase text-[8px] tracking-widest transition-all flex items-center gap-2 border border-primary-600/20"
+                  className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all flex items-center justify-center gap-2 ${!isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <Plus size={12} /> Mi Club
+                  <Plus size={10} /> Mi Club
                 </button>
                 <button 
                   onClick={() => {
                     setIsRivalEvent(true);
                     setShowEventForm(true);
                   }}
-                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 rounded-xl font-black uppercase text-[8px] tracking-widest transition-all flex items-center gap-2 border border-slate-700"
+                  className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all flex items-center justify-center gap-2 ${isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <Plus size={12} /> Rival
+                  <Plus size={10} /> Rival
                 </button>
               </div>
             </div>
@@ -420,23 +433,23 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-10 border-t border-slate-800 bg-slate-900/50 flex gap-6">
+        <div className="p-6 md:p-10 border-t border-slate-800 bg-slate-900/50 flex flex-col-reverse sm:flex-row gap-4 sm:gap-6">
           <button 
             onClick={onClose}
-            className="flex-1 py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest text-slate-400 hover:bg-slate-800 transition-colors"
+            className="w-full sm:w-1/3 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-[11px] tracking-widest text-slate-500 hover:bg-white/[0.03] transition-all border border-slate-800"
           >
             Cancelar
           </button>
           <button 
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-[2] py-5 bg-secondary-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-secondary-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            className="w-full sm:flex-1 py-4 md:py-5 bg-[#d4ff00] text-black rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-[0.2em] shadow-2xl shadow-[#d4ff00]/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
           >
             {isSubmitting ? (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="animate-spin" size={18} />
             ) : (
               <>
-                <Save size={20} strokeWidth={3} />
+                <Save size={18} strokeWidth={3} />
                 Guardar Resultado
               </>
             )}

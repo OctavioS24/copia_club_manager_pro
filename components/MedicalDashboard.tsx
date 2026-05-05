@@ -126,9 +126,9 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
   return (
     <div className="p-4 md:p-10 h-full overflow-y-auto custom-scrollbar">
       <div className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div>
-           <div className="flex items-center gap-4">
-             <h2 className="text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Central Médica</h2>
+        <div className="w-full">
+           <div className="flex items-center justify-between lg:justify-start gap-4">
+             <h2 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Central Médica</h2>
              <button 
                onClick={async () => {
                  setIsLoading(true);
@@ -148,103 +148,105 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
                    setIsLoading(false);
                  }
                }}
-               className="p-2 bg-slate-100 dark:bg-white/5 rounded-lg text-slate-400 hover:text-primary-600 transition-all"
+               className="p-2.5 bg-slate-100 dark:bg-white/5 rounded-xl text-slate-400 hover:text-primary-600 transition-all"
                title="Refrescar Datos"
              >
                <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
              </button>
            </div>
-           <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Control de Salud e Integridad Física</p>
+           <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] md:text-[10px] mt-1">Control de Salud e Integridad Física</p>
         </div>
         
-        <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-md' : 'text-slate-400'}`}>Todos</button>
-            <button onClick={() => setFilter('injured')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'injured' ? 'bg-white dark:bg-slate-700 text-red-500 shadow-md' : 'text-slate-400'}`}>Bajas</button>
-            <button onClick={() => setFilter('ready')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ready' ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-md' : 'text-slate-400'}`}>Listos</button>
-            <button onClick={() => setFilter('notfit')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'notfit' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-md' : 'text-slate-400'}`}>No Aptos</button>
-            <button onClick={() => setFilter('expired')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'expired' ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-md' : 'text-slate-400'}`}>Vencidos</button>
+        <div className="w-full lg:w-auto overflow-x-auto no-scrollbar scroll-smooth">
+          <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 min-w-max">
+              <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-md' : 'text-slate-400'}`}>Todos</button>
+              <button onClick={() => setFilter('injured')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'injured' ? 'bg-white dark:bg-slate-700 text-red-500 shadow-md' : 'text-slate-400'}`}>Bajas</button>
+              <button onClick={() => setFilter('ready')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ready' ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-md' : 'text-slate-400'}`}>Listos</button>
+              <button onClick={() => setFilter('notfit')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'notfit' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-md' : 'text-slate-400'}`}>No Aptos</button>
+              <button onClick={() => setFilter('expired')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'expired' ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-md' : 'text-slate-400'}`}>Vencidos</button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-10">
+         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bajas Médicas</span>
-              <p className="text-5xl font-black text-red-600 italic mt-1">{injuredPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Bajas Médicas</span>
+              <p className="text-2xl md:text-5xl font-black text-red-600 italic mt-1">{injuredPlayersCount.length}</p>
             </div>
-            <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
-              <Activity size={28} />
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-red-50 dark:bg-red-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+              <Activity size={18} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Atletas Listos</span>
-              <p className="text-5xl font-black text-emerald-600 italic mt-1">{readyPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Atletas Listos</span>
+              <p className="text-2xl md:text-5xl font-black text-emerald-600 italic mt-1">{readyPlayersCount.length}</p>
             </div>
-            <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-              <CheckCircle size={28} />
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+              <CheckCircle size={18} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">No Aptos</span>
-              <p className="text-5xl font-black text-orange-600 italic mt-1">{notFitPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">No Aptos</span>
+              <p className="text-2xl md:text-5xl font-black text-orange-600 italic mt-1">{notFitPlayersCount.length}</p>
             </div>
-            <div className="w-14 h-14 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={28} />
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-orange-50 dark:bg-orange-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+              <AlertTriangle size={18} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-white dark:bg-slate-900 border border-secondary-600/20 dark:border-secondary-400/10 p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vencidos</span>
-              <p className="text-5xl font-black text-slate-600 dark:text-slate-400 italic mt-1">{expiredPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Vencidos</span>
+              <p className="text-2xl md:text-5xl font-black text-slate-600 dark:text-slate-400 italic mt-1">{expiredPlayersCount.length}</p>
             </div>
-            <div className="w-14 h-14 bg-slate-50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
-              <Clock size={28} />
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-50 dark:bg-white/10 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
+              <Clock size={18} md:size={28} />
             </div>
          </div>
       </div>
 
-      <div className="bg-white dark:bg-[#0f1219] rounded-[3.5rem] shadow-xl border border-secondary-600/30 dark:border-secondary-400/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-200 dark:border-white/5 overflow-hidden">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950/50 text-slate-400 font-black uppercase tracking-widest text-[9px] border-b border-slate-100 dark:border-white/5">
-                <th className="p-8">Atleta / Identidad</th>
-                <th className="p-8">División</th>
-                <th className="p-8">Estatus Médico</th>
-                <th className="p-8">Vencimiento</th>
-                <th className="p-8 text-right">Ficha</th>
+                <th className="px-6 md:p-8 py-6">Atleta / Identidad</th>
+                <th className="px-6 md:p-8 py-6">División</th>
+                <th className="px-6 md:p-8 py-6">Estatus Médico</th>
+                <th className="px-6 md:p-8 py-6">Vencimiento</th>
+                <th className="px-6 md:p-8 py-6 text-right">Ficha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {displayPlayers.map(player => (
                 <tr key={player.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                  <td className="p-8">
+                  <td className="px-6 md:p-8 py-4 md:py-6">
                      <div className="flex items-center gap-4">
-                       <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0">
+                       <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0">
                           <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
                        </div>
                        <div>
-                          <span className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tighter block">{player.name}</span>
+                          <span className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tighter block line-clamp-1">{player.name}</span>
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {player.dni}</span>
                        </div>
                      </div>
                   </td>
-                  <td className="p-8">
-                     <div className="flex flex-col">
+                  <td className="px-6 md:p-8 py-4 md:py-6">
+                     <div className="flex flex-col text-left">
                         <span className="font-black text-[9px] uppercase text-primary-600 tracking-widest">{player.discipline}</span>
                         <span className="text-[9px] text-slate-400 font-bold uppercase">{player.category}</span>
                      </div>
                   </td>
-                  <td className="p-8">
+                  <td className="px-6 md:p-8 py-4 md:py-6">
                     {hasActiveInjury(player) ? (
                        <div className="flex items-center gap-2 text-red-600">
                           <Activity size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Baja Médica</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">Baja</span>
                        </div>
                     ) : isNotFit(player) ? (
                        <div className="flex items-center gap-2 text-orange-600">
@@ -258,21 +260,21 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
                        </div>
                     )}
                   </td>
-                  <td className="p-8">
+                  <td className="px-6 md:p-8 py-4 md:py-6">
                       <div className="flex items-center gap-3">
-                         <div className={`flex items-center gap-2 text-[11px] font-black italic ${isExpired(player) ? 'text-red-600' : 'text-slate-500'}`}>
+                         <div className={`flex items-center gap-2 text-[10px] md:text-[11px] font-black italic ${isExpired(player) ? 'text-red-600' : 'text-slate-500'}`}>
                             <Calendar size={14} className={isExpired(player) ? 'text-red-500' : 'text-primary-600'} />
                             {player.medical?.expiry_date || 'N/A'}
                          </div>
                          {isExpired(player) && (
-                            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-[7px] font-black uppercase tracking-widest leading-none">Vencida</span>
+                            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-[7px] font-black uppercase tracking-widest leading-none">Venc.</span>
                          )}
                       </div>
                   </td>
-                  <td className="p-8 text-right">
+                  <td className="px-6 md:p-8 py-4 md:py-6 text-right">
                       <button 
                         onClick={() => handleViewClick(player)} 
-                        className={`p-3 bg-slate-100 dark:bg-white/5 rounded-2xl transition-all shadow-sm border border-transparent dark:border-white/5 ${readOnly ? 'text-primary-600 hover:bg-primary-600 hover:text-white' : 'text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800'}`}
+                        className={`p-2.5 md:p-3 bg-slate-100 dark:bg-white/5 rounded-xl md:rounded-2xl transition-all shadow-sm border border-transparent dark:border-white/5 ${readOnly ? 'text-primary-600 hover:bg-primary-600 hover:text-white' : 'text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800'}`}
                         title={readOnly ? "Ver Ficha Médica" : "Gestionar Ficha Médica"}
                       >
                           {readOnly ? <Eye size={16} /> : <Edit2 size={16} />}

@@ -315,22 +315,22 @@ const FeesManagement: React.FC = () => {
 
   return (
     <div className="p-4 md:p-10 max-w-7xl mx-auto animate-fade-in pb-40">
-      <header className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
-        <div>
-          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none italic">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+        <div className="w-full">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none italic">
             Control de <span className="text-primary-600">Cuotas</span>
           </h2>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[9px] mt-4 ml-1">Administración Financiera Plegma</p>
+          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[8px] sm:text-[9px] mt-4 ml-1">Administración Financiera Plegma</p>
         </div>
         
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-80 group">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-80 group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="NOMBRE, APELLIDO O DNI..." 
-              className="w-full pl-14 pr-4 py-5 bg-white dark:bg-slate-800/80 rounded-3xl border border-slate-200 dark:border-white/5 outline-none font-black text-[11px] uppercase tracking-widest shadow-xl focus:border-primary-600/50 transition-all placeholder:text-slate-300"
+              placeholder="BUSCAR..." 
+              className="w-full pl-14 pr-4 py-4 md:py-5 bg-white dark:bg-slate-800/80 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-white/5 outline-none font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl focus:border-primary-600/50 transition-all placeholder:text-slate-300"
             />
           </div>
           {viewMode === 'settings' ? (
@@ -339,150 +339,152 @@ const FeesManagement: React.FC = () => {
                 setConfigFormData({ discipline: '', branch: '', category_id: '', amount: 0, due_day: 10, is_active: true });
                 setShowConfigModal(true);
               }} 
-              className="bg-emerald-600 text-white px-8 py-5 rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-3"
+              className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
             >
-              <Plus size={18} strokeWidth={3} /> <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
+              <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
             </button>
           ) : (
-            <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-5 rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-3">
-              <Plus size={18} strokeWidth={3} /> <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
+            <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto">
+              <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
             </button>
           )}
         </div>
       </header>
 
       {/* Filtros Avanzados */}
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setViewMode('history')}
-            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'history' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'history' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Historial
           </button>
           <button 
             onClick={() => setViewMode('registry')}
-            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Registro Mensual
           </button>
           <button 
             onClick={() => setViewMode('settings')}
-            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'settings' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'settings' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Configuración
           </button>
         </div>
 
-        {viewMode !== 'settings' && viewMode === 'registry' && (
-          <div className="flex items-center gap-2">
-             <div className="relative">
-                <input 
-                  type="month" 
-                  value={selectedPeriod} 
-                  onChange={e => setSelectedPeriod(e.target.value)}
-                  className="bg-white dark:bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-                />
-             </div>
-             <button 
-               onClick={async () => {
-                 if(confirm(`¿Generar cuotas pendientes para ${selectedPeriod}?`)) {
-                   setIsSaving(true);
-                   try {
-                     const missing = registryData.filter(d => !d.fee);
-                     if (missing.length === 0) {
-                        alert("No hay cuotas pendientes para generar este mes.");
-                        return;
+        <div className="flex flex-wrap items-center gap-3">
+          {viewMode !== 'settings' && viewMode === 'registry' && (
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+               <div className="relative flex-1 md:flex-none">
+                  <input 
+                    type="month" 
+                    value={selectedPeriod} 
+                    onChange={e => setSelectedPeriod(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                  />
+               </div>
+               <button 
+                 onClick={async () => {
+                   if(confirm(`¿Generar cuotas pendientes para ${selectedPeriod}?`)) {
+                     setIsSaving(true);
+                     try {
+                       const missing = registryData.filter(d => !d.fee);
+                       if (missing.length === 0) {
+                          alert("No hay cuotas pendientes para generar este mes.");
+                          return;
+                       }
+                       
+                       const newFees = missing.map(m => {
+                          const suggestion = suggestFee(m.member);
+                          return {
+                             member_id: m.member.id,
+                             period: selectedPeriod,
+                             amount: suggestion.amount,
+                             due_date: `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}`,
+                             status: 'Pending',
+                             payment_method: 'Efectivo',
+                             created_at: new Date().toISOString()
+                          };
+                       });
+                       
+                       const { error } = await db.fees.upsertMany(newFees);
+                       if (error) throw error;
+                       
+                       await loadData();
+                       alert(`${newFees.length} cuotas generadas correctamente.`);
+                     } catch (error: any) {
+                       console.error("Error al generar cuotas:", error);
+                       alert("Error al generar: " + (error.message || "Error desconocido"));
+                     } finally {
+                       setIsSaving(false);
                      }
-                     
-                     const newFees = missing.map(m => {
-                        const suggestion = suggestFee(m.member);
-                        return {
-                           member_id: m.member.id,
-                           period: selectedPeriod,
-                           amount: suggestion.amount,
-                           due_date: `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}`,
-                           status: 'Pending',
-                           payment_method: 'Efectivo',
-                           created_at: new Date().toISOString()
-                        };
-                     });
-                     
-                     const { error } = await db.fees.upsertMany(newFees);
-                     if (error) throw error;
-                     
-                     await loadData();
-                     alert(`${newFees.length} cuotas generadas correctamente.`);
-                   } catch (error: any) {
-                     console.error("Error al generar cuotas:", error);
-                     alert("Error al generar: " + (error.message || "Error desconocido"));
-                   } finally {
-                     setIsSaving(false);
                    }
-                 }
-               }}
-               disabled={isSaving}
-               className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-2 text-[9px] font-black uppercase tracking-widest"
-             >
-               <RefreshCw size={14} className={isSaving ? 'animate-spin' : ''} /> Generar Cuotas
-             </button>
-          </div>
-        )}
-
-        {viewMode !== 'settings' && (
-          <>
-            <div className="relative min-w-[160px]">
-              <select 
-                value={filterDiscipline} 
-                onChange={e => { setFilterDiscipline(e.target.value); setFilterCategory(''); }}
-                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-              >
-                <option value="">TODAS LAS DISCIPLINAS</option>
-                {config?.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                 }}
+                 disabled={isSaving}
+                 className="flex-1 md:flex-none p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest"
+               >
+                 <RefreshCw size={14} className={isSaving ? 'animate-spin' : ''} /> <span className="inline md:hidden lg:inline">Generar Cuotas</span>
+               </button>
             </div>
+          )}
 
-            <div className="relative min-w-[160px]">
-              <select 
-                value={filterGender} 
-                onChange={e => setFilterGender(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-              >
-                <option value="">TODAS LAS RAMAS</option>
-                <option value="Masculino">MASCULINO</option>
-                <option value="Femenino">FEMENINO</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+          {viewMode !== 'settings' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-2 w-full md:w-auto">
+              <div className="relative w-full lg:min-w-[160px]">
+                <select 
+                  value={filterDiscipline} 
+                  onChange={e => { setFilterDiscipline(e.target.value); setFilterCategory(''); }}
+                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                >
+                  <option value="">DISCIPLINAS</option>
+                  {config?.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              </div>
+
+              <div className="relative w-full lg:min-w-[160px]">
+                <select 
+                  value={filterGender} 
+                  onChange={e => setFilterGender(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                >
+                  <option value="">RAMAS</option>
+                  <option value="Masculino">MASCULINO</option>
+                  <option value="Femenino">FEMENINO</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              </div>
+
+              <div className="relative w-full lg:min-w-[200px]">
+                <select 
+                  value={filterCategory} 
+                  onChange={e => setFilterCategory(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                >
+                  <option value="">CATEGORÍAS</option>
+                  {Array.from(new Set(categories.map(c => c.name))).map(catName => {
+                    const cat = categories.find(c => c.name === catName);
+                    return <option key={cat?.id} value={cat?.id}>{catName}</option>;
+                  })}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+              </div>
+
+              {(filterDiscipline || filterGender || filterCategory || searchTerm) && (
+                <button 
+                  onClick={() => { setFilterDiscipline(''); setFilterGender(''); setFilterCategory(''); setSearchTerm(''); }}
+                  className="w-full sm:w-auto p-3 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest"
+                >
+                  <X size={14} /> <span className="inline md:hidden lg:inline">Limpiar</span>
+                </button>
+              )}
             </div>
-
-            <div className="relative min-w-[200px]">
-              <select 
-                value={filterCategory} 
-                onChange={e => setFilterCategory(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-              >
-                <option value="">TODAS LAS CATEGORÍAS</option>
-                {Array.from(new Set(categories.map(c => c.name))).map(catName => {
-                  const cat = categories.find(c => c.name === catName);
-                  return <option key={cat?.id} value={cat?.id}>{catName}</option>;
-                })}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-            </div>
-
-            {(filterDiscipline || filterGender || filterCategory || searchTerm) && (
-              <button 
-                onClick={() => { setFilterDiscipline(''); setFilterGender(''); setFilterCategory(''); setSearchTerm(''); }}
-                className="p-3 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 text-[9px] font-black uppercase tracking-widest"
-              >
-                <X size={14} /> Limpiar Filtros
-              </button>
-            )}
-          </>
-        )}
+          )}
+        </div>
       </div>
-
+      
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {[

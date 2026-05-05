@@ -75,10 +75,10 @@ const TorneosPrincipal: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-primary-900/20"
+          className="flex items-center justify-center gap-2 px-5 md:px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-black uppercase text-[10px] md:text-xs transition-all shadow-lg shadow-primary-900/20"
         >
           <Plus className="w-5 h-5" />
-          CREAR NUEVO TORNEO
+          <span className="hidden md:inline">CREAR NUEVO TORNEO</span>
         </button>
       </div>
 
@@ -142,9 +142,9 @@ const TorneosPrincipal: React.FC = () => {
                       </div>
                       <button 
                         onClick={() => navigate(`/torneos/${tournament.id}/partidos`)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[10px] font-black uppercase transition-colors"
                       >
-                        VER PARTIDOS
+                        <span className="hidden sm:inline">VER PARTIDOS</span>
                         <ChevronRight className="w-4 h-4" />
                       </button>
                       <button 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Filter, Plus, Edit3, Calendar, Trophy, Loader2, AlertTriangle, Activity, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Filter, Plus, Edit3, Calendar, Trophy, Loader2, AlertTriangle, Activity, RefreshCcw, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Tournament, Match, Rival, Player, ClubConfig } from '../../types';
 import { getPartidosByTorneo, updateMatchStatus, rescheduleMatch, suspendFullDate, resumeFullDate } from '../../lib/torneos';
@@ -178,38 +178,46 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-fade-in max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#0a0c10] text-slate-100 p-3 md:p-12 pb-32">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-slate-400 hover:text-primary-500 transition-colors uppercase font-black text-[10px] tracking-widest"
-          >
-            <ArrowLeft size={14} /> Volver
-          </button>
-          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
-             <Trophy size={32} className="text-primary-600" />
-             {tournament.name} - Partidos
-          </h2>
-        </div>
+      <div className="max-w-6xl mx-auto mb-6 md:mb-12">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-slate-400 hover:text-primary-500 transition-colors uppercase font-black text-[9px] md:text-[10px] tracking-widest mb-3 md:mb-6"
+        >
+          <ArrowLeft size={14} /> Volver
+        </button>
         
-        <div className="flex items-center gap-3 bg-slate-800 p-1.5 rounded-xl border border-slate-700">
-          <Filter size={16} className="text-slate-500 ml-2" />
-          <select 
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-transparent text-white font-bold text-xs outline-none pr-4 cursor-pointer"
-          >
-            <option value="TODAS" className="bg-slate-900 text-white">TODAS LAS CATEGORÍAS</option>
-            {Array.from(new Set(matches.map(m => m.categoryid || (m as any).category_id || (m as any).category).filter(id => !!id))).map(catId => (
-              <option key={catId as string} value={catId as string} className="bg-slate-900 text-white">
-                {getCategoryName(catId as string)}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="w-10 h-10 md:w-16 md:h-16 bg-primary-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-primary-900/20 shrink-0">
+              <Trophy size={20} md:size={32} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-5xl font-black text-white uppercase italic tracking-tighter leading-none truncate pr-4">
+                {tournament.name} <span className="text-primary-500 block md:inline">- Partidos</span>
+              </h1>
+              <p className="text-[7px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 md:mt-2">Gestión Integral de Encuentros</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/50 w-full md:w-auto">
+            <Filter size={14} className="text-slate-500 ml-2" />
+            <select 
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-transparent text-white font-black text-[10px] md:text-xs outline-none pr-4 cursor-pointer flex-1 md:flex-none uppercase tracking-widest"
+            >
+              <option value="TODAS" className="bg-slate-900 text-white">Todas las Categorías</option>
+              {Array.from(new Set(matches.map(m => m.categoryid || (m as any).category_id || (m as any).category).filter(id => !!id))).map(catId => (
+                <option key={catId as string} value={catId as string} className="bg-slate-900 text-white">
+                  {getCategoryName(catId as string)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* Matches List */}
       <div className="space-y-8">
@@ -225,132 +233,127 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             const isDateRescheduled = isDateSuspended && matches.some(m => m.original_date === date && m.is_overridden);
 
             return (
-              <div key={date} className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                <div className="bg-slate-800/50 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center text-primary-500 font-black italic text-sm">
+              <div key={date} className="animate-fade-in">
+                <div className="flex items-center justify-between mb-4 md:mb-6 px-1 md:px-6">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="hidden md:block w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center text-primary-500 font-black italic text-sm">
                       {index + 1}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-black text-white uppercase italic tracking-tight">Fecha {index + 1}</h3>
+                        <h3 className="text-base md:text-xl font-black text-white uppercase italic tracking-tight">Fecha {index + 1}</h3>
                         {isDateRescheduled ? (
-                          <span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border border-blue-500/20">
-                            REPROGRAMADA
+                          <span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-blue-500/20">
+                            REPROG.
                           </span>
                         ) : isDateSuspended ? (
-                          <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border border-red-500/20">
-                            SUSPENDIDA
+                          <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-red-500/20">
+                            SUSP.
                           </span>
                         ) : null}
                       </div>
-                      <p className="text-slate-500 font-bold text-[9px] uppercase tracking-widest flex items-center gap-1.5">
-                        <Calendar size={10} /> {new Date(date).toLocaleDateString()}
+                      <p className="text-slate-500 font-bold text-[8px] md:text-[10px] uppercase tracking-widest flex items-center gap-1.5">
+                        <Calendar size={10} className="md:size-3" /> {new Date(date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 md:gap-3">
                     <button 
                       onClick={() => handleResumeDate(date)}
-                      className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
-                      title="Reanudar todos los partidos suspendidos de esta fecha"
+                      className="p-2 md:px-4 md:py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                      title="Reanudar Fecha"
                     >
-                      <RefreshCcw size={10} /> Reanudar Fecha
+                      <RefreshCcw size={14} className="md:size-3" /> 
+                      <span className="hidden md:inline">Reanudar Fecha</span>
                     </button>
                     <button 
                       onClick={() => { setSuspensionMode('date'); setSuspensionTarget(date); }}
-                      className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all"
+                      className="p-2 md:px-4 md:py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                      title="Suspender Fecha"
                     >
-                      Suspender Fecha
+                      <AlertTriangle size={14} className="md:size-3" />
+                      <span className="hidden md:inline">Suspender Fecha</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest text-left">
-                        <th className="px-3 py-2 border-b border-slate-700">Categoría</th>
-                        <th className="px-3 py-2 border-b border-slate-700 text-right">Local</th>
-                        <th className="px-3 py-2 border-b border-slate-700 text-center w-8"></th>
-                        <th className="px-3 py-2 border-b border-slate-700">Visitante</th>
-                        <th className="px-3 py-2 border-b border-slate-700 text-center w-20">R</th>
-                        <th className="px-3 py-2 border-b border-slate-700 text-center w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {groupedMatches[date].map(match => (
-                      <tr key={match.id} className="border-b border-slate-700 hover:bg-slate-800/50 transition-colors group">
-                        <td className="px-3 py-2">
-                          <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">
-                            {getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || '')}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <span className="text-sm font-medium text-white uppercase italic">{match.hometeam}</span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="text-[10px] text-slate-600 font-bold lowercase italic">vs</span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="text-sm font-medium text-white uppercase italic">{match.awayteam}</span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <div className="inline-flex items-center gap-1.5 text-sm font-black italic">
-                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-600'}>
+                <div className="flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-xl backdrop-blur-sm">
+                  {groupedMatches[date].map(match => (
+                    <div key={match.id} className="p-4 md:p-8 border-b border-slate-800 last:border-0 hover:bg-white/[0.02] transition-all group flex flex-col sm:flex-row items-center gap-4 md:gap-10">
+                      {/* Categoria */}
+                      <div className="w-full sm:w-24 shrink-0 text-center sm:text-left">
+                        <span className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5 md:mb-1 block">Categoría</span>
+                        <span className="text-[10px] md:text-xs font-black text-primary-500 uppercase tracking-tight">
+                          {getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || '')}
+                        </span>
+                      </div>
+
+                      {/* Equipos y Resultado */}
+                      <div className="flex-1 w-full flex items-center justify-between gap-3 md:gap-12">
+                        <div className="flex-1 text-right min-w-0">
+                          <span className="text-xs md:text-xl font-black text-white uppercase italic tracking-tighter truncate block">{match.hometeam}</span>
+                          <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase mt-0.5 block">Local</span>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-1.5 shrink-0 px-2">
+                          <div className={`bg-slate-950/50 px-4 md:px-7 py-2 md:py-4 rounded-xl md:rounded-2xl flex items-center gap-3 md:gap-6 text-lg md:text-3xl font-black italic shadow-inner border border-white/5 ${match.status === 'Suspended' ? 'opacity-40' : ''}`}>
+                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-700'}>
                               {match.status === 'Finished' ? match.homescore : '0'}
                             </span>
-                            <span className="text-slate-800">-</span>
-                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-600'}>
+                            <span className="text-[7px] md:text-[10px] text-slate-700 not-italic uppercase tracking-[0.2em] md:tracking-[0.3em] font-black">VS</span>
+                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-700'}>
                               {match.status === 'Finished' ? match.awayscore : '0'}
                             </span>
                           </div>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <div className="flex items-center justify-center gap-1.5 group-hover:opacity-100 transition-all">
+                        </div>
+
+                        <div className="flex-1 text-left min-w-0">
+                          <span className="text-xs md:text-xl font-black text-white uppercase italic tracking-tighter truncate block">{match.awayteam}</span>
+                          <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase mt-0.5 block">Visitante</span>
+                        </div>
+                      </div>
+
+                      {/* Acciones */}
+                      <div className="w-full sm:w-auto flex items-center gap-2 md:gap-4 border-t sm:border-t-0 border-slate-800/50 pt-4 sm:pt-0 shrink-0">
+                        <button 
+                          onClick={() => handleOpenSquadModal(match)}
+                          className="flex-1 sm:flex-none px-4 md:px-6 py-3 md:py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-900/20 active:scale-95 text-[9px] md:text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Users size={16} className="md:size-5" />
+                          <span className="sm:inline">Plantilla</span>
+                        </button>
+                        
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleOpenResultModal(match)}
+                            className="p-3 md:p-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl md:rounded-2xl transition-all border border-white/5"
+                            title="Resultado"
+                          >
+                            <Edit3 size={16} className="md:size-5" />
+                          </button>
+                          
+                          {match.status === 'Suspended' ? (
                             <button 
-                              onClick={() => handleOpenSquadModal(match)}
-                              className="p-1 px-3 bg-primary-600/10 hover:bg-primary-600 text-primary-600 hover:text-white rounded-lg transition-all flex items-center gap-2 border border-primary-600/20 shadow-sm"
-                              title="Armar Convocatoria / Alineación"
+                              onClick={() => handleResumeMatch(match.id)}
+                              className="p-3 md:p-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl md:rounded-2xl transition-all border border-emerald-500/20"
+                              title="Reanudar"
                             >
-                              <Users size={14} />
-                              <span className="text-[9px] font-black uppercase tracking-tight">Plantilla</span>
+                              <RefreshCcw size={16} className="md:size-5" />
                             </button>
-                            <div className="w-px h-6 bg-slate-800 mx-1 opacity-0 group-hover:opacity-100" />
-                            <button 
-                              onClick={() => handleOpenResultModal(match)}
-                              className={`p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all ${
-                                match.status === 'Finished' 
-                                  ? 'text-slate-500 hover:text-primary-500' 
-                                  : 'text-primary-500 hover:bg-primary-500/10'
-                              }`}
-                              title={match.status === 'Finished' ? 'Editar Resultado' : 'Cargar Resultado'}
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                            {match.status === 'Suspended' && (
-                              <button 
-                                onClick={() => handleResumeMatch(match.id)}
-                                className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-all"
-                                title="Reanudar Partido"
-                              >
-                                <RefreshCcw size={16} />
-                              </button>
-                            )}
+                          ) : (
                             <button 
                               onClick={() => { setSuspensionMode('match'); setSuspensionTarget(match); }}
-                              className="p-1 text-orange-500 hover:bg-orange-500/10 rounded-md transition-all"
-                              title="Suspender/Reprogramar"
+                              className="p-3 md:p-4 bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white rounded-xl md:rounded-2xl transition-all border border-orange-500/20"
+                              title="Incidencias"
                             >
-                              <Activity size={16} />
+                              <Activity size={16} className="md:size-5" />
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )
