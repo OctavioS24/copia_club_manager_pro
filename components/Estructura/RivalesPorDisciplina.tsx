@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, Edit3, Trash2, Shield, Loader2, Save, X, LayoutGrid
+  Plus, Edit3, Trash2, Shield, Loader2, Save, X, LayoutGrid, ChevronDown
 } from 'lucide-react';
 import { Discipline, Rival } from '../../types';
 import { getRivals, createRival, updateRival, deleteRival } from '../../lib/rivals';

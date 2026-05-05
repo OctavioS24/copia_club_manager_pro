@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
-  TrendingDown, MoveRight, ShieldAlert, Target,
+  TrendingDown, ShieldAlert, Target,
   Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { ClubConfig, Match, Member, MatchEvent } from '../types';
