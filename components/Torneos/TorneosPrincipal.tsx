@@ -67,11 +67,11 @@ const TorneosPrincipal: React.FC = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-[var(--text-main)] flex items-center gap-3">
             <Trophy className="w-8 h-8 text-primary-500" />
             MÓDULO DE TORNEOS
           </h1>
-          <p className="text-slate-400 mt-1">Gestión de competencias y fixtures para todas las categorías</p>
+          <p className="text-[var(--text-muted)] mt-1 font-bold uppercase tracking-widest text-[10px]">Gestión de competencias y fixtures para todas las categorías</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -86,22 +86,22 @@ const TorneosPrincipal: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-primary-500 transition-colors" />
             <input
               type="text"
               placeholder="BUSCAR TORNEO..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-slate-700 rounded-2xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all"
+              className="w-full pl-12 pr-4 py-4 bg-surface-card border border-[var(--surface-border)] rounded-2xl text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all font-bold text-xs uppercase tracking-widest"
             />
           </div>
 
           {/* Tournaments List */}
           <div className="space-y-4">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-500 gap-4">
+              <div className="flex flex-col items-center justify-center py-20 text-[var(--text-muted)] gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
-                <p className="font-medium">Cargando torneos...</p>
+                <p className="font-black text-xs uppercase tracking-widest">Cargando torneos...</p>
               </div>
             ) : filteredTournaments.length > 0 ? (
               filteredTournaments.map((tournament) => (
@@ -109,40 +109,40 @@ const TorneosPrincipal: React.FC = () => {
                   key={tournament.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 hover:border-primary-500/30 transition-all group"
+                  className="bg-surface-card border border-[var(--surface-border)] rounded-3xl p-6 hover:border-primary-500/30 transition-all group shadow-sm"
                 >
                   <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <h3 className="text-xl font-bold text-white group-hover:text-primary-400 transition-colors">
+                        <h3 className="text-xl font-black text-[var(--text-main)] uppercase tracking-tighter italic group-hover:text-primary-400 transition-colors">
                           {tournament.name}
                         </h3>
-                        <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs font-bold rounded uppercase tracking-wider">
+                        <span className="px-2 py-0.5 bg-surface-ground text-[var(--text-muted)] text-[9px] font-black rounded uppercase tracking-wider border border-[var(--surface-border)]">
                           {tournament.type}
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                        <span className="flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5 text-primary-500" />
                           {new Date(tournament.created_at).toLocaleDateString()}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Shield className="w-4 h-4" />
+                        <span className="flex items-center gap-2">
+                          <Shield className="w-3.5 h-3.5 text-primary-500" />
                           {tournament.assigned_categories?.length || 0} CATEGORÍAS
                         </span>
-                        <span className="text-primary-500/80 font-medium uppercase tracking-tight">
+                        <span className="text-primary-500">
                           {tournament.gender || 'MASCULINO'}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 self-end md:self-center">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-full text-xs font-bold border border-green-500/20">
-                        <Trophy className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">
+                        <Trophy className="w-3 h-3" />
                         ACTIVO
                       </div>
                       <button 
                         onClick={() => navigate(`/torneos/${tournament.id}/partidos`)}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[10px] font-black uppercase transition-colors"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-[var(--surface-border)]"
                       >
                         <span className="hidden sm:inline">VER PARTIDOS</span>
                         <ChevronRight className="w-4 h-4" />
@@ -150,7 +150,7 @@ const TorneosPrincipal: React.FC = () => {
                       <button 
                         onClick={() => setTournamentToDelete({ id: tournament.id, name: tournament.name })}
                         disabled={isDeleting === tournament.id}
-                        className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all disabled:opacity-50"
+                        className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all disabled:opacity-50"
                         title="Eliminar Torneo"
                       >
                         {isDeleting === tournament.id ? (
@@ -164,9 +164,9 @@ const TorneosPrincipal: React.FC = () => {
                 </motion.div>
               ))
             ) : (
-              <div className="text-center py-20 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
-                <Trophy className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">No se encontraron torneos</p>
+              <div className="text-center py-20 bg-surface-ground rounded-[3rem] border-2 border-dashed border-[var(--surface-border)]">
+                <Trophy className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4 opacity-20" />
+                <p className="text-[var(--text-muted)] font-black uppercase tracking-widest text-xs italic">No se encontraron torneos registrados</p>
               </div>
             )}
           </div>
@@ -174,12 +174,15 @@ const TorneosPrincipal: React.FC = () => {
 
         {/* Stats Sidebar */}
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-primary-600/20 to-primary-800/20 border border-primary-500/20 rounded-3xl p-6">
-            <h3 className="text-white font-bold mb-2">Estadísticas Rápidas</h3>
+          <div className="bg-gradient-to-br from-primary-600/10 to-primary-800/5 border border-primary-500/20 rounded-[2.5rem] p-8">
+            <h3 className="text-[var(--text-main)] font-black uppercase tracking-tighter text-xl italic mb-6">Métricas de Control</h3>
             <div className="grid grid-cols-1 gap-4">
-              <div className="bg-slate-900/40 rounded-2xl p-3 border border-white/5">
-                <p className="text-slate-400 text-xs uppercase font-bold tracking-wider">Torneos Totales</p>
-                <p className="text-2xl font-black text-white">{tournaments.length}</p>
+              <div className="bg-surface-card rounded-2xl p-5 border border-[var(--surface-border)] shadow-sm">
+                <p className="text-[var(--text-muted)] text-[9px] uppercase font-black tracking-[0.2em] mb-2">Torneos Vigentes</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-4xl font-black text-[var(--text-main)] italic leading-none">{tournaments.length}</p>
+                  <Trophy className="text-primary-500/30" size={32} />
+                </div>
               </div>
             </div>
           </div>
@@ -201,37 +204,37 @@ const TorneosPrincipal: React.FC = () => {
         )}
         
         {tournamentToDelete && (
-          <div key="delete-confirmation-overlay" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div key="delete-confirmation-overlay" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl animate-in fade-in duration-200">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl"
             >
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                <Trash2 className="w-8 h-8 text-red-500" />
+              <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-8 mx-auto">
+                <Trash2 className="w-10 h-10 text-red-500" />
               </div>
               
-              <h3 className="text-2xl font-black text-white text-center mb-2 uppercase tracking-tight italic">
-                Eliminar torneo
+              <h3 className="text-3xl font-black text-[var(--text-main)] text-center mb-4 uppercase tracking-tighter italic">
+                Confirmar Baja
               </h3>
               
-              <p className="text-slate-400 text-center mb-8 leading-relaxed">
-                ¿Estás seguro que deseas eliminar <span className="text-white font-bold">"{tournamentToDelete.name}"</span>? 
-                Esta acción eliminará también todos sus partidos asociados y no se puede deshacer.
+              <p className="text-[var(--text-muted)] text-center mb-10 leading-relaxed font-bold text-sm uppercase tracking-tight">
+                ¿Deseas eliminar permanentemente el torneo <span className="text-[var(--text-main)] underline">"{tournamentToDelete.name}"</span>? 
+                Esta acción es irreversible y afectará a todo el historial de partidos.
               </p>
               
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   onClick={() => setTournamentToDelete(null)}
-                  className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors uppercase text-sm tracking-wider"
+                  className="flex-1 px-6 py-4 bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] rounded-2xl font-black transition-all uppercase text-[10px] tracking-[0.2em] border border-[var(--surface-border)]"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={!!isDeleting}
-                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors uppercase text-sm tracking-wider flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black transition-all uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
                 >
                   {isDeleting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

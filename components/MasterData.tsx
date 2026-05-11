@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ClubConfig, Discipline } from '../types';
 import { 
   Save, Plus, Trash2, Shield, Palette, Database, ChevronDown, 
@@ -24,6 +25,13 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
   const [showSaved, setShowSaved] = useState(false);
   const [isEditingEnabled, setIsEditingEnabled] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: 'discipline' | 'category';
+    id: string;
+    name: string;
+    discId?: string;
+    gender?: string;
+  } | null>(null);
 
   // NORMALIZACIÓN: Aseguramos que todas las disciplinas tengan la estructura de ramas
   // Esto es vital para datos antiguos que no tenían la propiedad 'branches'
@@ -106,6 +114,32 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
     setSelectedDiscId(id);
   };
 
+  const executeDelete = () => {
+    if (!deleteConfirm) return;
+
+    if (deleteConfirm.type === 'discipline') {
+      setLocalConfig({
+        ...localConfig,
+        disciplines: localConfig.disciplines.filter(d => d.id !== deleteConfirm.id)
+      });
+      if (selectedDiscId === deleteConfirm.id) {
+        setSelectedDiscId(localConfig.disciplines.find(d => d.id !== deleteConfirm.id)?.id || null);
+      }
+    } else if (deleteConfirm.type === 'category' && deleteConfirm.discId && deleteConfirm.gender) {
+      setLocalConfig({
+        ...localConfig,
+        disciplines: localConfig.disciplines.map(d => d.id === deleteConfirm.discId ? {
+          ...d,
+          branches: d.branches.map(b => b.gender === deleteConfirm.gender ? {
+            ...b,
+            categories: b.categories.filter(c => c.id !== deleteConfirm.id)
+          } : b)
+        } : d)
+      });
+    }
+    setDeleteConfirm(null);
+  };
+
   const updateDiscIcon = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -158,8 +192,8 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
     <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto animate-fade-in pb-40">
       <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 lg:gap-8 mb-10 md:mb-16">
         <div className="w-full">
-          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none italic">
-            Configuración <span className="text-primary-600">Pro</span>
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-[var(--text-main)] leading-none italic">
+            Configuración <span className="text-[var(--primary-600)]">Pro</span>
           </h2>
           <div className="flex gap-4 md:gap-6 mt-8 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 md:mx-0 md:px-0">
             {[
@@ -173,7 +207,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 md:gap-3 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all pb-3 border-b-2 whitespace-nowrap shrink-0 ${activeTab === tab.id ? 'text-primary-600 border-primary-600' : 'text-slate-400 border-transparent hover:text-slate-200'}`}
+                className={`flex items-center gap-2 md:gap-3 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all pb-3 border-b-2 whitespace-nowrap shrink-0 ${activeTab === tab.id ? 'text-[var(--primary-600)] border-[var(--primary-600)]' : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-main)]'}`}
               >
                 <tab.icon size={14} className="shrink-0" /> {tab.label}
               </button>
@@ -184,7 +218,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
         <div className="flex flex-row items-center gap-3 w-full lg:w-auto">
           <button 
             onClick={() => setIsEditingEnabled(!isEditingEnabled)}
-            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-4 rounded-xl md:rounded-2xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest transition-all ${isEditingEnabled ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-slate-200 dark:bg-white/5 text-slate-500'}`}
+            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-4 rounded-xl md:rounded-2xl font-bold uppercase text-[9px] md:text-[10px] tracking-widest transition-all ${isEditingEnabled ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-surface-hover text-[var(--text-muted)]'}`}
           >
             {isEditingEnabled ? <Unlock size={14} /> : <Lock size={14} />}
             <span>{isEditingEnabled ? 'Edición Habilitada' : 'Modo Lectura'}</span>
@@ -193,7 +227,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
           <button 
             onClick={handleSave} 
             disabled={isSaving || !isEditingEnabled}
-            className={`flex-1 lg:flex-none flex items-center justify-center gap-3 md:gap-4 px-6 md:px-10 py-4 rounded-xl md:rounded-[1.5rem] font-bold uppercase text-[9px] md:text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-secondary-600 text-white hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:hover:scale-100'}`}
+            className={`flex-1 lg:flex-none flex items-center justify-center gap-3 md:gap-4 px-6 md:px-10 py-4 rounded-xl md:rounded-[1.5rem] font-bold uppercase text-[9px] md:text-[10px] tracking-widest transition-all shadow-2xl ${showSaved ? 'bg-emerald-500 text-white' : 'bg-[var(--secondary-600)] text-white hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:hover:scale-100'}`}
           >
             {isSaving ? <Loader2 className="animate-spin" size={16} /> : (showSaved ? <CheckCircle size={16} /> : <Save size={16} />)}
             <span>{isSaving ? 'Guardando' : (showSaved ? 'Guardado' : 'Guardar')}</span>
@@ -203,29 +237,29 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
 
       {/* --- TAB 1: IDENTIDAD --- */}
       {activeTab === 'identity' && (
-        <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[4rem] border border-slate-200 dark:border-white/5 p-6 md:p-10 lg:p-16 animate-fade-in shadow-2xl">
+        <div className="bg-surface-card rounded-[2.5rem] md:rounded-[4rem] border border-[var(--surface-border)] p-6 md:p-10 lg:p-16 animate-fade-in shadow-2xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
             <div className="space-y-8 md:space-y-12">
               <div className="space-y-4">
-                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Nombre de la Institución</label>
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] ml-4">Nombre de la Institución</label>
                 {isEditingEnabled ? (
                   <input 
                     value={localConfig.name}
                     onChange={e => setLocalConfig({...localConfig, name: e.target.value.toUpperCase()})}
-                    className="w-full bg-slate-50 dark:bg-white/5 p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] font-black text-2xl md:text-4xl uppercase tracking-tighter dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all shadow-inner"
+                    className="w-full bg-surface-ground p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] font-black text-2xl md:text-4xl uppercase tracking-tighter text-[var(--text-main)] outline-none border-2 border-transparent focus:border-[var(--primary-500)]/30 transition-all shadow-inner"
                     placeholder="NOMBRE DEL CLUB"
                   />
                 ) : (
-                  <div className="p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                    <h3 className="font-black text-2xl md:text-4xl uppercase tracking-tighter dark:text-white leading-none">{localConfig.name}</h3>
+                  <div className="p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] bg-surface-ground border border-[var(--surface-border)]">
+                    <h3 className="font-black text-2xl md:text-4xl uppercase tracking-tighter text-[var(--text-main)] leading-none">{localConfig.name}</h3>
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
                 <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Principal</label>
-                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] ml-4">Color Principal</label>
+                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>
                     <input 
                       type="color" 
                       disabled={!isEditingEnabled}
@@ -233,12 +267,12 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                       onChange={e => setLocalConfig({...localConfig, primary_color: e.target.value})} 
                       className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
                     />
-                    <span className="font-mono text-xs md:text-sm font-bold text-slate-500 uppercase">{localConfig.primary_color}</span>
+                    <span className="font-mono text-xs md:text-sm font-bold text-[var(--text-muted)] uppercase">{localConfig.primary_color}</span>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 ml-4">Color Fondo</label>
-                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5' : 'bg-transparent border-transparent'}`}>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] ml-4">Color Secundario</label>
+                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>
                     <input 
                       type="color" 
                       disabled={!isEditingEnabled}
@@ -246,13 +280,13 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                       onChange={e => setLocalConfig({...localConfig, secondary_color: e.target.value})} 
                       className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
                     />
-                    <span className="font-mono text-xs md:text-sm font-bold text-slate-500 uppercase">{localConfig.secondary_color}</span>
+                    <span className="font-mono text-xs md:text-sm font-bold text-[var(--text-muted)] uppercase">{localConfig.secondary_color}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className={`flex flex-col items-center justify-center p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border-4 border-dashed relative group transition-all ${isEditingEnabled ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10' : 'bg-transparent border-transparent'}`}>
+            <div className={`flex flex-col items-center justify-center p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border-4 border-dashed relative group transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>
               <input type="file" ref={fileInputRef} onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
@@ -262,15 +296,15 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                 }
               }} accept="image/*" className="hidden" />
               
-              <div className="w-48 h-48 md:w-64 md:h-64 rounded-full bg-white dark:bg-slate-900 shadow-3xl flex items-center justify-center overflow-hidden mb-8 md:mb-12 border-8 border-white dark:border-slate-800 relative group">
+              <div className="w-48 h-48 md:w-64 md:h-64 rounded-full bg-surface-card shadow-3xl flex items-center justify-center overflow-hidden mb-8 md:mb-12 border-8 border-[var(--surface-border)] relative group">
                 {localConfig.logo_url ? (
                   <img src={localConfig.logo_url} className="w-full h-full object-contain p-8" />
                 ) : (
-                  <Shield size={64} md:size={80} className="text-slate-100 dark:text-slate-800" />
+                  <Shield size={64} className="text-[var(--surface-border)]" />
                 )}
                 {isEditingEnabled && (
-                  <div onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-primary-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <Camera size={40} md:size={48} className="text-white" />
+                  <div onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-primary-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera size={40} className="text-primary-contrast" />
                   </div>
                 )}
               </div>
@@ -278,7 +312,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
               {isEditingEnabled && (
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-8 md:px-12 py-4 md:py-5 bg-slate-900 dark:bg-primary-600 text-white rounded-full font-bold uppercase text-[9px] md:text-[10px] tracking-widest shadow-2xl hover:scale-105 transition-all"
+                  className="px-8 md:px-12 py-4 md:py-5 bg-primary-500 text-primary-contrast rounded-full font-bold uppercase text-[9px] md:text-[10px] tracking-widest shadow-2xl hover:scale-105 transition-all"
                 >
                   Actualizar Escudo Club
                 </button>
@@ -292,10 +326,10 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
       {activeTab === 'disciplines' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 animate-fade-in">
           {localConfig.disciplines.map(disc => (
-            <div key={disc.id} className="bg-white dark:bg-[#0f1219] rounded-[2rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 p-6 md:p-10 shadow-sm relative group hover:border-primary-500/30 transition-all flex flex-col items-center">
+            <div key={disc.id} className="bg-surface-card rounded-[2rem] md:rounded-[3rem] border border-[var(--surface-border)] p-6 md:p-10 shadow-sm relative group hover:border-primary-500/30 transition-all flex flex-col items-center">
               {isEditingEnabled && (
                 <button 
-                  onClick={() => setLocalConfig({...localConfig, disciplines: localConfig.disciplines.filter(d => d.id !== disc.id)})}
+                  onClick={() => setDeleteConfirm({ type: 'discipline', id: disc.id, name: disc.name })}
                   className="absolute top-6 right-6 md:top-8 md:right-8 text-slate-300 hover:text-red-500 transition-colors animate-fade-in z-10"
                 >
                   <Trash2 size={16} md:size={18} />
@@ -312,7 +346,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                 />
                 <div 
                   onClick={() => isEditingEnabled && discIconRefs.current[disc.id]?.click()}
-                  className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-white/10 transition-all shadow-inner relative ${isEditingEnabled ? 'cursor-pointer border-dashed hover:border-primary-600' : 'cursor-default border-solid opacity-80'}`}
+                  className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl bg-surface-ground flex items-center justify-center overflow-hidden border-2 border-[var(--surface-border)] transition-all shadow-inner relative ${isEditingEnabled ? 'cursor-pointer border-dashed hover:border-primary-500' : 'cursor-default border-solid opacity-80'}`}
                 >
                   {disc.iconUrl ? (
                     <img src={disc.iconUrl} className="w-full h-full object-cover" />
@@ -320,7 +354,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                     <ImageIcon size={32} md:size={40} className="text-slate-300" />
                   )}
                   {isEditingEnabled && (
-                    <div className="absolute inset-0 bg-primary-600/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-primary-500/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                       <Camera size={20} md:size={24} />
                     </div>
                   )}
@@ -334,18 +368,18 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                     value={disc.name}
                     onChange={e => setLocalConfig({...localConfig, disciplines: localConfig.disciplines.map(d => d.id === disc.id ? {...d, name: e.target.value.toUpperCase()} : d)})}
                     placeholder="NOMBRE"
-                    className="w-full bg-slate-50 dark:bg-white/5 p-3 md:p-4 rounded-xl md:rounded-2xl font-black text-xl md:text-2xl uppercase tracking-tighter text-center dark:text-white outline-none border-2 border-transparent focus:border-primary-600/30 transition-all"
+                    className="w-full bg-surface-ground p-3 md:p-4 rounded-xl md:rounded-2xl font-black text-xl md:text-2xl uppercase tracking-tighter text-center text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/30 transition-all"
                   />
                 ) : (
-                  <h3 className="w-full font-black text-xl md:text-2xl uppercase tracking-tighter text-center dark:text-white py-3 md:py-4 truncate px-2">{disc.name}</h3>
+                  <h3 className="w-full font-black text-xl md:text-2xl uppercase tracking-tighter text-center text-[var(--text-main)] py-3 md:py-4 truncate px-2">{disc.name}</h3>
                 )}
               </div>
             </div>
           ))}
           
           {isEditingEnabled && (
-            <button onClick={addDiscipline} className="border-4 border-dashed border-slate-200 dark:border-white/5 rounded-[2rem] md:rounded-[3rem] p-10 md:p-16 flex flex-col items-center justify-center gap-4 md:gap-6 text-slate-400 hover:text-primary-600 hover:border-primary-600 transition-all bg-white/5 group animate-fade-in min-h-[250px]">
-               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <button onClick={addDiscipline} className="border-4 border-dashed border-[var(--surface-border)] rounded-[2rem] md:rounded-[3rem] p-10 md:p-16 flex flex-col items-center justify-center gap-4 md:gap-6 text-slate-400 hover:text-primary-500 hover:border-primary-500 transition-all bg-surface-card/50 group animate-fade-in min-h-[250px]">
+               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-ground flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Plus size={32} md:size={40} />
                </div>
                <span className="font-bold uppercase text-[9px] md:text-[10px] tracking-[0.2em]">Nueva Disciplina</span>
@@ -363,21 +397,21 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
       {activeTab === 'matrix' && (
         <div className="space-y-12 animate-fade-in">
           {/* Header de selección de disciplina */}
-          <div className="bg-white dark:bg-[#0f1219] p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl overflow-hidden">
+          <div className="bg-surface-card p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-[var(--surface-border)] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl overflow-hidden">
               <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
-                  <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-600 shadow-inner shrink-0">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-500 shadow-inner shrink-0">
                     <LayoutGrid size={20} md:size={24} />
                   </div>
                   <div className="flex flex-col min-w-0 flex-1">
-                    <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina Activa</h4>
+                    <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)]">Disciplina Activa</h4>
                     <div className="relative group min-w-0">
                       <select 
                         value={selectedDiscId || ''}
                         onChange={e => setSelectedDiscId(e.target.value)}
-                        className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
+                        className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter text-[var(--text-main)] outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
                       >
                         {localConfig.disciplines.length === 0 && (
-                          <option value="" className="bg-white dark:bg-slate-900 dark:text-white font-sans text-sm p-4 text-slate-500">
+                          <option value="" className="bg-surface-card text-[var(--text-main)] font-sans text-sm p-4 text-[var(--text-muted)]">
                             No hay disciplinas
                           </option>
                         )}
@@ -385,20 +419,20 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                           <option 
                             key={d.id} 
                             value={d.id} 
-                            className="bg-white dark:bg-[#1a1f2b] dark:text-white font-sans text-sm p-4 uppercase tracking-widest font-bold"
+                            className="bg-surface-card text-[var(--text-main)] font-sans text-sm p-4 uppercase tracking-widest font-bold"
                           >
                             {d.name}
                           </option>
                         ))}
                       </select>
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-primary-600 transition-colors">
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-muted)] group-hover:text-primary-500 transition-colors">
                         <ChevronDown size={22} />
                       </div>
                     </div>
                   </div>
               </div>
               {selectedDiscipline && (
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-white/5 w-full md:w-auto overflow-hidden">
+                <div className="flex items-center gap-4 bg-surface-ground p-4 rounded-3xl border border-[var(--surface-border)] w-full md:w-auto overflow-hidden">
                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-100 p-1 flex items-center justify-center shrink-0">
                       {selectedDiscipline.iconUrl ? (
                         <img src={selectedDiscipline.iconUrl} className="w-full h-full object-contain" />
@@ -407,7 +441,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                       )}
                    </div>
                    <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-[10px] uppercase tracking-widest text-primary-600 leading-none truncate">Configuración Técnica</span>
+                      <span className="font-bold text-[10px] uppercase tracking-widest text-primary-500 leading-none truncate">Configuración Técnica</span>
                       <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-1 truncate">Sincronizado</span>
                    </div>
                 </div>
@@ -417,10 +451,10 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
           {selectedDiscipline ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                {selectedDiscipline.branches.map(branch => (
-                 <div key={branch.gender} className={`rounded-[3.5rem] p-6 md:p-8 lg:p-12 border transition-all overflow-hidden ${branch.enabled ? 'bg-white dark:bg-[#0f1219] border-slate-200 dark:border-white/5 shadow-xl' : 'bg-slate-100/30 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-40 grayscale'}`}>
+                 <div key={branch.gender} className={`rounded-[3.5rem] p-6 md:p-8 lg:p-12 border transition-all overflow-hidden ${branch.enabled ? 'bg-surface-card border-[var(--surface-border)] shadow-xl' : 'bg-surface-ground/50 border-[var(--surface-border)] opacity-40 grayscale'}`}>
                     <div className="flex flex-wrap justify-between items-center mb-10 gap-4">
                         <label className={`flex items-center gap-4 ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default'}`}>
-                          <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${branch.enabled ? 'bg-primary-600 border-primary-600 shadow-lg shadow-primary-500/30' : 'border-slate-300'}`}>
+                          <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${branch.enabled ? 'bg-primary-500 border-primary-500 shadow-lg shadow-primary-500/30' : 'border-slate-300'}`}>
                               <input 
                                 type="checkbox" 
                                 checked={branch.enabled} 
@@ -434,15 +468,15 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                 })}
                                 className="hidden"
                               />
-                              {branch.enabled && <CheckCircle size={16} className="text-white" />}
+                              {branch.enabled && <CheckCircle size={16} className="text-primary-contrast" />}
                           </div>
-                          <h4 className="font-black uppercase text-2xl tracking-tighter dark:text-white flex items-center gap-3 italic truncate">
+                          <h4 className="font-black uppercase text-2xl tracking-tighter text-[var(--text-main)] flex items-center gap-3 italic truncate">
                              <User size={24} className={branch.gender === 'Masculino' ? 'text-blue-500' : 'text-primary-500'} />
                              Rama {branch.gender}
                           </h4>
                         </label>
                         {branch.enabled && isEditingEnabled && (
-                          <button onClick={() => addCategory(selectedDiscipline.id, branch.gender)} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
+                          <button onClick={() => addCategory(selectedDiscipline.id, branch.gender)} className="flex items-center gap-2 bg-slate-900 dark:bg-primary-500 dark:text-primary-contrast px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
                              <Plus size={14} /> Nueva Categoría
                           </button>
                         )}
@@ -453,15 +487,15 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                         {branch.categories.map(cat => {
                           const isExpanded = expandedCategories[cat.id];
                           return (
-                            <div key={cat.id} className={`group/cat transition-all duration-500 w-full ${isExpanded ? 'bg-slate-50 dark:bg-white/[0.03] rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6' : 'bg-transparent'}`}>
+                            <div key={cat.id} className={`group/cat transition-all duration-500 w-full ${isExpanded ? 'bg-surface-ground rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6' : 'bg-transparent'}`}>
                               {/* Header Acordeón */}
                               <div className="flex items-center gap-3 md:gap-4 w-full overflow-hidden">
                                 <div 
                                   onClick={() => toggleCategory(cat.id)}
-                                  className={`w-full flex items-center justify-between p-3 md:p-6 rounded-2xl md:rounded-3xl transition-all border overflow-hidden cursor-pointer ${isExpanded ? 'bg-white dark:bg-slate-800 border-primary-600/30 shadow-xl' : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-slate-300 dark:hover:border-white/10'}`}
+                                  className={`w-full flex items-center justify-between p-3 md:p-6 rounded-2xl md:rounded-3xl transition-all border overflow-hidden cursor-pointer ${isExpanded ? 'bg-surface-card border-primary-500/30 shadow-xl' : 'bg-surface-ground border-transparent hover:border-slate-300 dark:hover:border-white/10'}`}
                                 >
                                   <div className="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-                                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-colors shrink-0 ${isExpanded ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
+                                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-colors shrink-0 ${isExpanded ? 'bg-primary-500 text-primary-contrast shadow-lg shadow-primary-500/30' : 'bg-surface-ground text-slate-500'}`}>
                                         <Target size={18} md:size={20} />
                                      </div>
                                      <div className="flex flex-col items-start min-w-0 flex-1">
@@ -470,30 +504,33 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                             value={cat.name}
                                             onClick={e => e.stopPropagation()}
                                             onChange={e => setLocalConfig({...localConfig, disciplines: localConfig.disciplines.map(d => d.id === selectedDiscipline.id ? {...d, branches: d.branches.map(b => b.gender === branch.gender ? {...b, categories: b.categories.map(c => c.id === cat.id ? {...c, name: e.target.value.toUpperCase()} : c)} : b)} : d)})}
-                                            className="w-full bg-transparent font-black uppercase text-sm md:text-lg tracking-tighter text-slate-900 dark:text-white outline-none focus:border-b-2 border-primary-600 truncate"
+                                            className="w-full bg-transparent font-black uppercase text-sm md:text-lg tracking-tighter text-[var(--text-main)] outline-none focus:border-b-2 border-primary-500 truncate"
                                           />
                                         ) : (
-                                          <span className="w-full font-black uppercase text-sm md:text-lg tracking-tighter text-slate-900 dark:text-white leading-none truncate text-left">{cat.name}</span>
+                                          <span className="w-full font-black uppercase text-sm md:text-lg tracking-tighter text-[var(--text-main)] leading-none truncate text-left">{cat.name}</span>
                                         )}
-                                        <span className="text-[7px] md:text-[9px] font-bold uppercase text-slate-400 tracking-[0.3em] mt-1 md:mt-2 truncate w-full text-left">{cat.metrics.length} Parámetros Técnicos</span>
+                                        <span className="text-[7px] md:text-[9px] font-bold uppercase text-[var(--text-muted)] tracking-[0.3em] mt-1 md:mt-2 truncate w-full text-left">{cat.metrics.length} Parámetros Técnicos</span>
                                      </div>
                                   </div>
-                                  
                                   <div className="flex items-center gap-2 md:gap-4 shrink-0 ml-2">
                                      {isEditingEnabled && (
                                        <button 
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if(confirm('¿Eliminar categoría y sus métricas?')) {
-                                              setLocalConfig({...localConfig, disciplines: localConfig.disciplines.map(d => d.id === selectedDiscipline.id ? {...d, branches: d.branches.map(b => b.gender === branch.gender ? {...b, categories: b.categories.filter(c => c.id !== cat.id)} : b)} : d)});
-                                            }
+                                            setDeleteConfirm({ 
+                                              type: 'category', 
+                                              id: cat.id, 
+                                              name: cat.name, 
+                                              discId: selectedDiscipline.id, 
+                                              gender: branch.gender 
+                                            });
                                           }}
                                           className="p-1.5 md:p-2 text-slate-300 hover:text-red-500 transition-colors"
                                        >
                                           <Trash2 size={14} md:size={16} />
                                        </button>
                                      )}
-                                     <div className={`transition-transform duration-500 ${isExpanded ? 'rotate-180 text-primary-600' : 'text-slate-400'}`}>
+                                     <div className={`transition-transform duration-500 ${isExpanded ? 'rotate-180 text-primary-500' : 'text-slate-400'}`}>
                                         <ChevronDown size={18} md:size={20} />
                                      </div>
                                   </div>
@@ -505,8 +542,8 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                 <div className="overflow-hidden w-full">
                                    <div className="space-y-3 mb-6 w-full">
                                       {cat.metrics.map(metric => (
-                                        <div key={metric.id} className="flex items-center gap-4 bg-white dark:bg-[#1a1f2b] p-4 md:p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 group/row w-full overflow-hidden">
-                                           <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover/row:text-primary-600 transition-colors shrink-0">
+                                        <div key={metric.id} className="flex items-center gap-4 bg-surface-card p-4 md:p-5 rounded-2xl shadow-sm border border-[var(--surface-border)] group/row w-full overflow-hidden">
+                                           <div className="w-8 h-8 rounded-lg bg-surface-ground flex items-center justify-center text-slate-400 group-hover/row:text-primary-500 transition-colors shrink-0">
                                               <BarChart3 size={14} />
                                            </div>
                                            <div className="min-w-0 flex-1">
@@ -526,11 +563,11 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                               <div className="flex flex-col items-end shrink-0">
                                                 <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Impacto</span>
                                                 <input 
-                                                  type="color" 
+                                                  type="number" 
                                                   disabled={!isEditingEnabled}
                                                   value={metric.weight}
                                                   onChange={e => setLocalConfig({...localConfig, disciplines: localConfig.disciplines.map(d => d.id === selectedDiscipline.id ? {...d, branches: d.branches.map(b => b.gender === branch.gender ? {...b, categories: b.categories.map(c => c.id === cat.id ? {...c, metrics: c.metrics.map(m => m.id === metric.id ? {...m, weight: parseInt(e.target.value) || 1} : m)} : c)} : b)} : d)})}
-                                                  className={`w-10 md:w-12 text-center font-black text-xs py-1.5 rounded-lg outline-none transition-colors ${isEditingEnabled ? 'bg-slate-100 dark:bg-slate-700' : 'bg-transparent'}`} 
+                                                  className={`w-10 md:w-12 text-center font-black text-xs py-1.5 rounded-lg outline-none transition-colors ${isEditingEnabled ? 'bg-surface-ground dark:bg-slate-700' : 'bg-transparent'}`} 
                                                 />
                                               </div>
                                               {isEditingEnabled && (
@@ -549,9 +586,9 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                                    {isEditingEnabled && (
                                       <button 
                                         onClick={() => addMetric(selectedDiscipline.id, branch.gender, cat.id)}
-                                        className="w-full py-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-center gap-3 text-slate-400 hover:text-primary-600 hover:border-primary-600 transition-all group/addkpi"
+                                        className="w-full py-4 border-2 border-dashed border-[var(--surface-border)] rounded-2xl flex items-center justify-center gap-3 text-slate-400 hover:text-primary-500 hover:border-primary-500 transition-all group/addkpi"
                                       >
-                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover/addkpi:bg-primary-600 group-hover/addkpi:text-white transition-all shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-surface-ground flex items-center justify-center group-hover/addkpi:bg-primary-500 group-hover/addkpi:text-primary-contrast transition-all shrink-0">
                                           <Activity size={16} />
                                         </div>
                                         <span className="text-[10px] font-black uppercase tracking-[0.3em] truncate px-2">Agregar Métrica KPI</span>
@@ -568,9 +605,9 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                ))}
             </div>
           ) : (
-            <div className="py-32 text-center bg-white dark:bg-[#0f1219] rounded-[4rem] border border-slate-200 dark:border-white/5 shadow-inner">
-               <Shield size={64} className="mx-auto mb-6 text-slate-100 dark:text-white/5" />
-               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-400">Selecciona una disciplina para gestionar su matriz</p>
+            <div className="py-32 text-center bg-surface-card rounded-[4rem] border border-[var(--surface-border)] shadow-inner">
+               <Shield size={64} className="mx-auto mb-6 text-[var(--surface-border)]" />
+               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[var(--text-muted)]">Selecciona una disciplina para gestionar su matriz</p>
             </div>
           )}
         </div>
@@ -585,6 +622,67 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
       {activeTab === 'positions' && (
         <PosicionesPorDisciplina disciplines={localConfig.disciplines} />
       )}
+
+      {/* --- MODAL DE ELIMINACIÓN --- */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-12 max-w-md w-full shadow-2xl relative z-10 overflow-hidden"
+            >
+              {/* Background gradient effect */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl" />
+              
+              <div className="flex flex-col items-center text-center relative z-10">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-8 shadow-inner">
+                  <Trash2 size={40} md:size={48} />
+                </div>
+                
+                <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-4 italic text-[var(--text-main)]">
+                  Confirmar Eliminación
+                </h3>
+                
+                <div className="space-y-4 mb-10">
+                  <p className="text-[var(--text-muted)] text-sm md:text-base leading-relaxed">
+                    Estás por eliminar <span className="text-[var(--text-main)] font-black italic">"{deleteConfirm.name}"</span>.
+                  </p>
+                  
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 md:p-6">
+                    <p className="text-red-500 text-[10px] md:text-[11px] font-black uppercase tracking-widest leading-relaxed">
+                      ⚠️ Esta acción es irreversible y eliminará en cascada todas las categorías, métricas y datos relacionados vinculados.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 w-full">
+                  <button 
+                    onClick={() => setDeleteConfirm(null)}
+                    className="flex-1 px-8 py-5 rounded-2xl bg-surface-ground hover:bg-surface-hover text-[var(--text-muted)] font-bold uppercase text-[10px] tracking-widest transition-all"
+                  >
+                    Mantener
+                  </button>
+                  <button 
+                    onClick={executeDelete}
+                    className="flex-1 px-8 py-5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-500/20 transition-all hover:scale-105 active:scale-95"
+                  >
+                    Eliminar Todo
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

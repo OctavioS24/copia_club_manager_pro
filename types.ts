@@ -224,17 +224,18 @@ export interface PlayerStats {
 export interface Tournament {
   id: string;
   name: string;
-  type: TournamentType;
-  discipline_id: string;
+  type?: TournamentType;
+  discipline?: string;
+  discipline_id?: string;
   category_id?: string;
-  gender: 'Masculino' | 'Femenino';
-  status: 'Open' | 'Finished';
-  settings: TournamentSettings;
+  gender?: 'Masculino' | 'Femenino';
+  status?: 'Open' | 'Finished';
+  settings?: TournamentSettings;
   fixture_base?: MatchFixture[];
   assigned_categories?: string[];
   category_conditions?: Record<string, 'Normal' | 'Inverted'>;
   created_at: string;
-  // Alias for backward compatibility if needed
+  // Alias for backward compatibility
   disciplineid?: string;
   categoryid?: string;
   assignedcategories?: string[];

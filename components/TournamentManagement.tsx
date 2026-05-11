@@ -145,16 +145,21 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       
       if (tourRes.data) {
         const filtered = tourRes.data.filter((t: any) => {
-          const tDiscId = t.discipline_id;
+          // Normalización local extra por seguridad
+          const tDiscId = t.discipline_id || t.discipline;
           const tGender = t.gender;
           const tAssignedCats = t.assigned_categories || [];
 
-          const discMatch = tDiscId === discipline?.id;
-          const hasAssignedCategoryInDiscipline = tAssignedCats.some((catId: string) => {
+          // Comprobamos por ID o por Nombre (para Cuenta B)
+          const discMatch = tDiscId === discipline?.id || tDiscId === discipline?.name;
+          
+          const hasAssignedCategoryInDiscipline = tAssignedCats.length > 0 ? tAssignedCats.some((catId: string) => {
             return discipline?.branches?.some(b => b.categories.some(c => c.id === catId));
-          });
+          }) : (t.category_id ? discipline?.branches?.some(b => b.categories.some(c => c.id === t.category_id)) : true);
 
-          const genderMatch = !gender || (tGender === gender);
+          // Si tGender no existe (Cuenta B), lo permitimos pasar
+          const genderMatch = !gender || !tGender || (tGender === gender);
+          
           return (discMatch || hasAssignedCategoryInDiscipline) && genderMatch;
         });
         setTournaments(filtered);

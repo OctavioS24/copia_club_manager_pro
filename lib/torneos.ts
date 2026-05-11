@@ -24,7 +24,16 @@ export const getTournaments = async (): Promise<Tournament[]> => {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data || [];
+  
+  // Normalización para Cuenta B
+  return (data || []).map(t => ({
+    ...t,
+    discipline_id: t.discipline_id || t.discipline,
+    category_id: t.category_id || t.categoryid,
+    type: t.type || 'Professional',
+    status: t.status || 'Open',
+    settings: t.settings || { has_groups: false, groups_count: 1, advancing_per_group: 2, has_playoffs: false, playoff_start: 'F' }
+  }));
 };
 
 export const getFixturesByCategory = async (tournamentId: string, categoryId: string): Promise<Match[]> => {
@@ -36,7 +45,15 @@ export const getFixturesByCategory = async (tournamentId: string, categoryId: st
     .order('date', { ascending: true });
   
   if (error) throw error;
-  return data || [];
+  
+  // Normalización de scores para Cuenta B
+  return (data || []).map(m => ({
+    ...m,
+    home_score: m.home_score !== undefined ? m.home_score : m.homescore,
+    away_score: m.away_score !== undefined ? m.away_score : m.awayscore,
+    home_team: m.home_team || m.hometeam,
+    away_team: m.away_team || m.awayteam
+  }));
 };
 
 export const getPartidosByTorneo = async (tournamentId: string): Promise<Match[]> => {
@@ -47,7 +64,15 @@ export const getPartidosByTorneo = async (tournamentId: string): Promise<Match[]
     .order('date', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  
+  // Normalización de scores para Cuenta B
+  return (data || []).map(m => ({
+    ...m,
+    home_score: m.home_score !== undefined ? m.home_score : m.homescore,
+    away_score: m.away_score !== undefined ? m.away_score : m.awayscore,
+    home_team: m.home_team || m.hometeam,
+    away_team: m.away_team || m.awayteam
+  }));
 };
 
 export const updateMatchResult = async (

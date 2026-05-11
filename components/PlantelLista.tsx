@@ -171,8 +171,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="animate-spin text-primary-600 mb-4" size={40} />
-        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Cargando plantel...</p>
+        <Loader2 className="animate-spin text-[var(--primary-500)] mb-4" size={40} />
+        <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">Cargando plantel...</p>
       </div>
     );
   }
@@ -182,7 +182,7 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
       <div className="p-10 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center">
         <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
         <h3 className="text-xl font-black uppercase text-red-500 mb-2">Error</h3>
-        <p className="text-slate-400 font-bold text-sm">{error}</p>
+        <p className="text-[var(--text-muted)] font-bold text-sm">{error}</p>
       </div>
     );
   }
@@ -192,12 +192,12 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
       {/* CUERPO TÉCNICO */}
       <section>
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary-600/10 flex items-center justify-center text-primary-600">
+          <div className="w-10 h-10 rounded-xl bg-[var(--primary-500)]/10 flex items-center justify-center text-[var(--primary-500)]">
             <Briefcase size={20} />
           </div>
           <div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter dark:text-white italic">Cuerpo Técnico</h3>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Responsables del Plantel</p>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-[var(--text-main)] italic">Cuerpo Técnico</h3>
+            <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Responsables del Plantel</p>
           </div>
         </div>
 
@@ -206,15 +206,15 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
             {Object.entries(coachingStaffGroups).map(([role, staffList]) => (
               <div key={role} className="space-y-4">
                 <div className="flex items-center gap-2 px-4">
-                  <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.2em]">
+                  <span className="text-[10px] font-black text-[var(--primary-500)] uppercase tracking-[0.2em]">
                     {getRoleDisplayName(role)} ({staffList.length})
                   </span>
-                  <div className="flex-1 h-px bg-primary-600/10"></div>
+                  <div className="flex-1 h-px bg-[var(--primary-500)]/10"></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {staffList.map(staff => (
-                    <div key={staff.id} className="bg-primary-600/5 dark:bg-primary-600/10 border border-primary-600/20 rounded-[2.5rem] p-6 flex items-center gap-5 hover:bg-primary-600/15 transition-all group">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary-600/20 shadow-lg shrink-0">
+                    <div key={staff.id} className="bg-surface-card hover:bg-surface-hover border border-[var(--surface-border)] rounded-[2.5rem] p-6 flex items-center gap-5 transition-all group">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[var(--surface-border)] shadow-lg shrink-0">
                         <img 
                           src={staff.photourl || 'https://via.placeholder.com/150'} 
                           alt={staff.name}
@@ -223,8 +223,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                         />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-white truncate">{staff.name}</h4>
-                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-widest bg-primary-600/10 px-3 py-1 rounded-full mt-2 inline-block">
+                        <h4 className="font-black text-lg uppercase tracking-tight text-[var(--text-main)] truncate">{staff.name}</h4>
+                        <span className="text-[9px] font-black text-[var(--primary-500)] uppercase tracking-widest bg-[var(--primary-soft)] px-3 py-1 rounded-full mt-2 inline-block">
                           {getRoleDisplayName(role)}
                         </span>
                       </div>
@@ -235,8 +235,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
             ))}
           </div>
         ) : (
-          <div className="p-10 text-center bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-white/10">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest italic">Sin técnico asignado</p>
+          <div className="p-10 text-center bg-surface-ground rounded-[2.5rem] border border-dashed border-[var(--surface-border)]">
+            <p className="text-xs font-black text-[var(--text-muted)] opacity-30 uppercase tracking-widest italic">Sin técnico asignado</p>
           </div>
         )}
       </section>
@@ -245,10 +245,10 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
       {Object.entries(groupedPlayers).map(([position, playersInPos]) => (
         playersInPos.length > 0 && (
           <section key={position}>
-            <div className="flex items-center justify-between mb-8 border-b border-slate-100 dark:border-white/5 pb-4">
-              <h3 className="text-xl font-black uppercase tracking-tighter dark:text-white italic flex items-center gap-3">
-                <div className="w-1 h-4 bg-primary-600 rounded-full"></div>
-                {position} <span className="text-slate-400 text-sm ml-2">({playersInPos.length})</span>
+            <div className="flex items-center justify-between mb-8 border-b border-[var(--surface-border)] pb-4">
+              <h3 className="text-xl font-black uppercase tracking-tighter text-[var(--text-main)] italic flex items-center gap-3">
+                <div className="w-1 h-4 bg-[var(--primary-500)] rounded-full"></div>
+                {position} <span className="text-[var(--text-muted)] text-sm ml-2">({playersInPos.length})</span>
               </h3>
             </div>
 
@@ -257,10 +257,10 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                 <div 
                   key={player.id} 
                   onClick={() => onPlayerClick?.(player as any)}
-                  className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all group relative overflow-hidden cursor-pointer"
+                  className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-6 hover:bg-surface-hover transition-all group relative overflow-hidden cursor-pointer"
                 >
                   <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-slate-100 dark:border-slate-700 shadow-xl group-hover:scale-105 transition-transform duration-500 shrink-0">
+                    <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-[var(--surface-border)] shadow-xl group-hover:scale-105 transition-transform duration-500 shrink-0">
                       <img 
                         src={player.photourl || 'https://via.placeholder.com/150'} 
                         alt={player.name}
@@ -270,16 +270,16 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-primary-600 font-black text-xl italic">#{player.number}</span>
+                        <span className="text-[var(--primary-500)] font-black text-xl italic">#{player.number}</span>
                       </div>
-                      <h4 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-white leading-tight truncate">{player.name}</h4>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{player.position || 'SIN PUESTO'}</p>
+                      <h4 className="font-black text-lg uppercase tracking-tight text-[var(--text-main)] leading-tight truncate">{player.name}</h4>
+                      <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">{player.position || 'SIN PUESTO'}</p>
                     </div>
                   </div>
                   
                   {/* Decoración de fondo */}
                   <div className="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-[0.05] group-hover:opacity-10 transition-opacity">
-                    <Shield size={120} className="text-slate-900 dark:text-white" />
+                    <Shield size={120} className="text-[var(--text-main)]" />
                   </div>
                 </div>
               ))}
@@ -289,10 +289,10 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
       ))}
 
       {playersList.length === 0 && !isLoading && (
-        <div className="py-20 text-center opacity-30 border-4 border-dashed border-slate-100 dark:border-white/5 rounded-[4rem]">
-          <Users size={64} className="mx-auto mb-6 text-slate-300" />
-          <h3 className="font-black uppercase tracking-[0.6em] text-[10px]">Sin jugadores en este plantel</h3>
-          <p className="text-[9px] font-bold uppercase tracking-widest mt-4">Asigna miembros con rol JUGADOR a {disciplineName} - {categoryName}</p>
+        <div className="py-20 text-center opacity-30 border-4 border-dashed border-[var(--surface-border)] rounded-[4rem]">
+          <Users size={64} className="mx-auto mb-6 text-[var(--text-muted)]" />
+          <h3 className="font-black uppercase tracking-[0.6em] text-[10px] text-[var(--text-main)]">Sin jugadores en este plantel</h3>
+          <p className="text-[9px] font-bold uppercase tracking-widest mt-4 text-[var(--text-muted)]">Asigna miembros a la disciplina {disciplineName} - {categoryName} desde el Legajo Maestro</p>
         </div>
       )}
     </div>

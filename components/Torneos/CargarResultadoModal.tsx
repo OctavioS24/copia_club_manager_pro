@@ -199,129 +199,137 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center pt-20 pb-6 px-4 md:pt-24 md:pb-12 pointer-events-auto">
-      <div 
-        className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl" 
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-slate-900 border border-white/5 rounded-[2rem] md:rounded-[3rem] w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] md:max-h-[85vh] relative z-10"
+        className="bg-surface-card border-2 border-[var(--surface-border)] rounded-[3.5rem] w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative"
       >
         {/* Header */}
-        <div className="p-6 md:p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="p-2.5 md:p-3 bg-primary-600/10 rounded-xl md:rounded-2xl">
-              <Award className="text-primary-600 w-5 h-5 md:w-6 md:h-6" />
+        <div className="p-10 border-b border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky top-0 z-10">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-primary-600/10 rounded-3xl flex items-center justify-center border border-primary-600/20 shadow-inner">
+              <Award className="text-primary-600" size={32} />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter">Cargar Resultado</h2>
-              <p className="text-slate-500 font-bold text-[8px] md:text-[10px] uppercase tracking-widest truncate max-w-[150px] md:max-w-none">{match.hometeam} vs {match.awayteam}</p>
+              <h2 className="text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">Cargar Resultado</h2>
+              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 opacity-40 italic">
+                {match.hometeam} <span className="text-primary-600">VS</span> {match.awayteam}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
-            <X className="w-5 h-5 md:w-6 md:h-6 text-slate-500" />
+          <button onClick={onClose} className="p-4 text-[var(--text-muted)] hover:text-white hover:bg-surface-hover rounded-2xl transition-all">
+            <X size={24} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 md:p-10 space-y-6 md:space-y-10 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
           {/* Scoreboard */}
           <div className="relative group">
-            <div className="flex items-center justify-center gap-4 sm:gap-16 bg-slate-800/30 p-4 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-white/5 shadow-inner">
-              <div className="flex flex-col items-center gap-2 md:gap-3 flex-1 sm:flex-none">
-                <p className="text-[9px] md:text-xs font-black text-slate-500 uppercase tracking-widest truncate max-w-[80px] md:max-w-none">{match.hometeam}</p>
-                <input 
-                  type="number" 
-                  value={homeScore}
-                  readOnly
-                  className="w-16 h-16 sm:w-32 sm:h-32 bg-slate-950 border-2 border-primary-600/30 rounded-2xl md:rounded-[2.5rem] text-center text-2xl sm:text-6xl font-black text-white outline-none cursor-default shadow-2xl"
-                />
-                <span className="text-[7px] font-bold text-primary-500/50 uppercase tracking-widest sm:hidden">Local</span>
+            <div className="flex items-center justify-center gap-20 bg-surface-ground p-16 rounded-[4rem] border-2 border-[var(--surface-border)] shadow-inner relative overflow-hidden">
+              <div className="absolute inset-0 bg-primary-600 opacity-[0.02] pointer-events-none" />
+              
+              <div className="flex flex-col items-center gap-6 relative z-10 flex-1">
+                <p className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] italic opacity-40">{match.hometeam}</p>
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary-600 blur-3xl opacity-10" />
+                  <input 
+                    type="number" 
+                    value={homeScore}
+                    readOnly
+                    className="w-40 h-40 bg-surface-card border-4 border-primary-600 rounded-[3rem] text-center text-7xl font-black text-[var(--text-main)] outline-none relative z-10 shadow-2xl italic group-hover:scale-105 transition-transform"
+                  />
+                </div>
+                <span className="text-[10px] font-black text-primary-500 uppercase tracking-widest italic">Anfitrión</span>
               </div>
 
-              <div className="flex flex-col items-center justify-center shrink-0">
-                <span className="text-lg md:text-4xl font-black text-slate-700 italic uppercase tracking-tighter">VS</span>
+              <div className="flex flex-col items-center justify-center shrink-0 relative z-10">
+                <div className="w-1 h-12 bg-primary-600/20 rounded-full mb-4" />
+                <span className="text-5xl font-black text-primary-500 opacity-20 italic uppercase tracking-tighter">VS</span>
+                <div className="w-1 h-12 bg-primary-600/20 rounded-full mt-4" />
               </div>
 
-              <div className="flex flex-col items-center gap-2 md:gap-3 flex-1 sm:flex-none">
-                <p className="text-[9px] md:text-xs font-black text-slate-500 uppercase tracking-widest truncate max-w-[80px] md:max-w-none">{match.awayteam}</p>
-                <input 
-                  type="number" 
-                  value={awayScore}
-                  readOnly
-                  className="w-16 h-16 sm:w-32 sm:h-32 bg-slate-950 border-2 border-primary-600/30 rounded-2xl md:rounded-[2.5rem] text-center text-2xl sm:text-6xl font-black text-white outline-none cursor-default shadow-2xl"
-                />
-                <span className="text-[7px] font-bold text-slate-500/50 uppercase tracking-widest sm:hidden">Visitante</span>
+              <div className="flex flex-col items-center gap-6 relative z-10 flex-1">
+                <p className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] italic opacity-40">{match.awayteam}</p>
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary-600 blur-3xl opacity-10" />
+                  <input 
+                    type="number" 
+                    value={awayScore}
+                    readOnly
+                    className="w-40 h-40 bg-surface-card border-4 border-[var(--surface-border)] rounded-[3rem] text-center text-7xl font-black text-[var(--text-main)] outline-none relative z-10 shadow-2xl italic group-hover:scale-105 transition-transform"
+                  />
+                </div>
+                <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-40">Visitante</span>
               </div>
               
               <button 
                 onClick={recalculateScore} 
-                className="absolute right-3 top-3 md:right-8 md:top-8 p-2 md:p-3 bg-slate-950 border border-slate-700 rounded-xl md:rounded-2xl text-slate-500 hover:text-primary-500 hover:border-primary-500 transition-all group/btn shadow-xl"
+                className="absolute right-10 top-10 p-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl text-[var(--text-muted)] hover:text-primary-500 hover:border-primary-500 transition-all hover:rotate-180 duration-700 shadow-xl"
                 title="Recalcular marcador"
               >
-                <RefreshCw size={14} className="md:size-4 group-hover/btn:rotate-180 transition-all duration-500" />
+                <RefreshCw size={20} />
               </button>
-            </div>
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 border border-slate-700 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-primary-500 shadow-xl opacity-0 group-hover:opacity-100 transition-all z-10">
-              Sincronizado
             </div>
           </div>
 
           {/* Events Section */}
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-6 bg-primary-600 rounded-full" />
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Clock size={14} className="text-primary-600" /> Eventos del Partido
+          <div className="space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+              <div className="flex items-center gap-4">
+                <div className="w-2 h-10 bg-primary-600 rounded-full" />
+                <h3 className="text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter flex items-center gap-3">
+                  <Clock size={24} className="text-primary-600" /> Historial de Incidencias
                 </h3>
               </div>
-              <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/5">
+              <div className="flex bg-surface-ground p-2 rounded-2xl border-2 border-[var(--surface-border)]">
                 <button 
                   onClick={() => {
                     setIsRivalEvent(false);
                     setShowEventForm(true);
                   }}
-                  className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all flex items-center justify-center gap-2 ${!isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center gap-3 ${!isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-xl shadow-primary-900/20' : 'text-[var(--text-muted)] hover:text-white'}`}
                 >
-                  <Plus size={10} /> Mi Club
+                  <Plus size={14} strokeWidth={3} /> Mi Club
                 </button>
                 <button 
                   onClick={() => {
                     setIsRivalEvent(true);
                     setShowEventForm(true);
                   }}
-                  className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all flex items-center justify-center gap-2 ${isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center gap-3 ${isRivalEvent && showEventForm ? 'bg-primary-600 text-white shadow-xl shadow-primary-900/20' : 'text-[var(--text-muted)] hover:text-white'}`}
                 >
-                  <Plus size={10} /> Rival
+                  <Plus size={14} strokeWidth={3} /> Rival
                 </button>
               </div>
             </div>
 
             {showEventForm && (
               <motion.div 
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-8 rounded-[2rem] border-2 space-y-6 ${isRivalEvent ? 'bg-slate-800/50 border-slate-700' : 'bg-primary-600/5 border-primary-600/20'}`}
+                className={`p-10 rounded-[3rem] border-2 space-y-8 shadow-2xl ${isRivalEvent ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-primary-600/5 border-primary-600/20'}`}
               >
-                <div className="flex items-center justify-between mb-2">
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                     Agregando Evento: <span className={isRivalEvent ? 'text-white' : 'text-primary-600'}>{isRivalEvent ? match.awayteam : 'Mi Club'}</span>
+                <div className="flex items-center gap-4">
+                   <div className={`p-3 rounded-xl ${isRivalEvent ? 'bg-surface-card' : 'bg-primary-600/10 text-primary-500'}`}>
+                     <Activity size={24} />
+                   </div>
+                   <h4 className="text-[12px] font-black uppercase tracking-widest text-[var(--text-muted)] italic">
+                     Registrando Acción: <span className={isRivalEvent ? 'text-[var(--text-main)] underline decoration-primary-600' : 'text-primary-500 underline decoration-primary-500/20'}>{isRivalEvent ? match.awayteam : 'Mi Club'}</span>
                    </h4>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {!isRivalEvent && (
-                    <div className="space-y-3">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">Jugador</label>
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-4 italic opacity-60">Seleccionar Jugador</label>
                       <select 
                         value={newEvent.player_id}
                         onChange={(e) => setNewEvent({...newEvent, player_id: e.target.value})}
-                        className="w-full px-5 py-4 bg-slate-900 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 shadow-inner"
+                        className="w-full px-6 py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-black text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
                       >
-                        <option value="">SELECCIONAR...</option>
+                        <option value="">-- SELECCIONAR --</option>
                         {squadPlayers.map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
@@ -329,14 +337,14 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">Tipo de Evento</label>
+                  <div className="flex flex-col gap-3">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-4 italic opacity-60">Tipo de Incidencia</label>
                     <select 
                       value={newEvent.type}
                       onChange={(e) => setNewEvent({...newEvent, type: e.target.value as any})}
-                      className="w-full px-5 py-4 bg-slate-900 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 shadow-inner"
+                      className="w-full px-6 py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-black text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
                     >
-                      <option value="">SELECCIONAR TIPO...</option>
+                      <option value="">-- SELECCIONAR TIPO --</option>
                       {disciplineConfig ? (
                         disciplineConfig.event_types
                           .filter(et => !et.scope || et.scope === 'BOTH' || (isRivalEvent ? et.scope === 'RIVAL' : et.scope === 'OWN'))
@@ -353,13 +361,12 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
                     </select>
                   </div>
 
-                  {/* Additional Dynamic Fields */}
                   {disciplineConfig?.additional_fields?.map(field => (
-                    <div key={field} className="space-y-3">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">{field}</label>
+                    <div key={field} className="flex flex-col gap-3">
+                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-4 italic opacity-60">{field}</label>
                       <input 
                         type="text"
-                        placeholder={`Ej: ${field === 'minuto' ? "45'" : "1"}`}
+                        placeholder={`Ej: ${field === 'minuto' ? "45" : "Dato"}`}
                         value={newEvent.additional_data?.[field] || ''}
                         onChange={(e) => setNewEvent({
                           ...newEvent, 
@@ -368,53 +375,53 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
                             [field]: e.target.value
                           }
                         })}
-                        className="w-full px-5 py-4 bg-slate-900 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 shadow-inner"
+                        className="w-full px-6 py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-black text-sm outline-none focus:border-primary-600 shadow-inner"
                       />
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button onClick={() => setShowEventForm(false)} className="px-6 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancelar</button>
-                  <button onClick={handleAddEvent} className="px-10 py-3 bg-secondary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-secondary-700 transition-all shadow-xl shadow-secondary-600/20">Agregar</button>
+                <div className="flex justify-end gap-4 pt-6">
+                  <button onClick={() => setShowEventForm(false)} className="px-8 py-4 text-[11px] font-black uppercase text-[var(--text-muted)] hover:text-white transition-colors tracking-widest italic opacity-60">Abortar</button>
+                  <button onClick={handleAddEvent} className="px-12 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-900/30 italic">Inyectar Evento</button>
                 </div>
               </motion.div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {events.map((event, idx) => {
                 const eventConfig = disciplineConfig?.event_types.find(et => et.name === event.type);
                 const extraInfo = disciplineConfig?.additional_fields?.map(f => event.additional_data?.[f]).filter(Boolean).join(' • ');
                 
                 return (
-                  <div key={event.id || idx} className={`p-5 rounded-[1.5rem] border flex items-center justify-between group transition-all hover:scale-[1.02] ${event.is_rival ? 'bg-slate-800/20 border-slate-700/30' : 'bg-primary-600/5 border-primary-600/10'}`}>
-                    <div className="flex items-center gap-4">
+                  <div key={event.id || idx} className={`p-8 rounded-[2.5rem] border-2 flex items-center justify-between group transition-all hover:scale-[1.02] ${event.is_rival ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-primary-600/5 border-primary-600/20 shadow-lg'}`}>
+                    <div className="flex items-center gap-6">
                       <div 
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner"
+                        className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-inner border border-[var(--surface-border)]"
                         style={{ 
-                          backgroundColor: eventConfig ? `${eventConfig.color}20` : '#3b82f620',
-                          color: eventConfig ? eventConfig.color : '#3b82f6'
+                          backgroundColor: eventConfig ? `${eventConfig.color}15` : 'var(--primary-soft)',
+                          color: eventConfig ? eventConfig.color : 'var(--primary-500)'
                         }}
                       >
-                        {eventConfig ? <Activity size={20} /> : <Award size={20} />}
+                        {eventConfig ? <Activity size={28} /> : <Award size={28} />}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className={`text-[10px] font-black uppercase tracking-tight italic ${event.is_rival ? 'text-slate-400' : 'text-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-black uppercase tracking-tight italic text-[var(--text-main)]">
                             {event.player_name}
                           </p>
-                          {event.is_rival && <span className="px-2 py-0.5 bg-slate-700 text-[6px] font-black text-white rounded uppercase">Rival</span>}
+                          {event.is_rival && <span className="px-3 py-1 bg-surface-card text-[7px] font-black text-primary-500 border border-primary-500/20 rounded-full uppercase tracking-widest italic shadow-sm">RIVAL</span>}
                         </div>
-                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
-                          {event.type} {extraInfo ? `• ${extraInfo}` : ''}
+                        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.25em] mt-2 opacity-50 italic">
+                          {event.type} {extraInfo ? `• SECT: ${extraInfo}` : ''}
                         </p>
                       </div>
                     </div>
                     <button 
                       onClick={() => handleRemoveEvent(event.id!)}
-                      className="p-3 text-slate-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 bg-slate-900/50 rounded-xl"
+                      className="p-4 text-[var(--text-muted)] hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 bg-surface-card rounded-2xl border border-[var(--surface-border)] shadow-md hover:border-red-500/20"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={20} />
                     </button>
                   </div>
                 );
@@ -422,35 +429,36 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
             </div>
 
             {events.length === 0 && !showEventForm && (
-              <div className="py-20 text-center bg-slate-800/10 rounded-[3rem] border-2 border-dashed border-slate-800">
-                <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
-                  <Activity className="text-slate-600" size={24} />
+              <div className="py-24 text-center bg-surface-ground rounded-[4rem] border-4 border-dashed border-[var(--surface-border)] relative overflow-hidden group">
+                <div className="absolute inset-0 bg-primary-600/2 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                <div className="w-20 h-20 bg-surface-card rounded-3xl flex items-center justify-center mx-auto mb-6 border-2 border-[var(--surface-border)] shadow-2xl relative z-10">
+                  <Activity className="text-[var(--text-muted)] opacity-20" size={32} />
                 </div>
-                <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] italic">No hay eventos registrados</p>
+                <p className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] italic opacity-30 relative z-10">Secuencia de Eventos Vacía</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 md:p-10 border-t border-slate-800 bg-slate-900/50 flex flex-col-reverse sm:flex-row gap-4 sm:gap-6">
+        <div className="p-10 border-t border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex flex-col sm:flex-row gap-6 sticky bottom-0 z-10">
           <button 
             onClick={onClose}
-            className="w-full sm:w-1/3 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-[11px] tracking-widest text-slate-500 hover:bg-white/[0.03] transition-all border border-slate-800"
+            className="w-full sm:w-1/3 py-6 rounded-[1.5rem] font-black uppercase text-[11px] tracking-[0.2em] text-[var(--text-muted)] hover:text-white transition-all border-2 border-[var(--surface-border)] hover:border-white shadow-sm italic"
           >
-            Cancelar
+            Anular Cambios
           </button>
           <button 
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="w-full sm:flex-1 py-4 md:py-5 bg-[#d4ff00] text-black rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-[0.2em] shadow-2xl shadow-[#d4ff00]/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
+            className="w-full sm:flex-1 py-6 bg-primary-600 text-white rounded-[1.5rem] font-black uppercase text-[11px] tracking-[0.3em] shadow-2xl shadow-primary-900/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-30 italic"
           >
             {isSubmitting ? (
-              <Loader2 className="animate-spin" size={18} />
+              <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                <Save size={18} strokeWidth={3} />
-                Guardar Resultado
+                <Save size={20} strokeWidth={4} />
+                Confirmar Sincronización
               </>
             )}
           </button>

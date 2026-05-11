@@ -158,14 +158,14 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
         </h2>
         
         <div className="relative w-full md:w-auto md:min-w-[320px] group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-primary-600">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[var(--primary-600)]">
             <CalendarIcon size={20} />
           </div>
           <input 
             type="date" 
             value={date} 
             onChange={e => setDate(e.target.value)} 
-            className="w-full bg-white dark:bg-slate-900 p-4 pl-12 rounded-2xl shadow-xl border border-slate-100 dark:border-white/5 font-black text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all cursor-pointer appearance-none"
+            className="w-full bg-surface-card p-4 pl-12 rounded-2xl shadow-xl border border-[var(--surface-border)] font-black text-sm outline-none focus:ring-2 focus:ring-[var(--primary-500)] transition-all cursor-pointer appearance-none"
           />
           <div className="mt-3 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">
             {formatDate(date)}
@@ -176,23 +176,23 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       {/* SELECTOR DE DISCIPLINA REMOVIDO POR SOLICITUD - SE USA LA DEL CONTEXTO */}
 
       {/* LISTADO VERTICAL */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-white/5 overflow-hidden relative min-h-[300px]">
+      <div className="bg-surface-card rounded-[2.5rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden relative min-h-[300px]">
         {isLoading && (
           <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
-            <Loader2 className="animate-spin text-primary-600 mb-4" size={40} />
+            <Loader2 className="animate-spin text-[var(--primary-500)] mb-4" size={40} />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando registros...</p>
           </div>
         )}
         <div className="p-2 md:p-4">
             {sortedPlayers.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-white/5">
+              <div className="divide-y divide-[var(--surface-border)]">
                 {sortedPlayers.map(p => {
                   const isPresent = attendance[p.id] === 'P';
                   return (
                     <div 
                       key={p.id} 
                       onClick={() => handleStatusToggle(p.id)}
-                      className="flex items-center gap-4 p-4 md:p-6 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group"
+                      className="flex items-center gap-4 p-4 md:p-6 hover:bg-surface-hover transition-colors cursor-pointer group"
                     >
                         {/* CHECKBOX PERSONALIZADO */}
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${isPresent ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 'border-slate-200 dark:border-white/10'}`}>
@@ -237,11 +237,11 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
 
         {/* BOTON GUARDAR */}
         {players.length > 0 && (
-            <div className="p-8 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-white/5 flex justify-center">
+            <div className="p-8 bg-surface-ground border-t border-[var(--surface-border)] flex justify-center">
                 <button 
                   onClick={handleSave} 
                   disabled={isSaving} 
-                  className="w-full md:w-auto flex items-center justify-center gap-3 bg-slate-950 dark:bg-primary-600 text-white px-16 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl disabled:opacity-50"
+                  className="w-full md:w-auto flex items-center justify-center gap-3 bg-[var(--primary-500)] text-primary-contrast px-16 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl disabled:opacity-50"
                 >
                     {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                     Confirmar Planilla

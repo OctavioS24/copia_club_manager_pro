@@ -111,7 +111,7 @@ const PosicionesPorDisciplina: React.FC<PosicionesPorDisciplinaProps> = ({ disci
                 ))}
               </select>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-primary-600 transition-colors">
-                <ChevronDown size={22} className="md:size-24" />
+                <ChevronDown size={22} className="md:size-6" />
               </div>
             </div>
           </div>

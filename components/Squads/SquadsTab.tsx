@@ -76,7 +76,7 @@ const SquadsTab: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-10 h-10 text-primary-500 animate-spin mb-4" />
-        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Cargando partidos...</p>
+        <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-[10px]">Cargando partidos...</p>
       </div>
     );
   }
@@ -85,20 +85,20 @@ const SquadsTab: React.FC = () => {
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Gestión de Convocatorias</h2>
-          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">
+          <h2 className="text-2xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">Gestión de Convocatorias</h2>
+          <p className="text-[var(--text-muted)] font-bold text-[10px] uppercase tracking-[0.2em] mt-1">
             Planifica las plantillas para los próximos encuentros
           </p>
         </div>
         
         <div className="relative w-full md:w-64">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
           <input 
             type="text" 
             placeholder="Buscar partido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-primary-500/20"
+            className="w-full pl-10 pr-4 py-3 bg-[var(--surface-ground)] border border-[var(--surface-border)] rounded-xl text-xs font-bold outline-none focus:ring-2 ring-primary-500/20 text-[var(--text-main)]"
           />
         </div>
       </div>
@@ -113,10 +113,10 @@ const SquadsTab: React.FC = () => {
               <div 
                 key={m.id}
                 onClick={() => { setSelectedMatch(m); setShowSquadModal(true); }}
-                className={`group relative bg-slate-800/30 p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer overflow-hidden ${
+                className={`group relative bg-surface-card p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer overflow-hidden ${
                   hasSquad 
                     ? 'border-green-500/20 hover:border-green-500/50' 
-                    : 'border-slate-700/30 hover:border-primary-500/50'
+                    : 'border-[var(--surface-border)] hover:border-primary-500/50'
                 } ${isFinished ? 'opacity-70' : ''}`}
               >
                 {hasSquad && (
@@ -126,7 +126,7 @@ const SquadsTab: React.FC = () => {
                 )}
                 
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  <div className="px-3 py-1 bg-surface-ground border border-[var(--surface-border)] rounded-lg text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                     {new Date(m.date).toLocaleDateString()}
                   </div>
                   {!hasSquad && !isFinished && (
@@ -135,7 +135,7 @@ const SquadsTab: React.FC = () => {
                     </div>
                   )}
                   {isFinished && (
-                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                       Finalizado
                     </div>
                   )}
@@ -143,11 +143,11 @@ const SquadsTab: React.FC = () => {
 
                 <div className="space-y-3 mb-8">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-black uppercase italic text-white truncate max-w-[120px]">{m.hometeam}</span>
+                    <span className="text-sm font-black uppercase italic text-[var(--text-main)] truncate max-w-[120px]">{m.hometeam}</span>
                     <span className="text-[10px] font-black text-primary-500 shrink-0">VS</span>
-                    <span className="text-sm font-black uppercase italic text-white truncate max-w-[120px] text-right">{m.awayteam}</span>
+                    <span className="text-sm font-black uppercase italic text-[var(--text-main)] truncate max-w-[120px] text-right">{m.awayteam}</span>
                   </div>
-                  <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
+                  <div className="h-1 bg-surface-ground rounded-full overflow-hidden">
                     <div className={`h-full transition-all duration-1000 ${hasSquad ? 'w-full bg-green-500' : 'w-0 bg-primary-600'}`}></div>
                   </div>
                 </div>
@@ -164,9 +164,9 @@ const SquadsTab: React.FC = () => {
             );
           })
         ) : (
-          <div className="col-span-full py-20 text-center bg-slate-800/20 rounded-[3rem] border-2 border-dashed border-slate-700">
-             <Calendar size={48} className="mx-auto text-slate-700 mb-4 opacity-20" />
-             <h3 className="text-xl font-black uppercase text-slate-500 italic tracking-widest">No hay partidos para esta categoría</h3>
+          <div className="col-span-full py-20 text-center bg-surface-ground rounded-[3rem] border-2 border-dashed border-[var(--surface-border)]">
+             <Calendar size={48} className="mx-auto text-[var(--text-muted)] mb-4 opacity-20" />
+             <h3 className="text-xl font-black uppercase text-[var(--text-muted)] italic tracking-widest">No hay partidos para esta categoría</h3>
           </div>
         )}
       </div>

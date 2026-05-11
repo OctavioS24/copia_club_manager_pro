@@ -178,53 +178,69 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] text-slate-100 p-3 md:p-12 pb-32">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto mb-6 md:mb-12">
+    <div className="min-h-screen bg-[var(--surface-ground)] text-[var(--text-main)] p-4 md:px-8 md:py-10 pb-48">
+      {/* Header Area */}
+      <div className="max-w-7xl mx-auto mb-8 md:mb-12">
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-400 hover:text-primary-500 transition-colors uppercase font-black text-[9px] md:text-[10px] tracking-widest mb-3 md:mb-6"
+          className="group flex items-center gap-3 text-[var(--text-muted)] hover:text-primary-500 transition-all uppercase font-black text-[9px] md:text-[10px] tracking-[0.3em] mb-6 md:mb-8 bg-surface-card w-fit px-5 py-2.5 rounded-full border border-[var(--surface-border)] shadow-sm"
         >
-          <ArrowLeft size={14} /> Volver
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Retroceder al Módulo
         </button>
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-3 md:gap-6">
-            <div className="w-10 h-10 md:w-16 md:h-16 bg-primary-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-primary-900/20 shrink-0">
-              <Trophy size={20} md:size={32} className="text-white" />
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 md:gap-10">
+          <div className="flex items-center gap-5 md:gap-8">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-primary-600 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+              <div className="w-16 h-16 md:w-24 md:h-24 bg-primary-600 rounded-[2rem] md:rounded-[3rem] flex items-center justify-center shadow-2xl shadow-primary-900/40 shrink-0 relative z-10 border-4 border-white/10">
+                <Trophy size={32} className="md:w-12 md:h-12 text-white" />
+              </div>
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl md:text-5xl font-black text-white uppercase italic tracking-tighter leading-none truncate pr-4">
-                {tournament.name} <span className="text-primary-500 block md:inline">- Partidos</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="px-4 py-1.5 bg-primary-600/10 text-primary-500 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest border border-primary-500/20">Calendario Oficial</span>
+                <span className="hidden md:inline-block w-8 h-[1px] bg-[var(--surface-border)]" />
+              </div>
+              <h1 className="text-2xl md:text-5xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-[0.9] truncate pr-4">
+                {tournament.name}
               </h1>
-              <p className="text-[7px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 md:mt-2">Gestión Integral de Encuentros</p>
+              <p className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mt-3 opacity-40 flex items-center gap-2">
+                <Activity size={14} className="text-primary-600" />
+                Sincronización Deportiva
+              </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/50 w-full md:w-auto">
-            <Filter size={14} className="text-slate-500 ml-2" />
-            <select 
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-transparent text-white font-black text-[10px] md:text-xs outline-none pr-4 cursor-pointer flex-1 md:flex-none uppercase tracking-widest"
-            >
-              <option value="TODAS" className="bg-slate-900 text-white">Todas las Categorías</option>
-              {Array.from(new Set(matches.map(m => m.categoryid || (m as any).category_id || (m as any).category).filter(id => !!id))).map(catId => (
-                <option key={catId as string} value={catId as string} className="bg-slate-900 text-white">
-                  {getCategoryName(catId as string)}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-3">
+            <p className="text-[9px] font-black uppercase text-[var(--text-muted)] tracking-widest ml-3 opacity-40 italic">Filtrar por segmentación</p>
+            <div className="flex items-center gap-3 bg-surface-card backdrop-blur-xl p-3 md:p-3.5 rounded-[1.2rem] md:rounded-[1.8rem] border border-[var(--surface-border)] shadow-xl w-full lg:w-[280px] focus-within:border-primary-500 transition-all">
+              <Filter size={16} className="text-primary-500 shrink-0" />
+              <select 
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="bg-transparent text-[var(--text-main)] font-black text-xs outline-none w-full cursor-pointer uppercase tracking-[0.15em] appearance-none"
+              >
+                <option value="TODAS" className="bg-surface-card text-[var(--text-main)] text-xs">Visión Global (Todas)</option>
+                {Array.from(new Set(matches.map(m => m.categoryid || (m as any).category_id || (m as any).category).filter(id => !!id))).map(catId => (
+                  <option key={catId as string} value={catId as string} className="bg-surface-card text-[var(--text-main)] text-xs">
+                    {getCategoryName(catId as string)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Matches List */}
-      <div className="space-y-8">
+      {/* Matches Content Grid */}
+      <div className="max-w-7xl mx-auto space-y-12">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="animate-spin text-primary-600" size={32} />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando partidos...</p>
+          <div className="flex flex-col items-center justify-center py-48 gap-8">
+            <div className="relative">
+              <div className="absolute inset-0 blur-3xl bg-primary-600/30 animate-pulse" />
+              <Loader2 className="animate-spin text-primary-600 relative" size={64} strokeWidth={3} />
+            </div>
+            <p className="text-[var(--text-muted)] font-black uppercase tracking-[0.5em] text-[10px] italic opacity-40 animate-pulse">Reconstruyendo fixture en tiempo real...</p>
           </div>
         ) : sortedDates.length > 0 ? (
           sortedDates.map((date, index) => {
@@ -233,123 +249,162 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             const isDateRescheduled = isDateSuspended && matches.some(m => m.original_date === date && m.is_overridden);
 
             return (
-              <div key={date} className="animate-fade-in">
-                <div className="flex items-center justify-between mb-4 md:mb-6 px-1 md:px-6">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="hidden md:block w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center text-primary-500 font-black italic text-sm">
-                      {index + 1}
+              <div key={date} className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-6 px-2 md:px-6">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-surface-card rounded-2xl flex items-center justify-center border-2 border-[var(--surface-border)] shadow-lg relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-primary-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-10" />
+                      <span className="text-xl font-black text-primary-500 italic relative z-10">{index + 1}</span>
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base md:text-xl font-black text-white uppercase italic tracking-tight">Fecha {index + 1}</h3>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">Fecha Detallada</h3>
                         {isDateRescheduled ? (
-                          <span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-blue-500/20">
-                            REPROG.
+                          <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                            REPROGRAMADA
                           </span>
                         ) : isDateSuspended ? (
-                          <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-red-500/20">
-                            SUSP.
+                          <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                            POSTERGADA
                           </span>
-                        ) : null}
+                        ) : (
+                          <span className="bg-emerald-600/10 text-emerald-500 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 italic">
+                            CONFIRMADA
+                          </span>
+                        )}
                       </div>
-                      <p className="text-slate-500 font-bold text-[8px] md:text-[10px] uppercase tracking-widest flex items-center gap-1.5">
-                        <Calendar size={10} className="md:size-3" /> {new Date(date).toLocaleDateString()}
+                      <p className="text-[9px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
+                        <Calendar size={14} className="text-primary-500" />
+                        {new Date(date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-1.5 md:gap-3">
+                  <div className="flex items-center gap-3">
                     <button 
                       onClick={() => handleResumeDate(date)}
-                      className="p-2 md:px-4 md:py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
-                      title="Reanudar Fecha"
+                      className="flex-1 md:flex-none px-5 py-3 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95"
                     >
-                      <RefreshCcw size={14} className="md:size-3" /> 
-                      <span className="hidden md:inline">Reanudar Fecha</span>
+                      <RefreshCcw size={14} strokeWidth={3} /> Reanudar
                     </button>
                     <button 
                       onClick={() => { setSuspensionMode('date'); setSuspensionTarget(date); }}
-                      className="p-2 md:px-4 md:py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
-                      title="Suspender Fecha"
+                      className="p-3 bg-surface-card hover:bg-orange-600 text-[var(--text-muted)] hover:text-white border-2 border-[var(--surface-border)] hover:border-orange-600 rounded-xl transition-all shadow-sm active:scale-95"
+                      title="Interrumpir Fecha"
                     >
-                      <AlertTriangle size={14} className="md:size-3" />
-                      <span className="hidden md:inline">Suspender Fecha</span>
+                      <AlertTriangle size={18} />
                     </button>
                   </div>
                 </div>
 
-                <div className="flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-xl backdrop-blur-sm">
-                  {groupedMatches[date].map(match => (
-                    <div key={match.id} className="p-4 md:p-8 border-b border-slate-800 last:border-0 hover:bg-white/[0.02] transition-all group flex flex-col sm:flex-row items-center gap-4 md:gap-10">
-                      {/* Categoria */}
-                      <div className="w-full sm:w-24 shrink-0 text-center sm:text-left">
-                        <span className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5 md:mb-1 block">Categoría</span>
-                        <span className="text-[10px] md:text-xs font-black text-primary-500 uppercase tracking-tight">
-                          {getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || '')}
-                        </span>
-                      </div>
+                <div className="bg-surface-card border-2 border-[var(--surface-border)] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl relative">
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary-600/2 to-transparent pointer-events-none" />
+                  {groupedMatches[date].map((match, mIdx) => (
+                    <div key={match.id} className={`p-6 md:p-8 border-b-2 border-[var(--surface-border)] last:border-0 hover:bg-surface-hover/40 transition-all group relative ${match.status === 'Suspended' ? 'grayscale opacity-70' : ''}`}>
+                      {/* Match Number Overlay */}
+                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[80px] font-black text-[var(--text-muted)] opacity-[0.02] pointer-events-none italic select-none">
+                        #{mIdx + 1}
+                      </span>
 
-                      {/* Equipos y Resultado */}
-                      <div className="flex-1 w-full flex items-center justify-between gap-3 md:gap-12">
-                        <div className="flex-1 text-right min-w-0">
-                          <span className="text-xs md:text-xl font-black text-white uppercase italic tracking-tighter truncate block">{match.hometeam}</span>
-                          <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase mt-0.5 block">Local</span>
-                        </div>
-
-                        <div className="flex flex-col items-center gap-1.5 shrink-0 px-2">
-                          <div className={`bg-slate-950/50 px-4 md:px-7 py-2 md:py-4 rounded-xl md:rounded-2xl flex items-center gap-3 md:gap-6 text-lg md:text-3xl font-black italic shadow-inner border border-white/5 ${match.status === 'Suspended' ? 'opacity-40' : ''}`}>
-                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-700'}>
-                              {match.status === 'Finished' ? match.homescore : '0'}
-                            </span>
-                            <span className="text-[7px] md:text-[10px] text-slate-700 not-italic uppercase tracking-[0.2em] md:tracking-[0.3em] font-black">VS</span>
-                            <span className={match.status === 'Finished' ? 'text-primary-500' : 'text-slate-700'}>
-                              {match.status === 'Finished' ? match.awayscore : '0'}
-                            </span>
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-8 md:gap-12 relative z-10">
+                        {/* Segment / Category */}
+                        <div className="w-full lg:w-40 shrink-0 flex lg:flex-col items-center lg:items-start justify-between lg:justify-center border-b lg:border-b-0 lg:border-r border-[var(--surface-border)] pb-4 lg:pb-0 lg:pr-6">
+                          <div>
+                            <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 opacity-40">Segmento</p>
+                            <p className="text-sm md:text-xl font-black text-primary-500 uppercase italic tracking-tighter leading-none mb-1">
+                              {getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || '')}
+                            </p>
+                          </div>
+                          <div className="px-3 py-1 bg-surface-ground rounded-lg border border-[var(--surface-border)] text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                            Fase Regular
                           </div>
                         </div>
 
-                        <div className="flex-1 text-left min-w-0">
-                          <span className="text-xs md:text-xl font-black text-white uppercase italic tracking-tighter truncate block">{match.awayteam}</span>
-                          <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase mt-0.5 block">Visitante</span>
-                        </div>
-                      </div>
+                        {/* Versus Grid */}
+                        <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-3 md:gap-10">
+                          <div className="text-right">
+                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none mb-2">{match.hometeam}</h4>
+                            <div className="flex items-center justify-end gap-2">
+                               <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">LOCAL</span>
+                               <div className="w-4 h-1 bg-primary-600 rounded-full" />
+                            </div>
+                          </div>
 
-                      {/* Acciones */}
-                      <div className="w-full sm:w-auto flex items-center gap-2 md:gap-4 border-t sm:border-t-0 border-slate-800/50 pt-4 sm:pt-0 shrink-0">
-                        <button 
-                          onClick={() => handleOpenSquadModal(match)}
-                          className="flex-1 sm:flex-none px-4 md:px-6 py-3 md:py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-900/20 active:scale-95 text-[9px] md:text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <Users size={16} className="md:size-5" />
-                          <span className="sm:inline">Plantilla</span>
-                        </button>
-                        
-                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="relative">
+                              <div className="absolute inset-0 bg-primary-600 blur-2xl opacity-10" />
+                              <div className="bg-surface-ground px-6 md:px-8 py-3 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-3 md:gap-6 text-2xl md:text-5xl font-black italic shadow-2xl border-2 border-[var(--surface-border)] relative z-10">
+                                <span className={match.status === 'Finished' ? 'text-[var(--text-main)] transition-colors' : 'text-[var(--text-muted)] opacity-10'}>
+                                  {match.status === 'Finished' ? match.homescore : '0'}
+                                </span>
+                                <div className="flex flex-col items-center justify-center gap-1.5">
+                                  <div className="w-0.5 h-2 bg-primary-500/20 rounded-full" />
+                                  <span className="text-[10px] md:text-xs text-primary-500 opacity-30 not-italic uppercase tracking-widest font-black">VS</span>
+                                  <div className="w-0.5 h-2 bg-primary-500/20 rounded-full" />
+                                </div>
+                                <span className={match.status === 'Finished' ? 'text-[var(--text-main)] transition-colors' : 'text-[var(--text-muted)] opacity-10'}>
+                                  {match.status === 'Finished' ? match.awayscore : '0'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {match.status === 'Finished' ? (
+                              <div className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                                Finalizado
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 px-4 py-1.5 bg-surface-ground text-[var(--text-muted)] border border-[var(--surface-border)] rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                                En Espera
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-left">
+                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none mb-2">{match.awayteam}</h4>
+                            <div className="flex items-center justify-start gap-2">
+                               <div className="w-4 h-1 bg-primary-600/30 rounded-full" />
+                               <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">VISITA</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Hub */}
+                        <div className="w-full lg:w-fit flex lg:flex-col items-center gap-3 bg-surface-ground/50 p-6 rounded-[2rem] border border-[var(--surface-border)] shadow-inner">
                           <button 
-                            onClick={() => handleOpenResultModal(match)}
-                            className="p-3 md:p-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl md:rounded-2xl transition-all border border-white/5"
-                            title="Resultado"
+                            onClick={() => handleOpenSquadModal(match)}
+                            className="flex-1 lg:w-full px-6 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all flex items-center justify-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest group/btn"
                           >
-                            <Edit3 size={16} className="md:size-5" />
+                            <Users size={16} className="group-hover/btn:scale-110 transition-transform" />
+                            Convocar
                           </button>
                           
-                          {match.status === 'Suspended' ? (
+                          <div className="flex items-center gap-2 shrink-0">
                             <button 
-                              onClick={() => handleResumeMatch(match.id)}
-                              className="p-3 md:p-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl md:rounded-2xl transition-all border border-emerald-500/20"
-                              title="Reanudar"
+                              onClick={() => handleOpenResultModal(match)}
+                              className="p-4 bg-surface-card hover:bg-primary-600 text-[var(--text-muted)] hover:text-white rounded-xl transition-all border border-[var(--surface-border)] hover:border-primary-600 shadow-sm"
+                              title="Cuentas / Resultados"
                             >
-                              <RefreshCcw size={16} className="md:size-5" />
+                              <Edit3 size={18} />
                             </button>
-                          ) : (
-                            <button 
-                              onClick={() => { setSuspensionMode('match'); setSuspensionTarget(match); }}
-                              className="p-3 md:p-4 bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white rounded-xl md:rounded-2xl transition-all border border-orange-500/20"
-                              title="Incidencias"
-                            >
-                              <Activity size={16} className="md:size-5" />
-                            </button>
-                          )}
+                            
+                            {match.status === 'Suspended' ? (
+                              <button 
+                                onClick={() => handleResumeMatch(match.id)}
+                                className="p-4 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
+                                title="Restaurar Encuentro"
+                              >
+                                <RefreshCcw size={18} className="animate-spin-slow" />
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => { setSuspensionMode('match'); setSuspensionTarget(match); }}
+                                className="p-4 bg-orange-600/10 hover:bg-orange-600 text-orange-500 hover:text-white rounded-xl transition-all border border-orange-500/20 shadow-sm"
+                                title="Reportar Novedad"
+                              >
+                                <Activity size={18} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -359,18 +414,26 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             )
           })
         ) : (
-          <div className="text-center py-20 bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center">
-            <Calendar size={40} className="text-slate-700 mb-4" />
-            <h3 className="text-xl font-black uppercase text-slate-500 italic tracking-widest">No hay partidos programados</h3>
+          <div className="text-center py-48 bg-surface-card rounded-[5rem] border-4 border-dashed border-[var(--surface-border)] flex flex-col items-center justify-center relative overflow-hidden group">
+            <div className="absolute inset-0 bg-primary-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="w-32 h-32 bg-surface-ground rounded-[3rem] flex items-center justify-center mb-10 border-2 border-[var(--surface-border)] shadow-2xl relative z-10">
+              <Calendar size={56} className="text-[var(--text-muted)] opacity-20" />
+            </div>
+            <h3 className="text-4xl font-black uppercase text-[var(--text-muted)] italic tracking-[0.3em] opacity-30 relative z-10 italic">Secuencia no definida</h3>
+            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[var(--text-muted)] mt-6 opacity-20 relative z-10">Agregue un nuevo encuentro para iniciar el registro histórico</p>
           </div>
         )}
 
+        {/* Global Action */}
         <button 
           onClick={() => setShowAddFechaModal(true)}
-          className="w-full py-6 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 hover:text-primary-500 hover:border-primary-500/50 transition-all flex flex-col items-center justify-center gap-2 group"
+          className="w-full py-20 border-4 border-dashed border-[var(--surface-border)] hover:border-primary-500/40 rounded-[4rem] text-[var(--text-muted)] hover:text-primary-500 transition-all flex flex-col items-center justify-center gap-6 group bg-surface-card/20 relative overflow-hidden"
         >
-          <Plus size={24} className="group-hover:scale-110 transition-transform" />
-          <span className="font-black uppercase tracking-widest text-[10px]">Agregar Nueva Fecha</span>
+          <div className="absolute inset-0 bg-primary-600/2 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+          <div className="w-20 h-20 rounded-[2.5rem] bg-surface-card flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white transition-all shadow-2xl border-2 border-[var(--surface-border)] group-hover:border-primary-600 relative z-10">
+            <Plus size={36} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
+          </div>
+          <span className="font-black uppercase tracking-[0.5em] text-[12px] relative z-10 italic">Inyectar Nueva Jornada al Calendario</span>
         </button>
       </div>
 
@@ -417,11 +480,11 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
         )}
 
         {suspensionMode && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl animate-in fade-in duration-300">
             <motion.div 
                initial={{ opacity: 0, y: 20, scale: 0.95 }}
                animate={{ opacity: 1, y: 0, scale: 1 }}
-               className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl relative overflow-hidden"
+               className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-500 to-red-600" />
               
@@ -430,10 +493,10 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                   <AlertTriangle size={32} />
                 </div>
                 <div>
-                  <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">
+                  <h3 className="text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">
                     {suspensionMode === 'match' ? 'Suspender Partido' : 'Suspender Fecha'}
                   </h3>
-                  <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+                  <p className="text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest mt-1">
                     Gestionar estado y reprogramación
                   </p>
                 </div>
@@ -441,24 +504,24 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
 
               <div className="space-y-6">
                 <div className="flex flex-col gap-2">
-                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-4">Motivo de Suspensión (Opcional)</label>
+                   <label className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest ml-4">Motivo de Suspensión (Opcional)</label>
                    <textarea
                      value={suspensionReason}
                      onChange={(e) => setSuspensionReason(e.target.value)}
                      placeholder="Ej: Condiciones climáticas, falta de jugadores..."
-                     className="bg-slate-800 border-2 border-slate-700/50 rounded-3xl p-6 text-white font-bold text-sm outline-none focus:border-orange-500 transition-all min-h-[100px] resize-none"
+                     className="bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl p-6 text-[var(--text-main)] font-bold text-sm outline-none focus:border-orange-500 transition-all min-h-[100px] resize-none"
                    />
                 </div>
 
                 <div className="flex flex-col gap-2">
-                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-4">Nueva Fecha (Poner para Reprogramar)</label>
+                   <label className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest ml-4">Nueva Fecha (Poner para Reprogramar)</label>
                    <div className="relative">
-                      <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18} />
+                      <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" size={18} />
                       <input
                         type="date"
                         value={suspensionNewDate}
                         onChange={(e) => setSuspensionNewDate(e.target.value)}
-                        className="w-full bg-slate-800 border-2 border-slate-700/50 rounded-3xl pl-16 pr-6 py-5 text-white font-bold text-sm outline-none focus:border-orange-500 transition-all appearance-none"
+                        className="w-full bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl pl-16 pr-6 py-5 text-[var(--text-main)] font-bold text-sm outline-none focus:border-orange-500 transition-all appearance-none"
                       />
                    </div>
                 </div>
@@ -467,7 +530,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                    <button
                      onClick={() => handleSuspensionAction(false)}
                      disabled={isProcessingSuspension}
-                     className="flex-1 py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-3xl font-black uppercase text-[10px] tracking-widest transition-all border border-slate-700 disabled:opacity-50"
+                     className="flex-1 py-5 bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] rounded-3xl font-black uppercase text-[10px] tracking-widest transition-all border border-[var(--surface-border)] disabled:opacity-50"
                    >
                      Solo Suspender
                    </button>
@@ -482,9 +545,9 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
 
                 <button
                   onClick={() => { setSuspensionMode(null); setSuspensionTarget(null); }}
-                  className="w-full py-4 text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-[0.2em] transition-all"
+                  className="w-full py-4 text-[var(--text-muted)] hover:text-white font-black uppercase text-[10px] tracking-[0.2em] transition-all"
                 >
-                  Cancelar
+                  Cancelar Operación
                 </button>
               </div>
             </motion.div>

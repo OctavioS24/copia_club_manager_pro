@@ -151,10 +151,26 @@ medical: {
   }
 },
 tournaments: {
-    getAll: () => supabase
-      .from('tournaments')
-      .select('*')
-      .order('created_at', { ascending: false }),
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) return { data: null, error };
+      
+      // Normalización para Cuenta B
+      const normalizedData = (data || []).map(t => ({
+        ...t,
+        discipline_id: t.discipline_id || t.discipline,
+        category_id: t.category_id || t.categoryid,
+        type: t.type || 'Professional',
+        status: t.status || 'Open',
+        settings: t.settings || { has_groups: false, groups_count: 1, advancing_per_group: 2, has_playoffs: false, playoff_start: 'F' }
+      }));
+      
+      return { data: normalizedData, error: null };
+    },
     
     upsert: async (tournament: any) => {
       // Mapear campos a lowercase para la DB
@@ -254,23 +270,40 @@ tournaments: {
       .eq('id', id)
   },
   matches: {
-    getAll: (tournamentId: string) => supabase
-      .from('matches')
-      .select(`
-        *,
-        events:match_events (
-          id,
-          playerid,
-          player_name,
-          type,
-          minute,
-          notes,
-          is_rival,
-          additional_data
-        )
-      `)
-      .eq('tournamentid', tournamentId)
-      .order('date', { ascending: true }),
+    getAll: async (tournamentId: string) => {
+      const { data, error } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          events:match_events (
+            id,
+            playerid,
+            player_name,
+            type,
+            minute,
+            notes,
+            is_rival,
+            additional_data
+          )
+        `)
+        .eq('tournamentid', tournamentId)
+        .order('date', { ascending: true });
+
+      if (error) return { data: null, error };
+
+      // Normalización para Cuenta B
+      const normalizedData = (data || []).map(m => ({
+        ...m,
+        home_score: m.home_score !== undefined ? m.home_score : m.homescore,
+        away_score: m.away_score !== undefined ? m.away_score : m.awayscore,
+        home_team: m.home_team || m.hometeam,
+        away_team: m.away_team || m.awayteam,
+        tournament_id: m.tournament_id || m.tournamentid,
+        category_id: m.category_id || m.categoryid
+      }));
+
+      return { data: normalizedData, error: null };
+    },
     
     getByTeamName: (teamName: string) => supabase
       .from('matches')

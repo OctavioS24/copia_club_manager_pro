@@ -90,27 +90,27 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
   return (
     <div className="space-y-12 animate-fade-in">
       {/* Selector de Disciplina */}
-      <div className="bg-white dark:bg-[#0f1219] p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl">
+      <div className="bg-surface-card p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-[var(--surface-border)] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 shadow-2xl">
         <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-600 shadow-inner shrink-0">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-500 shadow-inner shrink-0">
             <LayoutGrid size={20} md:size={24} />
           </div>
           <div className="flex flex-col min-w-0 flex-1">
-            <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Disciplina Seleccionada</h4>
+            <h4 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)]">Disciplina Seleccionada</h4>
             <div className="relative group">
               <select 
                 value={selectedDiscipline}
                 onChange={(e) => setSelectedDiscipline(e.target.value)}
-                className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter dark:text-white outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
+                className="w-full bg-transparent font-black text-lg md:text-2xl uppercase tracking-tighter text-[var(--text-main)] outline-none mt-1 cursor-pointer pr-10 appearance-none truncate"
               >
                 {disciplines.map(d => (
-                  <option key={d.id} value={d.name} className="bg-slate-900 text-white font-sans text-sm p-4">
+                  <option key={d.id} value={d.name} className="bg-surface-card text-[var(--text-main)] font-sans text-sm p-4">
                     {d.name}
                   </option>
                 ))}
               </select>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-primary-600 transition-colors">
-                <ChevronDown size={22} className="md:size-24" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-muted)] group-hover:text-primary-500 transition-colors">
+                <ChevronDown size={22} className="md:w-6 md:h-6" />
               </div>
             </div>
           </div>
@@ -118,31 +118,31 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
       </div>
 
       {/* Lista de Rivales */}
-      <div className="bg-white dark:bg-[#0f1219] rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-200 dark:border-white/5 p-6 md:p-12 shadow-sm">
+      <div className="bg-surface-card rounded-[2.5rem] md:rounded-[3.5rem] border border-[var(--surface-border)] p-6 md:p-12 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 md:mb-10">
-          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter dark:text-white italic flex items-center gap-3">
-            <Shield size={20} md:size={24} className="text-primary-600 flex-shrink-0" />
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-[var(--text-main)] italic flex items-center gap-3">
+            <Shield size={20} md:size={24} className="text-primary-500 flex-shrink-0" />
             <span className="truncate">Rivales para {selectedDiscipline}</span>
           </h3>
-          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
             {rivals.length} Registrados
           </span>
         </div>
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4">
-            <Loader2 className="animate-spin text-primary-600" size={40} />
-            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Cargando rivales...</p>
+            <Loader2 className="animate-spin text-primary-500" size={40} />
+            <p className="text-[var(--text-muted)] font-bold uppercase text-[10px] tracking-widest">Cargando rivales...</p>
           </div>
         ) : (
           <div className="space-y-4">
             {rivals.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[2rem]">
-                <p className="text-slate-400 font-bold uppercase text-xs tracking-widest italic">No hay rivales creados para esta disciplina</p>
+              <div className="py-20 text-center border-2 border-dashed border-[var(--surface-border)] rounded-[2rem]">
+                <p className="text-[var(--text-muted)] font-bold uppercase text-xs tracking-widest italic opacity-30">No hay rivales creados para esta disciplina</p>
               </div>
             ) : (
               rivals.map((rival) => (
-                <div key={rival.id} className="group flex items-center gap-4 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-transparent hover:border-primary-500/30 transition-all">
+                <div key={rival.id} className="group flex items-center gap-4 bg-surface-ground p-4 rounded-2xl border border-transparent hover:border-primary-500/30 transition-all">
                   <div className="flex-1">
                     {editingId === rival.id ? (
                       <input 
@@ -150,10 +150,10 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleUpdate(rival.id)}
-                        className="w-full bg-white dark:bg-slate-800 px-4 py-2 rounded-xl font-bold text-sm uppercase tracking-widest text-primary-500 outline-none border-2 border-primary-500/50"
+                        className="w-full bg-surface-card px-4 py-2 rounded-xl font-bold text-sm uppercase tracking-widest text-primary-500 outline-none border-2 border-primary-500/50"
                       />
                     ) : (
-                      <span className="font-black text-sm uppercase tracking-widest dark:text-white px-4">
+                      <span className="font-black text-sm uppercase tracking-widest text-[var(--text-main)] px-4">
                         {rival.name}
                       </span>
                     )}
@@ -165,7 +165,7 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
                         <button onClick={() => handleUpdate(rival.id)} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all">
                           <Save size={18} />
                         </button>
-                        <button onClick={() => setEditingId(null)} className="p-2 text-slate-400 hover:bg-slate-400/10 rounded-lg transition-all">
+                        <button onClick={() => setEditingId(null)} className="p-2 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] rounded-lg transition-all">
                           <X size={18} />
                         </button>
                       </>
@@ -176,13 +176,13 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
                             setEditingId(rival.id);
                             setEditValue(rival.name);
                           }}
-                          className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all"
+                          className="p-2 text-[var(--text-muted)] hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all"
                         >
                           <Edit3 size={18} />
                         </button>
                         <button 
                           onClick={() => handleDelete(rival.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          className="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -194,19 +194,19 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
             )}
 
             {/* Input para nuevo rival */}
-            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/5">
+            <div className="mt-8 pt-8 border-t border-[var(--surface-border)]">
               <div className="flex items-center gap-4">
                 <input 
                   value={newValue}
                   onChange={(e) => setNewValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                   placeholder="NOMBRE DEL CLUB RIVAL..."
-                  className="flex-1 bg-slate-50 dark:bg-white/5 px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest dark:text-white outline-none border-2 border-transparent focus:border-primary-500/30 transition-all"
+                  className="flex-1 bg-surface-ground px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/30 transition-all"
                 />
                 <button 
                   onClick={handleAdd}
                   disabled={!newValue.trim() || isSaving}
-                  className="bg-primary-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="bg-primary-500 text-primary-contrast px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                   Agregar

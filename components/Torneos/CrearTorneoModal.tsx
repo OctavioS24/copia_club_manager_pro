@@ -119,81 +119,81 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
   const availableCategories = selectedDiscipline?.branches.find(b => b.gender === gender)?.categories || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+        className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-500/10 rounded-xl">
+        <div className="flex items-center justify-between p-8 border-b border-[var(--surface-border)]">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary-500/10 rounded-2xl">
               <Trophy className="w-6 h-6 text-primary-500" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white uppercase tracking-tight">Crear Nuevo Torneo</h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Paso {step} de 4</p>
+              <h2 className="text-2xl font-black text-[var(--text-main)] uppercase tracking-tighter italic">Nuevo Campeonato</h2>
+              <p className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-[0.2em] mt-1">Configuración del Sistema • Paso {step} de 4</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
-            <X className="w-6 h-6 text-slate-400" />
+          <button onClick={onClose} className="p-2 hover:bg-surface-ground rounded-xl transition-all">
+            <X className="w-6 h-6 text-[var(--text-muted)]" />
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
           {step === 1 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Nombre del Torneo</label>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-4">Identificación del Torneo</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej: Liga Cordobesa 2024"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
+                  placeholder="Ej: LIGA NACIONAL DE PROFESIONALES 2024"
+                  className="w-full px-6 py-5 bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-bold text-sm focus:border-primary-500 outline-none transition-all placeholder:opacity-30 uppercase tracking-widest"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Tipo de Torneo</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-4">Sistema de Competencia</label>
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as any)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
+                    className="w-full px-6 py-5 bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-black text-xs uppercase tracking-widest focus:border-primary-500 outline-none transition-all appearance-none"
                   >
-                    <option value="Professional">Liga / Oficial</option>
-                    <option value="Internal">Copa / Interno</option>
+                    <option value="Professional" className="bg-surface-card">Liga Oficial / AFA</option>
+                    <option value="Internal" className="bg-surface-card">Copa Interna / Amistoso</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Disciplina</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-4">Disciplina Deportiva</label>
                   <select
                     value={disciplineId}
                     onChange={(e) => setDisciplineId(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
+                    className="w-full px-6 py-5 bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl text-[var(--text-main)] font-black text-xs uppercase tracking-widest focus:border-primary-500 outline-none transition-all appearance-none"
                   >
-                    <option value="">Seleccionar...</option>
+                    <option value="" className="bg-surface-card">Seleccionar Disciplina...</option>
                     {disciplines.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id} className="bg-surface-card">{d.name}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Rama / Género</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-4">Rama Competitiva</label>
                 <div className="grid grid-cols-2 gap-4">
                   {(['Masculino', 'Femenino'] as const).map(g => (
                     <button
                       key={g}
                       onClick={() => setGender(g)}
-                      className={`py-3 rounded-xl font-bold transition-all border ${
+                      className={`py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] transition-all border-2 ${
                         gender === g 
-                          ? 'bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/20' 
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                          ? 'bg-primary-600 border-primary-500 text-white shadow-xl shadow-primary-900/20' 
+                          : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)] hover:border-primary-500/50'
                       }`}
                     >
                       {g}
@@ -205,31 +205,33 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
           )}
 
           {step === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Categorías Participantes</label>
-                <span className="text-xs font-bold text-primary-500 bg-primary-500/10 px-2 py-1 rounded">
-                  {assignedcategories.length} Seleccionadas
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex items-center justify-between ml-4">
+                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Categorías de la Disciplina</label>
+                <span className="text-[10px] font-black text-primary-500 bg-primary-500/10 px-3 py-1.5 rounded-full uppercase tracking-widest border border-primary-500/20">
+                  {assignedcategories.length} Habilitadas
                 </span>
               </div>
               
               {!disciplineId ? (
-                <div className="p-8 text-center bg-slate-800/50 rounded-2xl border border-dashed border-slate-700">
-                  <p className="text-slate-500">Primero selecciona una disciplina en el paso anterior</p>
+                <div className="p-12 text-center bg-surface-ground rounded-[2.5rem] border-2 border-dashed border-[var(--surface-border)]">
+                  <p className="text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest opacity-40">Regresa al paso anterior para seleccionar una disciplina</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {availableCategories.map(cat => (
                     <button
                       key={cat.id}
                       onClick={() => toggleCategory(cat.id)}
-                      className={`p-4 rounded-xl font-bold text-sm transition-all border flex flex-col items-center gap-2 ${
+                      className={`p-6 rounded-[2rem] font-black uppercase text-[10px] tracking-widest transition-all border-2 flex flex-col items-center gap-4 ${
                         assignedcategories.includes(cat.id)
-                          ? 'bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/20'
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                          ? 'bg-surface-ground border-primary-500 text-primary-500 shadow-xl shadow-primary-900/5'
+                          : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)] hover:border-primary-500/30'
                       }`}
                     >
-                      <Shield className={`w-5 h-5 ${assignedcategories.includes(cat.id) ? 'text-white' : 'text-slate-500'}`} />
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${assignedcategories.includes(cat.id) ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30' : 'bg-surface-card text-[var(--text-muted)]'}`}>
+                        <Shield className="w-6 h-6" />
+                      </div>
                       {cat.name}
                     </button>
                   ))}
@@ -239,28 +241,30 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
           )}
 
           {step === 3 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <div className="space-y-2">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Equilibrio Local/Visitante</h3>
-                <p className="text-xs text-slate-500">Selecciona qué categorías arrancan con la condición opuesta al fixture base. Por ejemplo, si el fixture base dice que la Fecha 1 es Local, las categorías marcadas como "Invertida" jugarán de Visitante.</p>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-3 px-4">
+                <h3 className="text-sm font-black text-[var(--text-main)] uppercase tracking-tighter italic">Sincronización de localía</h3>
+                <p className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest leading-relaxed opacity-60">Configura qué categorías invierten su condición respecto al fixture base para optimizar la logística del club.</p>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-4">
                 {assignedcategories.map(catId => {
                   const cat = availableCategories.find(c => c.id === catId);
                   const isInverted = categoryConditions[catId] === 'Inverted';
                   return (
-                    <div key={catId} className="flex items-center justify-between p-4 bg-slate-800 border border-slate-700 rounded-2xl">
-                      <div className="flex items-center gap-3">
-                        <Shield className="w-5 h-5 text-slate-500" />
-                        <span className="font-bold text-white uppercase tracking-tight">{cat?.name}</span>
+                    <div key={catId} className="flex items-center justify-between p-6 bg-surface-ground border-2 border-[var(--surface-border)] rounded-3xl hover:border-primary-500/20 transition-all shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-surface-card rounded-2xl shadow-inner">
+                          <Shield className="w-6 h-6 text-primary-500" />
+                        </div>
+                        <span className="font-black text-[var(--text-main)] uppercase tracking-[0.1em] text-sm">{cat?.name}</span>
                       </div>
                       <button
                         onClick={() => toggleCategoryCondition(catId)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        className={`px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
                           isInverted 
-                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' 
-                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                            ? 'bg-orange-600 text-white shadow-xl shadow-orange-900/20' 
+                            : 'bg-surface-card text-[var(--text-muted)] hover:text-primary-500 border border-[var(--surface-border)]'
                         }`}
                       >
                         {isInverted ? 'Condición Invertida' : 'Condición Normal'}
@@ -273,74 +277,74 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
           )}
 
           {step === 4 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Fixture Base</label>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex items-center justify-between px-4">
+                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Fixture Base de Referencia</label>
                 <button
                   onClick={handleAddFixture}
-                  className="flex items-center gap-2 text-xs font-bold text-primary-500 hover:text-primary-400 transition-colors"
+                  className="flex items-center gap-2 text-[9px] font-black bg-primary-600/10 text-primary-500 px-4 py-2 rounded-full hover:bg-primary-600 hover:text-white transition-all uppercase tracking-widest border border-primary-500/20 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   AGREGAR FECHA
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {fixturebase.length > 0 ? (
                   fixturebase.map((fixture, index) => (
-                    <div key={fixture.id} className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-4">
+                    <div key={fixture.id} className="bg-surface-ground border-2 border-[var(--surface-border)] rounded-[2rem] p-8 space-y-6 shadow-sm hover:border-primary-500/20 transition-all">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Fecha {index + 1}</span>
+                        <span className="text-[11px] font-black text-primary-500 uppercase tracking-[0.3em] italic">FECHA {index + 1}</span>
                         <button 
                           onClick={() => handleRemoveFixture(fixture.id)}
-                          className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
+                          className="p-2.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Rival</label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Institución Rival</label>
                           <select
                             value={fixture.rival}
                             onChange={(e) => handleUpdateFixture(fixture.id, 'rival', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none focus:border-primary-500"
+                            className="w-full px-4 py-3 bg-surface-card border border-[var(--surface-border)] rounded-2xl text-[var(--text-main)] font-black text-[10px] uppercase tracking-widest outline-none focus:border-primary-500 transition-all appearance-none"
                           >
-                            <option value="">Seleccionar Rival...</option>
+                            <option value="">Seleccionar...</option>
                             {rivals
                               .filter(r => !fixturebase.some((f, i) => i !== index && f.rival === r.name))
                               .map(r => (
-                                <option key={r.id} value={r.name}>{r.name}</option>
+                                <option key={r.id} value={r.name} className="bg-surface-card">{r.name}</option>
                               ))}
                           </select>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Calendario</label>
                           <input
                             type="date"
                             value={fixture.date}
                             onChange={(e) => handleUpdateFixture(fixture.id, 'date', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none"
+                            className="w-full px-4 py-3 bg-surface-card border border-[var(--surface-border)] rounded-2xl text-[var(--text-main)] font-black text-[10px] uppercase tracking-widest outline-none focus:border-primary-500 transition-all"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Condición</label>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Condición Base</label>
                           <select
                             value={fixture.condition}
                             onChange={(e) => handleUpdateFixture(fixture.id, 'condition', e.target.value as any)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm outline-none"
+                            className="w-full px-4 py-3 bg-surface-card border border-[var(--surface-border)] rounded-2xl text-[var(--text-main)] font-black text-[10px] uppercase tracking-widest outline-none focus:border-primary-500 transition-all appearance-none"
                           >
-                            <option value="Local">Local</option>
-                            <option value="Visitante">Visitante</option>
+                            <option value="Local" className="bg-surface-card">Sede Local</option>
+                            <option value="Visitante" className="bg-surface-card">Sede Visitante</option>
                           </select>
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 bg-slate-800/20 rounded-2xl border border-dashed border-slate-700">
-                    <Calendar className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                    <p className="text-slate-500 text-sm">No has agregado fechas al fixture base</p>
+                  <div className="text-center py-16 bg-surface-ground rounded-[3rem] border-2 border-dashed border-[var(--surface-border)]">
+                    <Calendar className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4 opacity-20" />
+                    <p className="text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest opacity-40">Define el calendario de encuentros oficial</p>
                   </div>
                 )}
               </div>
@@ -349,41 +353,41 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 rounded-b-3xl">
+        <div className="p-8 border-t border-[var(--surface-border)] flex items-center justify-between bg-surface-ground">
           <button
             onClick={() => step > 1 && setStep(step - 1)}
             disabled={step === 1}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-              step === 1 ? 'opacity-0 pointer-events-none' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+            className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black transition-all uppercase text-[10px] tracking-widest ${
+              step === 1 ? 'opacity-0 pointer-events-none' : 'bg-surface-card text-[var(--text-muted)] hover:text-primary-500 border border-[var(--surface-border)] shadow-sm'
             }`}
           >
             <ChevronLeft className="w-5 h-5" />
-            ANTERIOR
+            Retroceder
           </button>
 
           {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
               disabled={!name || (step === 1 && !disciplineId) || (step === 2 && assignedcategories.length === 0)}
-              className="flex items-center gap-2 px-8 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary-900/20"
+              className="flex items-center gap-3 px-10 py-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 text-white rounded-2xl font-black transition-all shadow-xl shadow-primary-900/20 uppercase text-[10px] tracking-widest"
             >
-              SIGUIENTE
+              Siguiente Fase
               <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || fixturebase.length === 0}
-              className="flex items-center gap-2 px-8 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl font-bold transition-all shadow-lg shadow-green-900/20"
+              className="flex items-center gap-3 px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl font-black transition-all shadow-xl shadow-emerald-500/20 uppercase text-[10px] tracking-widest"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  CREANDO...
+                  Sincronizando...
                 </>
               ) : (
                 <>
-                  CREAR TORNEO
+                  Lanzar Torneo
                   <ChevronRight className="w-5 h-5" />
                 </>
               )}

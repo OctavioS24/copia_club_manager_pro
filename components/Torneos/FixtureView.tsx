@@ -96,7 +96,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500 gap-4">
+      <div className="flex flex-col items-center justify-center py-20 text-[var(--text-muted)] gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
         <p className="font-black text-xs tracking-widest uppercase">Cargando Fixture...</p>
       </div>
@@ -105,10 +105,10 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
   if (matches.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-slate-800/10 rounded-[3rem] border border-dashed border-slate-700/50">
+      <div className="flex flex-col items-center justify-center py-20 text-[var(--text-muted)] bg-surface-ground rounded-[3rem] border border-dashed border-[var(--surface-border)]">
         <Trophy size={64} className="mb-6 opacity-20 text-primary-500" />
         <h3 className="text-xl font-black italic uppercase tracking-tighter mb-2">No hay fixture asignado</h3>
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Crea un torneo y asigna esta categoría para ver el fixture</p>
+        <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest">Crea un torneo y asigna esta categoría para ver el fixture</p>
       </div>
     );
   }
@@ -116,26 +116,26 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-800/40 border border-slate-700/50 rounded-[2.5rem] p-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-8">
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-primary-600 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-600/20">
-            <Trophy className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-primary-500 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/20">
+            <Trophy className="w-8 h-8 text-primary-contrast" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Fixture de Competencia</h2>
-            <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] mt-1">
+            <h2 className="text-2xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">Fixture de Competencia</h2>
+            <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">
               Temporada 2024 <span className="text-primary-500 mx-2">|</span> {matches.length} Fechas Programadas
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="bg-slate-900/50 px-6 py-3 rounded-2xl border border-slate-700/50 text-center">
-            <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase mb-1">Partidos Jugados</p>
-            <p className="text-xl font-black text-white">{matches.filter(m => m.status === 'Finished').length}</p>
+          <div className="bg-surface-ground px-6 py-3 rounded-2xl border border-[var(--surface-border)] text-center">
+            <p className="text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-1">Partidos Jugados</p>
+            <p className="text-xl font-black text-[var(--text-main)]">{matches.filter(m => m.status === 'Finished').length}</p>
           </div>
-          <div className="bg-slate-900/50 px-6 py-3 rounded-2xl border border-slate-700/50 text-center">
-            <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase mb-1">Pendientes</p>
+          <div className="bg-surface-ground px-6 py-3 rounded-2xl border border-[var(--surface-border)] text-center">
+            <p className="text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-1">Pendientes</p>
             <p className="text-xl font-black text-primary-500">{matches.filter(m => m.status === 'Scheduled').length}</p>
           </div>
         </div>
@@ -155,8 +155,8 @@ const FixtureView: React.FC<FixtureViewProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`group relative bg-slate-800/30 border rounded-[2rem] overflow-hidden transition-all duration-500 ${
-                isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-secondary-500/20 hover:border-secondary-500/50'
+              className={`group relative bg-surface-card border rounded-[2rem] overflow-hidden transition-all duration-500 ${
+                isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--surface-border)] hover:border-primary-500/50 shadow-sm'
               }`}
             >
               <div className="p-8">
@@ -164,7 +164,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                   {/* Date & Round */}
                   <div className="flex flex-col items-center md:items-start gap-2 min-w-[120px]">
                     <span className="text-[10px] font-black text-primary-500 uppercase tracking-[0.3em]">Fecha {index + 1}</span>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
+                    <div className="flex items-center gap-2 text-[var(--text-muted)] font-bold text-sm">
                       <Calendar className="w-4 h-4" />
                       {new Date(match.date).toLocaleDateString()}
                     </div>
@@ -172,7 +172,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
                   {/* Teams & Score */}
                   <div className="flex-1 flex items-center justify-center gap-4 md:gap-12">
-                    <div className={`flex-1 text-right space-y-2 ${isHome ? 'text-white' : 'text-slate-400'} ${isSuspended ? 'opacity-50' : ''}`}>
+                    <div className={`flex-1 text-right space-y-2 ${isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
                       <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.hometeam}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{isHome ? 'Local' : 'Visitante'}</p>
                     </div>
@@ -180,22 +180,22 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                     <div className="flex flex-col items-center gap-2">
                       <div className={`px-6 py-3 rounded-2xl font-black text-2xl md:text-3xl italic tracking-tighter border-2 transition-all duration-500 ${
                         isFinished 
-                          ? 'bg-primary-600/10 border-secondary-500/50 text-white shadow-lg shadow-primary-500/10' 
+                          ? 'bg-[var(--primary-soft)] border-[var(--primary-glow)] text-[var(--text-main)] shadow-lg shadow-primary-500/5' 
                           : isSuspended
                             ? 'bg-red-600/10 border-red-500 text-red-500'
-                            : 'bg-slate-900 border-slate-700 text-slate-500'
+                            : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)]'
                       }`}>
                         {result}
                       </div>
                       {isFinished && (
-                        <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Finalizado</span>
+                        <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Finalizado</span>
                       )}
                       {isSuspended && (
                         <span className="text-[10px] font-black text-red-500 uppercase tracking-widest italic animate-pulse">Suspendido</span>
                       )}
                     </div>
 
-                    <div className={`flex-1 text-left space-y-2 ${!isHome ? 'text-white' : 'text-slate-400'} ${isSuspended ? 'opacity-50' : ''}`}>
+                    <div className={`flex-1 text-left space-y-2 ${!isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
                       <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.awayteam}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{!isHome ? 'Local' : 'Visitante'}</p>
                     </div>
@@ -209,7 +209,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                           setSelectedMatch(match);
                           setShowSquadModal(true);
                         }}
-                        className="flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all bg-slate-700 hover:bg-slate-600 text-white"
+                        className="flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]"
                       >
                         <Users className="w-4 h-4" />
                         CONVOCATORIA
@@ -220,10 +220,10 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                       onClick={() => setSelectedMatch(match)}
                       className={`flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all ${
                         isFinished
-                          ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                          ? 'bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]'
                           : isSuspended
-                            ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                            : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20'
+                            ? 'bg-surface-ground text-[var(--text-muted)] cursor-not-allowed opacity-50'
+                            : 'bg-primary-500 text-primary-contrast shadow-lg shadow-primary-500/20'
                       }`}
                     >
                       {isFinished ? (
@@ -243,16 +243,16 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
                 {/* Events Preview */}
                 {isFinished && match.events && match.events.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-slate-700/50 flex flex-wrap gap-4 justify-center">
+                  <div className="mt-8 pt-6 border-t border-[var(--surface-border)] flex flex-wrap gap-4 justify-center">
                     {match.events.map((event, eIdx) => {
                       const player = players.find(p => p.id === event.playerid);
                       return (
-                        <div key={eIdx} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 rounded-full border border-slate-700/50">
+                        <div key={eIdx} className="flex items-center gap-2 px-3 py-1.5 bg-surface-ground rounded-full border border-[var(--surface-border)]">
                           <Activity className={`w-3 h-3 ${
-                            event.type === 'Goal' ? 'text-green-400' : 
-                            event.type === 'YellowCard' ? 'text-yellow-400' : 'text-red-400'
+                            event.type === 'Goal' ? 'text-green-500' : 
+                            event.type === 'YellowCard' ? 'text-yellow-500' : 'text-red-500'
                           }`} />
-                          <span className="text-[10px] font-bold text-slate-400">{player?.name || 'Jugador'} ({event.minute}')</span>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)]">{player?.name || 'Jugador'} ({event.minute}')</span>
                         </div>
                       );
                     })}

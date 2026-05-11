@@ -105,8 +105,11 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const handleSave = async () => {
     if (!formData.name || !formData.dni) return alert("Nombre y DNI son obligatorios");
-    
-    // Check for duplicate DNI on client side first
+    if (!formData.email && formData.systemrole !== 'Socio') {
+      setSaveError("EL EMAIL ES OBLIGATORIO PARA ROLES ADMINISTRATIVOS O DE STAFF");
+      setActiveTab('contacts');
+      return;
+    }
     const duplicateDni = members.find(m => m.dni === formData.dni && m.id !== (selectedMember?.id || ''));
     if (duplicateDni) {
       setSaveError(`ALERTA: EL DNI ${formData.dni} YA PERTENECE A OTRO MIEMBRO (${duplicateDni.name})`);
@@ -196,31 +199,31 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     { id: 'system', label: 'Sistema', icon: ShieldCheck },
   ];
 
-  const inputClasses = "w-full p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl font-bold text-sm outline-none border border-transparent dark:border-slate-700/50 focus:border-primary-600/50 dark:focus:border-primary-500/50 shadow-inner transition-all dark:text-slate-200";
-  const selectClasses = "w-full p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl font-bold text-sm outline-none border border-transparent dark:border-slate-700/50 shadow-inner dark:text-slate-200 cursor-pointer";
-  const labelClasses = "text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-1.5 block";
+  const inputClasses = "w-full p-4 bg-surface-ground rounded-xl font-bold text-sm outline-none border border-transparent border-[var(--surface-border)] focus:border-primary-500/50 shadow-inner transition-all text-[var(--text-main)]";
+  const selectClasses = "w-full p-4 bg-surface-ground rounded-xl font-bold text-sm outline-none border border-transparent border-[var(--surface-border)] shadow-inner text-[var(--text-main)] cursor-pointer";
+  const labelClasses = "text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 mb-1.5 block";
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto animate-fade-in pb-40">
       <header className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
         <div>
-          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none italic">
-            Miembros <span className="text-primary-600">Plegma</span>
+          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--text-main)] leading-none italic">
+            Miembros <span className="text-[var(--primary-600)]">Plegma</span>
           </h2>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[9px] mt-4 ml-1">Directorio Institucional</p>
+          <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.3em] text-[9px] mt-4 ml-1">Directorio Institucional</p>
         </div>
         
         <div className="flex gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-72">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
             <input 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="BUSCAR..." 
-              className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 outline-none font-bold text-[11px] uppercase tracking-widest shadow-lg"
+              className="w-full pl-12 pr-4 py-4 bg-surface-card rounded-2xl border border-[var(--surface-border)] outline-none font-bold text-[11px] uppercase tracking-widest shadow-lg text-[var(--text-main)]"
             />
           </div>
-          <button onClick={handleNew} className="bg-primary-600 text-white px-6 py-4 rounded-2xl shadow-xl shadow-primary-600/20 hover:scale-105 transition-all shrink-0">
+          <button onClick={handleNew} className="bg-primary-500 text-primary-contrast px-6 py-4 rounded-2xl shadow-xl shadow-primary-500/20 hover:scale-105 transition-all shrink-0">
             <UserPlus size={20} />
           </button>
         </div>
@@ -228,25 +231,25 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMembers.map(member => (
-          <div key={member.id} className="bg-white dark:bg-slate-800/40 rounded-[2.5rem] p-6 md:p-8 border border-slate-200 dark:border-slate-700/50 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+          <div key={member.id} className="bg-surface-card rounded-[2.5rem] p-6 md:p-8 border border-[var(--surface-border)] shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
             <div className="flex items-center gap-5 relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-900 overflow-hidden shadow-inner shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0">
                 <img src={member.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-black text-lg uppercase tracking-tight text-slate-800 dark:text-white leading-none mb-1 truncate">{member.name}</h3>
+                  <h3 className="font-black text-lg uppercase tracking-tight text-[var(--text-main)] leading-none mb-1 truncate">{member.name}</h3>
                   <button 
                     onClick={() => onDeleteMember(member.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-2 text-[var(--surface-border)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">DNI: {member.dni}</p>
               </div>
             </div>
-            <button onClick={() => handleEdit(member)} className="w-full mt-6 bg-slate-50 dark:bg-slate-700/50 p-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-primary-600 hover:text-white transition-all">
+            <button onClick={() => handleEdit(member)} className="w-full mt-6 bg-surface-ground p-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:bg-primary-500 hover:text-primary-contrast transition-all">
               Gestionar Legajo
             </button>
           </div>
@@ -254,23 +257,23 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
-          <div className="bg-white dark:bg-[#0f121a] w-full max-w-6xl h-full md:h-[90vh] md:rounded-[3rem] shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-6 md:px-10 py-5 flex justify-between items-center border-b border-slate-100 dark:border-slate-700/50 shrink-0 bg-slate-50 dark:bg-slate-800/40">
+        <div className="fixed inset-0 bg-surface-ground/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
+          <div className="bg-surface-card w-full max-w-6xl h-full md:h-[90vh] md:rounded-[3rem] shadow-2xl flex flex-col border border-[var(--surface-border)] overflow-hidden">
+            <div className="px-6 md:px-10 py-5 flex justify-between items-center border-b border-[var(--surface-border)] shrink-0 bg-surface-hover">
               <div className="flex items-center gap-4">
-                <div className="hidden md:flex w-10 h-10 rounded-xl bg-primary-600/10 items-center justify-center text-primary-600">
+                <div className="hidden md:flex w-10 h-10 rounded-xl bg-primary-500/10 items-center justify-center text-primary-500">
                   <Fingerprint size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight italic">Legajo Maestro</h3>
-                  <p className="text-[8px] md:text-[9px] font-black text-primary-600 uppercase tracking-[0.3em]">Gestión de Identidad</p>
+                  <h3 className="text-lg md:text-xl font-black text-[var(--text-main)] uppercase tracking-tight italic">Legajo Maestro</h3>
+                  <p className="text-[8px] md:text-[9px] font-black text-primary-500 uppercase tracking-[0.3em]">Gestión de Identidad</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-full hover:bg-red-500 hover:text-white transition-all"><X size={20} /></button>
+              <button onClick={() => setShowModal(false)} className="p-3 bg-surface-ground rounded-full hover:bg-red-500 hover:text-white transition-all text-[var(--text-main)] hover:text-white"><X size={20} /></button>
             </div>
 
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-              <div className="w-full md:w-64 bg-slate-50/50 dark:bg-slate-900/40 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700/50 flex flex-col shrink-0 md:overflow-y-auto no-scrollbar">
+              <div className="w-full md:w-64 bg-surface-ground border-b md:border-b-0 md:border-r border-[var(--surface-border)] flex flex-col shrink-0 md:overflow-y-auto no-scrollbar">
                 <nav className="flex md:flex-col overflow-x-auto no-scrollbar md:overflow-y-visible p-3 md:p-4 gap-2 md:gap-3 shrink-0">
                   {tabs.map(tab => {
                     const isActive = activeTab === tab.id;
@@ -279,7 +282,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as ModalTab)}
                         className={`flex items-center gap-3 md:gap-4 px-4 md:px-5 py-3 md:py-5 rounded-xl md:rounded-2xl transition-all relative shrink-0 border-2 ${
-                          isActive ? 'bg-primary-600 text-white shadow-xl shadow-primary-600/30 border-primary-400' : 'text-slate-400 border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/30'
+                          isActive ? 'bg-primary-500 text-primary-contrast shadow-xl shadow-primary-500/30 border-primary-400' : 'text-[var(--text-muted)] border-transparent hover:bg-surface-hover hover:text-[var(--text-main)]'
                         }`}
                       >
                         <tab.icon size={18} />
@@ -290,12 +293,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                 </nav>
               </div>
 
-              <div className="flex-1 bg-white dark:bg-[#0f121a] overflow-y-auto p-6 md:p-10 custom-scrollbar">
+              <div className="flex-1 bg-surface-card overflow-y-auto p-6 md:p-10 custom-scrollbar">
                 <div className="max-w-3xl mx-auto">
                   {activeTab === 'identity' && (
                     <div className="space-y-10 animate-fade-in">
-                       <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
-                         <div className="w-1 h-4 bg-primary-600 rounded-full"></div> Información Personal
+                       <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                         <div className="w-1 h-4 bg-[var(--primary-600)] rounded-full"></div> Información Personal
                        </h4>
 
                        <div className="flex flex-col md:flex-row gap-10 items-start">
@@ -304,12 +307,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
                              <div 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-40 h-40 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer group hover:border-primary-600 transition-all relative"
+                                className="w-40 h-40 rounded-[2.5rem] bg-surface-ground border-2 border-dashed border-[var(--surface-border)] flex items-center justify-center overflow-hidden cursor-pointer group hover:border-primary-600 transition-all relative"
                              >
                                 {formData.photourl ? (
                                    <img src={formData.photourl} className="w-full h-full object-cover" />
                                 ) : (
-                                   <div className="flex flex-col items-center text-slate-400 group-hover:text-primary-600 transition-colors">
+                                   <div className="flex flex-col items-center text-[var(--text-muted)] group-hover:text-primary-600 transition-colors">
                                       <Camera size={32} />
                                       <span className="text-[8px] font-black uppercase mt-2">Subir Foto</span>
                                    </div>
@@ -318,7 +321,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                    <Camera className="text-white" size={24} />
                                 </div>
                              </div>
-                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Foto de Perfil</p>
+                             <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Foto de Perfil</p>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full">
@@ -349,7 +352,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
                   {activeTab === 'health' && (
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
-                       <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                       <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
                          <div className="w-1 h-4 bg-red-500 rounded-full"></div> Perfil de Salud
                        </h4>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -379,7 +382,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                   {activeTab === 'contacts' && (
                     <div className="space-y-12 animate-fade-in">
                        <section className="space-y-6">
-                          <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                          <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
                             <div className="w-1 h-4 bg-emerald-500 rounded-full"></div> Datos de Contacto
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -407,10 +410,10 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                        </section>
 
                        <section className="space-y-6">
-                          <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                          <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
                             <div className="w-1 h-4 bg-emerald-500 rounded-full"></div> Responsable / Tutor
                           </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-white/5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">
                              <div className="space-y-2 col-span-1 md:col-span-2">
                                 <label className={labelClasses}>Nombre Tutor</label>
                                 <input value={formData.tutor?.name} onChange={e => setFormData({...formData, tutor: {...formData.tutor!, name: e.target.value.toUpperCase()}})} className={inputClasses} />
@@ -436,10 +439,10 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                   {activeTab === 'sports' && (
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
                       <div className="flex justify-between items-center">
-                        <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                        <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
                           <div className="w-1 h-4 bg-blue-500 rounded-full"></div> Perfil Deportivo
                         </h4>
-                        <button onClick={addAssignment} className="flex items-center gap-2 text-primary-600 text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                        <button onClick={addAssignment} className="flex items-center gap-2 text-[var(--primary-600)] text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all">
                           <PlusCircle size={16} /> Agregar Actividad
                         </button>
                       </div>
@@ -452,19 +455,18 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           const isLoadingPos = loadingPositions[as.discipline];
                           
                           return (
-                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/60 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 space-y-4 shadow-sm transition-all">
+                            <div key={idx} className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] space-y-4 shadow-sm transition-all">
                               <div className="flex justify-between items-center">
                                 <select 
                                   value={as.role} 
                                   onChange={e => updateAssignment(idx, 'role', e.target.value as AppRole)}
-                                  className="bg-transparent font-black text-[10px] uppercase tracking-widest outline-none text-primary-600 cursor-pointer"
+                                  className="bg-transparent font-black text-[10px] uppercase tracking-widest outline-none text-[var(--primary-600)] cursor-pointer"
                                 >
                                   <option value="PLAYER">JUGADOR (Atleta)</option>
-                                  <option value="COACH">ENTRENADOR</option>
+                                  <option value="COACH">ENTRENADOR / DT</option>
                                   <option value="PHYSICAL_TRAINER">PREP. FÍSICO</option>
-                                  <option value="ADMIN">ADMIN</option>
                                 </select>
-                                <button onClick={() => setFormData({...formData, assignments: formData.assignments?.filter((_, i) => i !== idx)})} className="text-slate-300 hover:text-red-500 transition-colors">
+                                <button onClick={() => setFormData({...formData, assignments: formData.assignments?.filter((_, i) => i !== idx)})} className="text-[var(--text-muted)] hover:text-red-500 transition-colors">
                                   <Trash2 size={14} />
                                 </button>
                               </div>
@@ -487,7 +489,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 <div className="space-y-1">
                                   <label className={labelClasses}>Puesto</label>
                                   {isLoadingPos ? (
-                                    <div className="flex items-center gap-2 p-3 text-[10px] text-slate-400 font-bold uppercase">
+                                    <div className="flex items-center gap-2 p-3 text-[10px] text-[var(--text-muted)] font-bold uppercase">
                                       <Loader2 size={12} className="animate-spin" /> Cargando puestos...
                                     </div>
                                   ) : positions.length > 0 ? (
@@ -514,8 +516,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
                   {activeTab === 'system' && (
                     <div className="space-y-10 animate-fade-in">
-                       <h4 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
-                         <div className="w-1 h-4 bg-slate-900 dark:bg-white rounded-full"></div> Configuración de Sistema
+                       <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                         <div className="w-1 h-4 bg-[var(--text-main)] rounded-full"></div> Configuración de Sistema
                        </h4>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-2">
@@ -529,27 +531,29 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           <div className="space-y-2">
                              <label className={labelClasses}>Rol Institucional</label>
                              <select value={formData.systemrole} onChange={e => setFormData({...formData, systemrole: e.target.value as any})} className={selectClasses}>
-                                <option value="STAFF">Personal / Staff</option>
-                                <option value="Socio">Socio / Miembro</option>
-                                <option value="Externo">Externo / Invitado</option>
+                                <option value="Socio">Socio / Jugador</option>
+                                <option value="Admin">Administrador Total</option>
+                                <option value="Administrativo">Personal Administrativo (Pagos)</option>
+                                <option value="Entrenador">Director Técnico / Coach</option>
+                                <option value="Medico">Médico / Salud</option>
                              </select>
                           </div>
-                          <div className="col-span-1 md:col-span-2 p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-white/5">
+                          <div className="col-span-1 md:col-span-2 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">
                              <div className="flex items-center justify-between mb-6">
                                 <div>
-                                   <h5 className="font-black text-sm uppercase dark:text-white">Acceso a Plataforma</h5>
-                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Permitir login en app móvil / web</p>
+                                   <h5 className="font-black text-sm uppercase text-[var(--text-main)]">Acceso a Plataforma</h5>
+                                   <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">Permitir login en app móvil / web</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
                                   <input type="checkbox" checked={formData.canlogin} onChange={e => setFormData({...formData, canlogin: e.target.checked})} className="sr-only peer" />
-                                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                                  <div className="w-11 h-6 bg-[var(--surface-border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-600)]"></div>
                                 </label>
                              </div>
                              {formData.canlogin && (
                                <div className="space-y-2 animate-fade-in">
                                   <label className={labelClasses}>Nombre de Usuario</label>
                                   <div className="relative">
-                                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-600" size={18} />
+                                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--primary-600)]" size={18} />
                                     <input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className={inputClasses + " pl-12"} placeholder="user.name" />
                                   </div>
                                </div>
@@ -568,11 +572,11 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                 <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-red-500 leading-tight">{saveError}</p>
               </div>
             )}
-            <div className="px-6 md:px-10 py-5 border-t border-slate-100 dark:border-slate-700/50 flex justify-end bg-slate-50 dark:bg-slate-800/40 shrink-0">
+            <div className="px-6 md:px-10 py-5 border-t border-[var(--surface-border)] flex justify-end bg-surface-hover shrink-0">
               <button 
                 onClick={handleSave} 
                 disabled={isSaving}
-                className="w-full md:w-auto flex items-center justify-center gap-4 bg-primary-600 text-white px-10 py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-[11px] tracking-widest shadow-xl shadow-primary-600/20 hover:scale-[1.02] transition-all disabled:opacity-50"
+                className="w-full md:w-auto flex items-center justify-center gap-4 bg-primary-500 text-primary-contrast px-10 py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-[11px] tracking-widest shadow-xl shadow-primary-500/20 hover:scale-[1.02] transition-all disabled:opacity-50"
               >
                 {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                 Confirmar y Guardar Cambios
