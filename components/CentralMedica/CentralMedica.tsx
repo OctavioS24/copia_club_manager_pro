@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ClubConfig, Member } from '../../types';
 import { 
   Stethoscope, Search, Edit2, Loader2, Filter, 
-  User, AlertTriangle, CheckCircle, Activity 
+  User, AlertTriangle, CheckCircle, Activity, Clock
 } from 'lucide-react';
 import { db } from '../../lib/supabase';
 import MedicalEditModal from './MedicalEditModal';
@@ -143,7 +143,7 @@ const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
            <p className="font-black uppercase text-slate-400 tracking-widest px-4 text-center">No se encontraron jugadores activos en esta categoría</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {filteredPlayers.map(player => {
             const hasActiveInjury = player.status === 'Injured';
             const isFit = player.medical?.is_fit;
@@ -153,48 +153,100 @@ const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
               <div 
                 key={player.id}
                 onClick={() => handleEdit(player)}
-                className="group bg-white dark:bg-[#0f1219] rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all relative overflow-hidden cursor-pointer"
+                className="group bg-white dark:bg-[#0f1219] rounded-2xl md:rounded-[3.5rem] p-4 md:p-10 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-xl md:hover:-translate-y-2 transition-all relative overflow-hidden cursor-pointer"
               >
-                <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
-                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/5">
-                    <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
-                    {hasExpired && (
-                      <div className="absolute inset-0 bg-orange-500/40 flex items-center justify-center" title="Ficha Vencida">
-                        <AlertTriangle size={16} md:size={24} className="text-white" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-base md:text-xl font-black uppercase text-slate-800 dark:text-white tracking-tighter leading-none italic truncate">{player.name}</h4>
-                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 md:mt-2">DNI: {player.dni}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 md:space-y-4 mb-6 md:mb-10 pt-6 border-t border-slate-50 dark:border-white/5">
-                   <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-                      <span className="text-slate-400">Estado</span>
-                      {hasActiveInjury ? (
-                        <span className="text-red-500 flex items-center gap-1.5 animate-pulse"><Activity size={12} md:size={14} /> Baja Médica</span>
-                      ) : !isFit ? (
-                        <span className="text-orange-500 flex items-center gap-1.5"><AlertTriangle size={12} md:size={14} /> No Apto</span>
-                      ) : (
-                        <span className="text-emerald-500 flex items-center gap-1.5"><CheckCircle size={12} md:size={14} /> Apto</span>
+                {/* Mobile Layout: Horizontal Structured */}
+                <div className="flex md:hidden items-center justify-between gap-4 py-1">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative border border-slate-200 dark:border-white/5">
+                      <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
+                      {hasExpired && (
+                        <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
+                          <AlertTriangle size={14} className="text-white" />
+                        </div>
                       )}
-                   </div>
-                   <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-                      <span className="text-slate-400">Vencimiento</span>
-                      <span className={`${hasExpired ? 'text-orange-500' : 'text-slate-800 dark:text-slate-200'}`}>
-                        {player.medical?.expiry_date || 'PENDIENTE'}
-                      </span>
-                   </div>
+                    </div>
+                    <div className="min-w-0 flex flex-col gap-1.5">
+                      <h4 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-tighter leading-tight italic truncate">{player.name}</h4>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">DNI: {player.dni}</span>
+                          <span className={`text-[8px] font-black italic tracking-widest ${hasExpired ? 'text-orange-500' : 'text-slate-400 opacity-40'}`}>
+                             {player.medical?.expiry_date ? player.medical.expiry_date.split('-').reverse().join('/') : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex pt-0.5">
+                          {hasActiveInjury ? (
+                            <span className="px-2 py-0.5 bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest flex items-center gap-1 rounded-md border border-red-500/10"><Activity size={10} /> BAJA</span>
+                          ) : hasExpired ? (
+                            <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 text-[8px] font-black uppercase tracking-widest flex items-center gap-1 rounded-md border border-indigo-500/10"><Clock size={10} /> VENCIDO</span>
+                          ) : !isFit ? (
+                            <span className="px-2 py-0.5 bg-orange-500/10 text-orange-500 text-[8px] font-black uppercase tracking-widest flex items-center gap-1 rounded-md border border-orange-500/10"><AlertTriangle size={10} /> NO APTO</span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-widest flex items-center gap-1 rounded-md border border-emerald-500/10"><CheckCircle size={10} /> APTO</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="p-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-primary-600 shadow-sm shrink-0">
+                    <Edit2 size={18} />
+                  </button>
                 </div>
 
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleEdit(player); }}
-                  className="w-full py-4 md:py-5 bg-slate-100 dark:bg-white/5 group-hover:bg-primary-600 rounded-xl md:rounded-2xl flex items-center justify-center gap-3 md:gap-4 text-slate-400 group-hover:text-white transition-all shadow-inner font-black uppercase text-[8px] md:text-[10px] tracking-widest"
-                >
-                  <Edit2 size={12} md:size={16} /> Gestionar Ficha
-                </button>
+                {/* Desktop Layout: Cards (Hidden on Mobile) */}
+                <div className="hidden md:block">
+                  <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
+                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/5">
+                      <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
+                      {hasExpired && (
+                        <div className="absolute inset-0 bg-orange-500/40 flex items-center justify-center" title="Ficha Vencida">
+                          <AlertTriangle size={16} md:size={24} className="text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-base md:text-xl font-black uppercase text-slate-800 dark:text-white tracking-tighter leading-none italic truncate">{player.name}</h4>
+                      <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 md:mt-2">DNI: {player.dni}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 md:space-y-4 mb-6 md:mb-10 pt-6 border-t border-slate-50 dark:border-white/5">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-slate-400">Estado</span>
+                        {hasActiveInjury ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-black tracking-[0.1em] animate-pulse">
+                            <Activity size={12} className="shrink-0" /> Baja Médica
+                          </span>
+                        ) : hasExpired ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 rounded-xl text-[9px] font-black tracking-[0.1em]">
+                            <Clock size={12} className="shrink-0" /> Vencido
+                          </span>
+                        ) : !isFit ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-xl text-[9px] font-black tracking-[0.1em]">
+                            <AlertTriangle size={12} className="shrink-0" /> No Apto
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl text-[9px] font-black tracking-[0.1em]">
+                            <CheckCircle size={12} className="shrink-0" /> Apto
+                          </span>
+                        )}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-slate-400">Vencimiento</span>
+                        <span className={`${hasExpired ? 'text-orange-500 font-black' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {player.medical?.expiry_date ? player.medical.expiry_date.split('-').reverse().join('/') : 'PENDIENTE'}
+                        </span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleEdit(player); }}
+                    className="w-full py-4 md:py-5 bg-slate-100 dark:bg-white/5 group-hover:bg-primary-600 rounded-xl md:rounded-2xl flex items-center justify-center gap-3 md:gap-4 text-slate-400 group-hover:text-white transition-all shadow-inner font-black uppercase text-[10px] tracking-widest"
+                  >
+                    <Edit2 size={16} /> Gestionar Ficha
+                  </button>
+                </div>
               </div>
             );
           })}

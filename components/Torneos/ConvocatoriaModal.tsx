@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Star, Check, X, Loader2, Save, Info, AlertCircle, DollarSign } from 'lucide-react';
+import { Users, Star, Check, X, Loader2, Save, Info, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Match, Member, MatchSquadPlayer } from '../../types';
 import { getMatchSquad, saveMatchSquad } from '../../lib/squads';
@@ -99,11 +99,13 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const summonedCount = Object.values(selection).filter(s => s.selected).length;
 
   const handleSave = async () => {
-    // Validation: Exactly 11 starters for Football
+    // Validation: Exactly 11 starters for Football (DISABLED as per new requirement)
+    /*
     if (startersCount !== 11) {
       alert('Debes seleccionar exactamente 11 jugadores como titulares.');
       return;
     }
+    */
 
     setIsSaving(true);
     try {
@@ -118,7 +120,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
       await saveMatchSquad(
         {
           match_id: match.id,
-          tournament_id: match.tournamentid || (match as any).tournament_id,
+          tournament_id: match.tournamentid || (match as any).tournament_id || match.tournament_id,
           category_id: match.categoryid || (match as any).category_id,
           discipline: discipline,
           notes: notes
@@ -205,14 +207,14 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
               {/* Status Alert */}
               {startersCount !== 11 && (
-                <div className="bg-orange-500/5 border-2 border-orange-500/20 rounded-3xl p-6 flex items-center gap-6 animate-pulse">
-                  <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500">
-                    <AlertCircle size={24} />
+                <div className="bg-blue-500/5 border-2 border-blue-500/20 rounded-3xl p-6 flex items-center gap-6">
+                  <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
+                    <Info size={24} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-black text-orange-500 uppercase tracking-[0.2em] italic mb-1">Alineación no validada</p>
-                    <p className="text-[10px] text-orange-500/70 font-bold leading-relaxed uppercase tracking-widest italic">
-                      Se requieren exactamente 11 jugadores para la alineación inicial. {startersCount < 11 ? `Faltan ${11 - startersCount} elecciones.` : `Exceso de ${startersCount - 11} titulares.`}
+                    <p className="text-[11px] font-black text-blue-500 uppercase tracking-[0.2em] italic mb-1">Alineación en proceso</p>
+                    <p className="text-[10px] text-blue-500/70 font-bold leading-relaxed uppercase tracking-widest italic">
+                      Has seleccionado {startersCount} titular(es). Puedes confirmar la convocatoria ahora y definir los titulares más tarde si lo deseas.
                     </p>
                   </div>
                 </div>
@@ -304,7 +306,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
             <button onClick={onClose} className="px-10 py-5 text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all tracking-[0.2em]">Cerrar</button>
             <button 
               onClick={handleSave}
-              disabled={isSaving || startersCount !== 11}
+              disabled={isSaving || summonedCount === 0}
               className="flex-1 md:flex-none px-14 py-5 bg-primary-600 hover:bg-primary-700 disabled:opacity-30 disabled:hover:bg-primary-600 text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-2xl shadow-primary-900/40 italic active:scale-95"
             >
               {isSaving ? (
@@ -315,7 +317,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
               ) : (
                 <>
                   <Save size={18} strokeWidth={3} />
-                  <span>Confirmar Plantel</span>
+                  <span>Confirmar Convocatoria</span>
                 </>
               )}
             </button>

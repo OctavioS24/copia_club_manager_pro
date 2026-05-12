@@ -250,97 +250,97 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
 
             return (
               <div key={date} className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-6 px-2 md:px-6">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-surface-card rounded-2xl flex items-center justify-center border-2 border-[var(--surface-border)] shadow-lg relative overflow-hidden group">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 md:gap-6 px-2 md:px-6">
+                  <div className="flex items-center gap-4 md:gap-5">
+                    <div className="w-12 h-12 md:w-14 md:h-14 bg-surface-card rounded-2xl flex items-center justify-center border-2 border-[var(--surface-border)] shadow-lg relative overflow-hidden group shrink-0">
                       <div className="absolute inset-0 bg-primary-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-10" />
-                      <span className="text-xl font-black text-primary-500 italic relative z-10">{index + 1}</span>
+                      <span className="text-lg md:text-xl font-black text-primary-500 italic relative z-10">{index + 1}</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">Fecha Detallada</h3>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-lg md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">Fecha Detallada</h3>
                         {isDateRescheduled ? (
-                          <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic">
-                            REPROGRAMADA
+                          <span className="bg-blue-600 text-white px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest italic">
+                            REPROG.
                           </span>
                         ) : isDateSuspended ? (
-                          <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic">
-                            POSTERGADA
+                          <span className="bg-orange-600 text-white px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest italic">
+                            POSTER.
                           </span>
                         ) : (
-                          <span className="bg-emerald-600/10 text-emerald-500 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 italic">
-                            CONFIRMADA
+                          <span className="bg-emerald-600/10 text-emerald-500 px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 italic">
+                            CONF.
                           </span>
                         )}
                       </div>
-                      <p className="text-[9px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
-                        <Calendar size={14} className="text-primary-500" />
-                        {new Date(date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      <p className="text-[8px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
+                        <Calendar size={12} className="text-primary-500 md:w-[14px] md:h-[14px]" />
+                        <span className="truncate">{new Date(date).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 md:gap-3">
                     <button 
                       onClick={() => handleResumeDate(date)}
-                      className="flex-1 md:flex-none px-5 py-3 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95"
+                      className="flex-1 md:flex-none px-4 md:px-5 py-2.5 md:py-3 bg-emerald-600 text-white rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95"
                     >
-                      <RefreshCcw size={14} strokeWidth={3} /> Reanudar
+                      <RefreshCcw size={12} strokeWidth={3} className="md:w-[14px] md:h-[14px]" /> <span className="md:inline">Reanudar</span>
                     </button>
                     <button 
                       onClick={() => { setSuspensionMode('date'); setSuspensionTarget(date); }}
-                      className="p-3 bg-surface-card hover:bg-orange-600 text-[var(--text-muted)] hover:text-white border-2 border-[var(--surface-border)] hover:border-orange-600 rounded-xl transition-all shadow-sm active:scale-95"
+                      className="p-2.5 md:p-3 bg-surface-card hover:bg-orange-600 text-[var(--text-muted)] hover:text-white border-2 border-[var(--surface-border)] hover:border-orange-600 rounded-xl transition-all shadow-sm active:scale-95"
                       title="Interrumpir Fecha"
                     >
-                      <AlertTriangle size={18} />
+                      <AlertTriangle size={16} className="md:w-[18px] md:h-[18px]" />
                     </button>
                   </div>
                 </div>
 
-                <div className="bg-surface-card border-2 border-[var(--surface-border)] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl relative">
+                <div className="bg-surface-card border-2 border-[var(--surface-border)] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl relative">
                   <div className="absolute inset-0 bg-gradient-to-b from-primary-600/2 to-transparent pointer-events-none" />
                   {groupedMatches[date].map((match, mIdx) => (
-                    <div key={match.id} className={`p-6 md:p-8 border-b-2 border-[var(--surface-border)] last:border-0 hover:bg-surface-hover/40 transition-all group relative ${match.status === 'Suspended' ? 'grayscale opacity-70' : ''}`}>
+                    <div key={match.id} className={`p-5 md:p-8 border-b-2 border-[var(--surface-border)] last:border-0 hover:bg-surface-hover/40 transition-all group relative ${match.status === 'Suspended' ? 'grayscale opacity-70' : ''}`}>
                       {/* Match Number Overlay */}
-                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[80px] font-black text-[var(--text-muted)] opacity-[0.02] pointer-events-none italic select-none">
+                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[40px] md:text-[80px] font-black text-[var(--text-muted)] opacity-[0.02] pointer-events-none italic select-none">
                         #{mIdx + 1}
                       </span>
 
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-8 md:gap-12 relative z-10">
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-6 md:gap-12 relative z-10">
                         {/* Segment / Category */}
-                        <div className="w-full lg:w-40 shrink-0 flex lg:flex-col items-center lg:items-start justify-between lg:justify-center border-b lg:border-b-0 lg:border-r border-[var(--surface-border)] pb-4 lg:pb-0 lg:pr-6">
-                          <div>
-                            <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 opacity-40">Segmento</p>
-                            <p className="text-sm md:text-xl font-black text-primary-500 uppercase italic tracking-tighter leading-none mb-1">
+                        <div className="w-full lg:w-40 shrink-0 flex flex-row lg:flex-col items-center lg:items-start justify-between lg:justify-center border-b lg:border-b-0 lg:border-r border-[var(--surface-border)] pb-3 md:pb-4 lg:pb-0 lg:pr-6 gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 opacity-40">Segmento</p>
+                            <p className="text-xs md:text-xl font-black text-primary-500 uppercase italic tracking-tighter leading-none mb-1 truncate">
                               {getCategoryName((match.categoryid || (match as any).category_id || (match as any).category) || '')}
                             </p>
                           </div>
-                          <div className="px-3 py-1 bg-surface-ground rounded-lg border border-[var(--surface-border)] text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                          <div className="shrink-0 px-2 md:px-3 py-1 bg-surface-ground rounded-lg border border-[var(--surface-border)] text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                             Fase Regular
                           </div>
                         </div>
 
                         {/* Versus Grid */}
-                        <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-3 md:gap-10">
-                          <div className="text-right">
-                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none mb-2">{match.hometeam}</h4>
-                            <div className="flex items-center justify-end gap-2">
-                               <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">LOCAL</span>
-                               <div className="w-4 h-1 bg-primary-600 rounded-full" />
+                        <div className="flex-1 flex flex-col md:grid md:grid-cols-[1fr,auto,1fr] items-center gap-6 md:gap-10">
+                          <div className="text-center md:text-right w-full">
+                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-tight mb-1 whitespace-normal break-words">{match.hometeam}</h4>
+                            <div className="flex items-center justify-center md:justify-end gap-2">
+                               <span className="text-[7px] md:text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">LOCAL</span>
+                               <div className="w-3 md:w-4 h-1 bg-primary-600 rounded-full" />
                             </div>
                           </div>
 
-                          <div className="flex flex-col items-center gap-4">
+                          <div className="flex flex-col items-center gap-2 md:gap-4 shrink-0">
                             <div className="relative">
                               <div className="absolute inset-0 bg-primary-600 blur-2xl opacity-10" />
-                              <div className="bg-surface-ground px-6 md:px-8 py-3 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-3 md:gap-6 text-2xl md:text-5xl font-black italic shadow-2xl border-2 border-[var(--surface-border)] relative z-10">
+                              <div className="bg-surface-ground px-5 md:px-8 py-2.5 md:py-6 rounded-2xl md:rounded-[2.5rem] flex items-center gap-3 md:gap-6 text-2xl md:text-5xl font-black italic shadow-2xl border-2 border-[var(--surface-border)] relative z-10">
                                 <span className={match.status === 'Finished' ? 'text-[var(--text-main)] transition-colors' : 'text-[var(--text-muted)] opacity-10'}>
                                   {match.status === 'Finished' ? match.homescore : '0'}
                                 </span>
-                                <div className="flex flex-col items-center justify-center gap-1.5">
-                                  <div className="w-0.5 h-2 bg-primary-500/20 rounded-full" />
-                                  <span className="text-[10px] md:text-xs text-primary-500 opacity-30 not-italic uppercase tracking-widest font-black">VS</span>
-                                  <div className="w-0.5 h-2 bg-primary-500/20 rounded-full" />
+                                <div className="flex flex-col items-center justify-center gap-1 md:gap-1.5">
+                                  <div className="w-0.5 h-1 md:h-2 bg-primary-500/20 rounded-full" />
+                                  <span className="text-[8px] md:text-xs text-primary-500 opacity-30 not-italic uppercase tracking-widest font-black">VS</span>
+                                  <div className="w-0.5 h-1 md:h-2 bg-primary-500/20 rounded-full" />
                                 </div>
                                 <span className={match.status === 'Finished' ? 'text-[var(--text-main)] transition-colors' : 'text-[var(--text-muted)] opacity-10'}>
                                   {match.status === 'Finished' ? match.awayscore : '0'}
@@ -349,59 +349,59 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                             </div>
                             
                             {match.status === 'Finished' ? (
-                              <div className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                              <div className="flex items-center gap-1.5 px-3 md:px-4 py-1 bg-emerald-600 text-white rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest italic">
                                 Finalizado
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 px-4 py-1.5 bg-surface-ground text-[var(--text-muted)] border border-[var(--surface-border)] rounded-full text-[8px] font-black uppercase tracking-widest italic">
+                              <div className="flex items-center gap-1.5 px-3 md:px-4 py-1 bg-surface-ground text-[var(--text-muted)] border border-[var(--surface-border)] rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest italic">
                                 En Espera
                               </div>
                             )}
                           </div>
 
-                          <div className="text-left">
-                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none mb-2">{match.awayteam}</h4>
-                            <div className="flex items-center justify-start gap-2">
-                               <div className="w-4 h-1 bg-primary-600/30 rounded-full" />
-                               <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">VISITA</span>
+                          <div className="text-center md:text-left w-full">
+                            <h4 className="text-lg md:text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-tight mb-1 whitespace-normal break-words">{match.awayteam}</h4>
+                            <div className="flex items-center justify-center md:justify-start gap-2">
+                               <div className="w-3 md:w-4 h-1 bg-primary-600/30 rounded-full" />
+                               <span className="text-[7px] md:text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-40">VISITA</span>
                             </div>
                           </div>
                         </div>
 
                         {/* Action Hub */}
-                        <div className="w-full lg:w-fit flex lg:flex-col items-center gap-3 bg-surface-ground/50 p-6 rounded-[2rem] border border-[var(--surface-border)] shadow-inner">
+                        <div className="w-full lg:w-fit flex flex-row lg:flex-col items-center gap-2 md:gap-3 bg-surface-ground/50 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-[var(--surface-border)] shadow-inner">
                           <button 
                             onClick={() => handleOpenSquadModal(match)}
-                            className="flex-1 lg:w-full px-6 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all flex items-center justify-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest group/btn"
+                            className="flex-1 lg:w-full px-4 md:px-6 py-3 md:py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all flex items-center justify-center gap-2 md:gap-3 active:scale-95 text-[9px] md:text-[10px] font-black uppercase tracking-widest group/btn min-w-0"
                           >
-                            <Users size={16} className="group-hover/btn:scale-110 transition-transform" />
-                            Convocar
+                            <Users size={14} className="md:w-4 md:h-4 group-hover/btn:scale-110 transition-transform shrink-0" />
+                            <span className="truncate">Convocar</span>
                           </button>
                           
                           <div className="flex items-center gap-2 shrink-0">
                             <button 
                               onClick={() => handleOpenResultModal(match)}
-                              className="p-4 bg-surface-card hover:bg-primary-600 text-[var(--text-muted)] hover:text-white rounded-xl transition-all border border-[var(--surface-border)] hover:border-primary-600 shadow-sm"
+                              className="p-3 md:p-4 bg-surface-card hover:bg-primary-600 text-[var(--text-muted)] hover:text-white rounded-xl transition-all border border-[var(--surface-border)] hover:border-primary-600 shadow-sm"
                               title="Cuentas / Resultados"
                             >
-                              <Edit3 size={18} />
+                              <Edit3 size={16} className="md:w-[18px] md:h-[18px]" />
                             </button>
                             
                             {match.status === 'Suspended' ? (
                               <button 
                                 onClick={() => handleResumeMatch(match.id)}
-                                className="p-4 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
+                                className="p-3 md:p-4 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
                                 title="Restaurar Encuentro"
                               >
-                                <RefreshCcw size={18} className="animate-spin-slow" />
+                                <RefreshCcw size={16} className="md:w-[18px] md:h-[18px] animate-spin-slow" />
                               </button>
                             ) : (
                               <button 
                                 onClick={() => { setSuspensionMode('match'); setSuspensionTarget(match); }}
-                                className="p-4 bg-orange-600/10 hover:bg-orange-600 text-orange-500 hover:text-white rounded-xl transition-all border border-orange-500/20 shadow-sm"
+                                className="p-3 md:p-4 bg-orange-600/10 hover:bg-orange-600 text-orange-500 hover:text-white rounded-xl transition-all border border-orange-500/20 shadow-sm"
                                 title="Reportar Novedad"
                               >
-                                <Activity size={18} />
+                                <Activity size={16} className="md:w-[18px] md:h-[18px]" />
                               </button>
                             )}
                           </div>

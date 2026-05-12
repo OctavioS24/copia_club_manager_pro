@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Player } from '../types';
-import { Calendar as CalendarIcon, Save, Users, Loader2, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Users, Loader2, CheckCircle2, X } from 'lucide-react';
 import { db } from '../lib/supabase';
 
 interface AsistenciaProps {
@@ -95,12 +95,6 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
     fetchAttendance();
   }, [date, currentDisciplineName]);
 
-  const handleStatusToggle = (playerId: string) => {
-    setAttendance(prev => {
-      const current = prev[playerId] || 'A';
-      return { ...prev, [playerId]: current === 'P' ? 'A' : 'P' };
-    });
-  };
 
   const handleSave = async () => {
       if (!currentDisciplineName) return;
@@ -157,18 +151,31 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
           Asistencia
         </h2>
         
-        <div className="relative w-full md:w-auto md:min-w-[320px] group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[var(--primary-600)]">
-            <CalendarIcon size={20} />
+        <div className="relative group w-full max-w-sm mx-auto">
+          <div className="absolute inset-0 bg-primary-500/5 rounded-[2.5rem] blur-2xl group-hover:bg-primary-500/10 transition-all"></div>
+          <div className="relative bg-surface-card border-2 border-[var(--surface-border)] rounded-[2.2rem] p-3 md:p-4 flex items-center gap-4 shadow-2xl group-hover:border-primary-500/30 transition-all">
+            <div className="w-14 h-14 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0 shadow-inner">
+              <CalendarIcon size={28} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <p className="text-[10px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1 italic">Fecha de Sesión</p>
+              <div className="relative">
+                <input 
+                  type="date" 
+                  value={date} 
+                  onChange={e => setDate(e.target.value)} 
+                  className="bg-transparent border-none p-0 font-black text-xl md:text-2xl text-[var(--text-main)] outline-none cursor-pointer w-full uppercase italic tracking-tighter"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+            </div>
           </div>
-          <input 
-            type="date" 
-            value={date} 
-            onChange={e => setDate(e.target.value)} 
-            className="w-full bg-surface-card p-4 pl-12 rounded-2xl shadow-xl border border-[var(--surface-border)] font-black text-sm outline-none focus:ring-2 focus:ring-[var(--primary-500)] transition-all cursor-pointer appearance-none"
-          />
-          <div className="mt-3 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">
-            {formatDate(date)}
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <div className="h-px w-8 bg-primary-500/20" />
+            <p className="text-[9px] md:text-[10px] font-black text-primary-500 uppercase tracking-[0.3em] italic">
+              {formatDate(date)}
+            </p>
+            <div className="h-px w-8 bg-primary-500/20" />
           </div>
         </div>
       </div>
@@ -187,40 +194,50 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
             {sortedPlayers.length > 0 ? (
               <div className="divide-y divide-[var(--surface-border)]">
                 {sortedPlayers.map(p => {
-                  const isPresent = attendance[p.id] === 'P';
+                  const status = attendance[p.id] || 'A';
                   return (
                     <div 
                       key={p.id} 
-                      onClick={() => handleStatusToggle(p.id)}
-                      className="flex items-center gap-4 p-4 md:p-6 hover:bg-surface-hover transition-colors cursor-pointer group"
+                      className="flex items-center gap-3 p-4 md:p-6 hover:bg-surface-hover transition-colors group"
                     >
-                        {/* CHECKBOX PERSONALIZADO */}
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${isPresent ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 'border-slate-200 dark:border-white/10'}`}>
-                          {isPresent && <CheckCircle2 size={18} className="text-white" />}
+                        {/* INDICADOR DE ESTADO */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${
+                          status === 'P' ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 
+                          status === 'L' ? 'bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20' :
+                          'bg-red-500 border-red-500 shadow-lg shadow-red-500/20'
+                        }`}>
+                          {status === 'P' && <CheckCircle2 size={20} className="text-white" />}
+                          {status === 'L' && <span className="text-white font-black text-xs">T</span>}
+                          {status === 'A' && <X size={20} className="text-white" />}
                         </div>
 
                         {/* INFO JUGADOR */}
-                        <div className="flex-1 flex items-center justify-between min-w-0">
+                        <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between min-w-0 gap-4">
                           <div className="flex flex-col min-w-0">
-                            <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-base md:text-lg truncate">
+                            <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-sm md:text-lg leading-tight break-words">
                               {p.name}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Dorsal: #{p.number} • {p.position}
+                            <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              #{p.number} • {p.position}
                             </span>
                           </div>
 
-                          {/* ESTADO ACTUAL */}
-                          <div className="flex items-center gap-2 ml-4">
-                            {isPresent ? (
-                              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full">
-                                <span className="text-[9px] font-black uppercase tracking-widest">Presente</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 rounded-full">
-                                <span className="text-[9px] font-black uppercase tracking-widest">Ausente</span>
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={status}
+                              onChange={(e) => {
+                                setAttendance(prev => ({ ...prev, [p.id]: e.target.value }));
+                              }}
+                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all outline-none cursor-pointer ${
+                                status === 'P' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                status === 'L' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                'bg-red-500/10 text-red-500 border-red-500/20'
+                              }`}
+                            >
+                              <option value="A" className="bg-white text-slate-800">AUSENTE</option>
+                              <option value="P" className="bg-white text-slate-800">PRESENTE</option>
+                              <option value="L" className="bg-white text-slate-800">TARDANZA</option>
+                            </select>
                           </div>
                         </div>
                     </div>

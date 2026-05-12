@@ -123,10 +123,10 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
 
   return (
     <div className="p-4 md:p-10 h-full overflow-y-auto custom-scrollbar">
-      <div className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div className="w-full">
-           <div className="flex items-center justify-between lg:justify-start gap-4">
-             <h2 className="text-3xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic">Central Médica</h2>
+      <div className="mb-6 md:mb-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8">
+        <div className="shrink-0">
+           <div className="flex items-center gap-4">
+             <h2 className="text-2xl md:text-5xl font-black text-[var(--text-main)] uppercase tracking-tighter italic leading-none transition-all">Central Médica</h2>
              <button 
                onClick={async () => {
                  setIsLoading(true);
@@ -145,130 +145,217 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
                    setIsLoading(false);
                  }
                }}
-               className="p-2.5 bg-surface-ground rounded-xl text-[var(--text-muted)] hover:text-primary-600 transition-all"
+               className="p-3 bg-surface-ground rounded-xl text-[var(--text-muted)] hover:text-primary-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-[var(--surface-border)]"
                title="Refrescar Datos"
              >
-               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+               <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
              </button>
            </div>
-           <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-[8px] md:text-[10px] mt-1">Control de Salud e Integridad Física</p>
+           <p className="text-[var(--text-muted)] font-black uppercase tracking-[0.3em] text-[8px] md:text-xs mt-3 opacity-60">Control de Salud e Integridad Física</p>
         </div>
         
-        <div className="w-full lg:w-auto overflow-x-auto no-scrollbar scroll-smooth">
-          <div className="flex gap-2 p-1.5 bg-surface-ground rounded-2xl border border-[var(--surface-border)] min-w-max">
-              <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-surface-card text-primary-600 shadow-md' : 'text-[var(--text-muted)]'}`}>Todos</button>
-              <button onClick={() => setFilter('injured')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'injured' ? 'bg-surface-card text-red-500 shadow-md' : 'text-[var(--text-muted)]'}`}>Bajas</button>
-              <button onClick={() => setFilter('ready')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ready' ? 'bg-surface-card text-emerald-500 shadow-md' : 'text-[var(--text-muted)]'}`}>Listos</button>
-              <button onClick={() => setFilter('notfit')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'notfit' ? 'bg-surface-card text-orange-500 shadow-md' : 'text-[var(--text-muted)]'}`}>No Aptos</button>
-              <button onClick={() => setFilter('expired')} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'expired' ? 'bg-surface-card text-[var(--text-main)] shadow-md' : 'text-[var(--text-muted)]'}`}>Vencidos</button>
+        <div className="w-full xl:w-auto">
+          <div className="flex items-center gap-1.5 p-1.5 bg-surface-ground rounded-2xl border border-[var(--surface-border)] overflow-x-auto no-scrollbar scroll-smooth shadow-inner">
+              <button 
+                onClick={() => setFilter('all')} 
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === 'all' ? 'bg-surface-card text-primary-600 shadow-lg' : 'text-[var(--text-muted)] hover:text-primary-600'}`}
+              >
+                Todos
+              </button>
+              <button 
+                onClick={() => setFilter('injured')} 
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === 'injured' ? 'bg-surface-card text-red-500 shadow-lg' : 'text-[var(--text-muted)] hover:text-red-500'}`}
+              >
+                Bajas
+              </button>
+              <button 
+                onClick={() => setFilter('ready')} 
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === 'ready' ? 'bg-surface-card text-emerald-500 shadow-lg' : 'text-[var(--text-muted)] hover:text-emerald-500'}`}
+              >
+                Listos
+              </button>
+              <button 
+                onClick={() => setFilter('notfit')} 
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === 'notfit' ? 'bg-surface-card text-orange-500 shadow-lg' : 'text-[var(--text-muted)] hover:text-orange-500'}`}
+              >
+                No Aptos
+              </button>
+              <button 
+                onClick={() => setFilter('expired')} 
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === 'expired' ? 'bg-surface-card text-indigo-500 shadow-lg' : 'text-[var(--text-muted)] hover:text-indigo-500'}`}
+              >
+                Vencidos
+              </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-10">
-         <div className="bg-surface-card border border-[var(--surface-border)] p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-8 md:mb-10">
+         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Bajas Médicas</span>
-              <p className="text-2xl md:text-5xl font-black text-red-600 italic mt-1">{injuredPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Bajas Médicas</span>
+              <p className="text-xl md:text-5xl font-black text-red-600 italic mt-0.5 md:mt-1">{injuredPlayersCount.length}</p>
             </div>
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-red-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
-              <Activity size={18} md:size={28} />
+            <div className="w-8 h-8 md:w-14 md:h-14 bg-red-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+              <Activity size={14} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Atletas Listos</span>
-              <p className="text-2xl md:text-5xl font-black text-emerald-600 italic mt-1">{readyPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Atletas Listos</span>
+              <p className="text-xl md:text-5xl font-black text-emerald-600 italic mt-0.5 md:mt-1">{readyPlayersCount.length}</p>
             </div>
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-emerald-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-              <CheckCircle size={18} md:size={28} />
+            <div className="w-8 h-8 md:w-14 md:h-14 bg-emerald-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+              <CheckCircle size={14} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">No Aptos</span>
-              <p className="text-2xl md:text-5xl font-black text-orange-600 italic mt-1">{notFitPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">No Aptos</span>
+              <p className="text-xl md:text-5xl font-black text-orange-600 italic mt-0.5 md:mt-1">{notFitPlayersCount.length}</p>
             </div>
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-orange-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={18} md:size={28} />
+            <div className="w-8 h-8 md:w-14 md:h-14 bg-orange-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+              <AlertTriangle size={14} md:size={28} />
             </div>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
             <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Vencidos</span>
-              <p className="text-2xl md:text-5xl font-black text-[var(--text-muted)] italic mt-1">{expiredPlayersCount.length}</p>
+              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Vencidos</span>
+              <p className="text-xl md:text-5xl font-black text-indigo-500 italic mt-0.5 md:mt-1">{expiredPlayersCount.length}</p>
             </div>
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-surface-ground rounded-xl md:rounded-2xl flex items-center justify-center text-[var(--text-muted)] group-hover:scale-110 transition-transform">
-              <Clock size={18} md:size={28} />
+            <div className="w-8 h-8 md:w-14 md:h-14 bg-indigo-500/10 rounded-lg md:rounded-2xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+              <Clock size={14} md:size={28} />
             </div>
          </div>
       </div>
 
       <div className="bg-surface-card rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-[var(--surface-border)] overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
+        {/* Mobile-only view: Structured compact list */}
+        <div className="md:hidden divide-y divide-[var(--surface-border)]">
+          {displayPlayers.map(player => (
+            <div 
+              key={player.id} 
+              onClick={() => handleViewClick(player)}
+              className="p-5 flex items-center justify-between group active:bg-surface-hover transition-colors"
+            >
+              <div className="flex items-center gap-5 min-w-0">
+                <div className="w-14 h-14 rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 relative border border-[var(--surface-border)]">
+                  <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
+                  {isExpired(player) && (
+                    <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center">
+                      <Clock size={14} className="text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex flex-col gap-1">
+                  <h4 className="font-black text-[var(--text-main)] uppercase text-sm tracking-tighter block line-clamp-1 italic leading-tight">{player.name}</h4>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-60">DNI: {player.dni}</span>
+                    <div className="flex items-center gap-2">
+                       {player.medical?.expiry_date && (
+                         <span className={`text-[8px] font-black italic ${isExpired(player) ? 'text-red-500' : 'text-[var(--text-muted)] opacity-40'}`}>
+                           Exp: {player.medical.expiry_date.split('-').reverse().join('/')}
+                         </span>
+                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                {hasActiveInjury(player) ? (
+                  <span className="px-2 py-1 bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1 border border-red-500/20">
+                    <Activity size={10} /> BAJA
+                  </span>
+                ) : isExpired(player) ? (
+                  <span className="px-2 py-1 bg-indigo-500/10 text-indigo-500 text-[8px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1 border border-indigo-500/20">
+                    <Clock size={10} /> VENCIDO
+                  </span>
+                ) : isNotFit(player) ? (
+                  <span className="px-2 py-1 bg-orange-500/10 text-orange-500 text-[8px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1 border border-orange-500/20">
+                    <AlertTriangle size={10} /> NO APTO
+                  </span>
+                ) : (
+                  <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1 border border-emerald-500/20">
+                    <CheckCircle size={10} /> APTO
+                  </span>
+                )}
+                <button 
+                  className="p-2 bg-primary-600/10 text-primary-600 rounded-lg hover:bg-primary-600 hover:text-white transition-all"
+                >
+                  {readOnly ? <Eye size={16} /> : <Edit2 size={16} />}
+                </button>
+              </div>
+            </div>
+          ))}
+          {displayPlayers.length === 0 && (
+            <div className="py-24 text-center text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest italic opacity-40">
+              Sin atletas en esta vista
+            </div>
+          )}
+        </div>
+
+        {/* Desktop-only view: Full Table */}
+        <div className="hidden md:block overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-surface-hover text-[var(--text-muted)] font-black uppercase tracking-widest text-[9px] border-b border-[var(--surface-border)]">
-                <th className="px-6 md:p-8 py-6">Atleta / Identidad</th>
-                <th className="px-6 md:p-8 py-6">División</th>
-                <th className="px-6 md:p-8 py-6">Estatus Médico</th>
-                <th className="px-6 md:p-8 py-6">Vencimiento</th>
-                <th className="px-6 md:p-8 py-6 text-right">Ficha</th>
+                <th className="px-3 md:px-8 py-6 text-left">Atleta / Identidad</th>
+                <th className="px-3 md:px-8 py-6 text-center">Estatus Médico</th>
+                <th className="px-3 md:px-8 py-6 text-center">Vencimiento</th>
+                <th className="px-3 md:px-8 py-6 text-right">Ficha</th>
               </tr>
             </thead>
             <tbody className="divide-y border-[var(--surface-border)]">
               {displayPlayers.map(player => (
                 <tr key={player.id} className="hover:bg-surface-hover transition-colors group">
-                  <td className="px-6 md:p-8 py-4 md:py-6">
+                  <td className="px-3 md:px-8 py-4 md:py-6">
                      <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0">
+                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 leading-none group-hover:scale-105 transition-transform border border-[var(--surface-border)]">
                           <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
                        </div>
                        <div>
-                          <span className="font-black text-[var(--text-main)] uppercase text-sm tracking-tighter block line-clamp-1">{player.name}</span>
-                          <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">DNI: {player.dni}</span>
+                          <span className="font-black text-[var(--text-main)] uppercase text-sm tracking-tighter block line-clamp-1 italic group-hover:text-primary-600 transition-colors">{player.name}</span>
+                          <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-60">DNI: {player.dni}</span>
                        </div>
                      </div>
                   </td>
-                  <td className="px-6 md:p-8 py-4 md:py-6">
-                     <div className="flex flex-col text-left">
-                        <span className="font-black text-[9px] uppercase text-primary-600 tracking-widest">{player.discipline}</span>
-                        <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase">{player.category}</span>
-                     </div>
+                  <td className="px-3 md:px-8 py-4 md:py-6 text-center">
+                    <div className="flex justify-center">
+                      {hasActiveInjury(player) ? (
+                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-600 border border-red-500/20 rounded-lg text-[9px] font-black uppercase tracking-[0.15em]">
+                            <Activity size={12} className="shrink-0" />
+                            Baja
+                         </span>
+                      ) : isExpired(player) ? (
+                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 rounded-lg text-[9px] font-black uppercase tracking-[0.15em]">
+                            <Clock size={12} className="shrink-0" />
+                            Vencido
+                         </span>
+                      ) : isNotFit(player) ? (
+                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-600 border border-orange-500/20 rounded-lg text-[9px] font-black uppercase tracking-[0.15em]">
+                            <AlertTriangle size={12} className="shrink-0" />
+                            No Apto
+                         </span>
+                      ) : (
+                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-[0.15em]">
+                            <CheckCircle size={12} className="shrink-0" />
+                            Apto
+                         </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 md:p-8 py-4 md:py-6">
-                    {hasActiveInjury(player) ? (
-                       <div className="flex items-center gap-2 text-red-600">
-                          <Activity size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Baja</span>
-                       </div>
-                    ) : isNotFit(player) ? (
-                       <div className="flex items-center gap-2 text-orange-600">
-                          <AlertTriangle size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">No Apto</span>
-                       </div>
-                    ) : (
-                       <div className="flex items-center gap-2 text-emerald-600">
-                          <CheckCircle size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Apto</span>
-                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 md:p-8 py-4 md:py-6">
-                      <div className="flex items-center gap-3">
-                         <div className={`flex items-center gap-2 text-[10px] md:text-[11px] font-black italic ${isExpired(player) ? 'text-red-600' : 'text-[var(--text-muted)]'}`}>
-                            <Calendar size={14} className={isExpired(player) ? 'text-red-500' : 'text-primary-600'} />
-                            {player.medical?.expiry_date || 'N/A'}
-                         </div>
-                         {isExpired(player) && (
-                            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-[7px] font-black uppercase tracking-widest leading-none">Venc.</span>
-                         )}
+                  <td className="px-3 md:px-8 py-4 md:py-6">
+                      <div className="flex items-center justify-center gap-3">
+                          <div className={`flex items-center gap-2 text-[10px] md:text-[11px] font-black italic ${isExpired(player) ? 'text-red-600' : 'text-[var(--text-muted)]'}`}>
+                             <Calendar size={14} className={isExpired(player) ? 'text-red-500' : 'text-primary-600'} />
+                             {player.medical?.expiry_date ? player.medical.expiry_date.split('-').reverse().join('/') : 'N/A'}
+                          </div>
                       </div>
                   </td>
-                  <td className="px-6 md:p-8 py-4 md:py-6 text-right">
+                  <td className="px-3 md:px-8 py-4 md:py-6 text-right">
                       <button 
                         onClick={() => handleViewClick(player)} 
                         className={`p-2.5 md:p-3 bg-surface-ground rounded-xl md:rounded-2xl transition-all shadow-sm border border-[var(--surface-border)] ${readOnly ? 'text-primary-600 hover:bg-primary-600 hover:text-white' : 'text-[var(--text-muted)] hover:text-primary-600 hover:bg-surface-card'}`}

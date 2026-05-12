@@ -116,33 +116,33 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-8">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-primary-500 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-            <Trophy className="w-8 h-8 text-primary-contrast" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface-card border border-[var(--surface-border)] rounded-2xl md:rounded-[2.5rem] p-5 md:p-8">
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-500 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
+            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-primary-contrast" />
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">Fixture de Competencia</h2>
-            <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">
-              Temporada 2024 <span className="text-primary-500 mx-2">|</span> {matches.length} Fechas Programadas
+          <div className="min-w-0">
+            <h2 className="text-lg md:text-2xl font-black text-[var(--text-main)] italic uppercase tracking-tighter truncate">Fixture</h2>
+            <p className="text-[var(--text-muted)] font-bold text-[9px] md:text-xs uppercase tracking-[0.2em] mt-1">
+              Temporada 2024 <span className="text-primary-500 mx-2">|</span> {matches.length} Fechas
             </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="bg-surface-ground px-6 py-3 rounded-2xl border border-[var(--surface-border)] text-center">
-            <p className="text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-1">Partidos Jugados</p>
-            <p className="text-xl font-black text-[var(--text-main)]">{matches.filter(m => m.status === 'Finished').length}</p>
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex-1 md:flex-none bg-surface-ground px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl border border-[var(--surface-border)] text-center">
+            <p className="text-[8px] md:text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-0.5">Jugados</p>
+            <p className="text-base md:text-xl font-black text-[var(--text-main)]">{matches.filter(m => m.status === 'Finished').length}</p>
           </div>
-          <div className="bg-surface-ground px-6 py-3 rounded-2xl border border-[var(--surface-border)] text-center">
-            <p className="text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-1">Pendientes</p>
-            <p className="text-xl font-black text-primary-500">{matches.filter(m => m.status === 'Scheduled').length}</p>
+          <div className="flex-1 md:flex-none bg-surface-ground px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl border border-[var(--surface-border)] text-center">
+            <p className="text-[8px] md:text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mb-0.5">Pendientes</p>
+            <p className="text-base md:text-xl font-black text-primary-500">{matches.filter(m => m.status === 'Scheduled').length}</p>
           </div>
         </div>
       </div>
 
       {/* Matches List */}
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {matches.map((match, index) => {
           const isFinished = match.status === 'Finished';
           const isSuspended = match.status === 'Suspended';
@@ -155,30 +155,30 @@ const FixtureView: React.FC<FixtureViewProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`group relative bg-surface-card border rounded-[2rem] overflow-hidden transition-all duration-500 ${
+              className={`group relative bg-surface-card border rounded-[1.5rem] md:rounded-[2rem] overflow-hidden transition-all duration-500 ${
                 isSuspended ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--surface-border)] hover:border-primary-500/50 shadow-sm'
               }`}
             >
-              <div className="p-8">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="p-4 md:p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
                   {/* Date & Round */}
-                  <div className="flex flex-col items-center md:items-start gap-2 min-w-[120px]">
-                    <span className="text-[10px] font-black text-primary-500 uppercase tracking-[0.3em]">Fecha {index + 1}</span>
-                    <div className="flex items-center gap-2 text-[var(--text-muted)] font-bold text-sm">
-                      <Calendar className="w-4 h-4" />
+                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between w-full md:w-auto md:min-w-[120px] pb-4 md:pb-0 border-b md:border-b-0 border-[var(--surface-border)]">
+                    <span className="text-[9px] md:text-[10px] font-black text-primary-500 uppercase tracking-[0.3em]">Fecha {index + 1}</span>
+                    <div className="flex items-center gap-2 text-[var(--text-muted)] font-bold text-[10px] md:text-sm">
+                      <Calendar className="w-3 h-3 md:w-4 md:h-4 text-primary-500/50" />
                       {new Date(match.date).toLocaleDateString()}
                     </div>
                   </div>
 
                   {/* Teams & Score */}
-                  <div className="flex-1 flex items-center justify-center gap-4 md:gap-12">
-                    <div className={`flex-1 text-right space-y-2 ${isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
-                      <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.hometeam}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{isHome ? 'Local' : 'Visitante'}</p>
+                  <div className="w-full flex-1 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-12 py-4 md:py-0">
+                    <div className={`w-full md:flex-1 text-center md:text-right space-y-1 ${isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
+                      <p className="text-base md:text-xl font-black italic uppercase tracking-tighter truncate leading-tight px-2">{match.hometeam}</p>
+                      <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-50">{isHome ? 'Local' : 'Visita'}</p>
                     </div>
 
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`px-6 py-3 rounded-2xl font-black text-2xl md:text-3xl italic tracking-tighter border-2 transition-all duration-500 ${
+                    <div className="flex flex-col items-center gap-1 md:gap-2 shrink-0">
+                      <div className={`px-5 py-2 md:px-6 md:py-3 rounded-xl md:rounded-2xl font-black text-xl md:text-3xl italic tracking-tighter border-2 transition-all duration-500 shadow-sm ${
                         isFinished 
                           ? 'bg-[var(--primary-soft)] border-[var(--primary-glow)] text-[var(--text-main)] shadow-lg shadow-primary-500/5' 
                           : isSuspended
@@ -188,28 +188,28 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                         {result}
                       </div>
                       {isFinished && (
-                        <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Finalizado</span>
+                        <span className="text-[8px] md:text-[10px] font-black text-green-500 uppercase tracking-widest">Final</span>
                       )}
                       {isSuspended && (
-                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest italic animate-pulse">Suspendido</span>
+                        <span className="text-[8px] md:text-[10px] font-black text-red-500 uppercase tracking-widest italic animate-pulse">Susp.</span>
                       )}
                     </div>
 
-                    <div className={`flex-1 text-left space-y-2 ${!isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
-                      <p className="text-lg md:text-xl font-black italic uppercase tracking-tighter truncate">{match.awayteam}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">{!isHome ? 'Local' : 'Visitante'}</p>
+                    <div className={`w-full md:flex-1 text-center md:text-left space-y-1 ${!isHome ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'} ${isSuspended ? 'opacity-50' : ''}`}>
+                      <p className="text-base md:text-xl font-black italic uppercase tracking-tighter truncate leading-tight px-2">{match.awayteam}</p>
+                      <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-50">{!isHome ? 'Local' : 'Visita'}</p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-3">
+                  <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2 md:gap-3">
                     {!isFinished && !isSuspended && (
                       <button
                         onClick={() => {
                           setSelectedMatch(match);
                           setShowSquadModal(true);
                         }}
-                        className="flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]"
                       >
                         <Users className="w-4 h-4" />
                         CONVOCATORIA
@@ -218,7 +218,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                     <button
                       disabled={isSuspended}
                       onClick={() => setSelectedMatch(match)}
-                      className={`flex items-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all ${
+                      className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all ${
                         isFinished
                           ? 'bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]'
                           : isSuspended
@@ -229,12 +229,12 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                       {isFinished ? (
                         <>
                           <Edit3 className="w-4 h-4" />
-                          EDITAR RESULTADO
+                          RESULTADO
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          {isSuspended ? 'SUSPENDIDO' : 'CARGAR RESULTADO'}
+                          CARGAR
                         </>
                       )}
                     </button>

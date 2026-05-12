@@ -9,17 +9,16 @@ interface PlantelListaProps {
   categoryId: string;
   disciplineName: string;
   categoryName: string;
-  onPlayerClick?: (player: Player) => void;
 }
 
 import { useCategory } from '../context/useCategory';
+import PlayerLegajoResumido from './PlayerLegajoResumido';
 
 const PlantelLista: React.FC<PlantelListaProps> = ({ 
   disciplineId: propDisciplineId, 
   categoryId: propCategoryId,
   disciplineName: propDisciplineName,
-  categoryName: propCategoryName,
-  onPlayerClick
+  categoryName: propCategoryName
 }) => {
   const { selectedDiscipline, selectedDivision } = useCategory();
   
@@ -149,6 +148,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
     return sortedGroups;
   }, [playersList]);
 
+  const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
+
   const getRoleDisplayName = (role: string) => {
     switch (role.toUpperCase()) {
       case 'COACH':
@@ -256,7 +257,7 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
               {playersInPos.map(player => (
                 <div 
                   key={player.id} 
-                  onClick={() => onPlayerClick?.(player as any)}
+                  onClick={() => setSelectedPlayer(player as any)}
                   className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-6 hover:bg-surface-hover transition-all group relative overflow-hidden cursor-pointer"
                 >
                   <div className="flex items-center gap-5 relative z-10">
@@ -287,6 +288,13 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
           </section>
         )
       ))}
+
+      {selectedPlayer && (
+        <PlayerLegajoResumido 
+          player={selectedPlayer} 
+          onClose={() => setSelectedPlayer(null)} 
+        />
+      )}
 
       {playersList.length === 0 && !isLoading && (
         <div className="py-20 text-center opacity-30 border-4 border-dashed border-[var(--surface-border)] rounded-[4rem]">
