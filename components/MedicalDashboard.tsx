@@ -314,7 +314,7 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
                   <td className="px-3 md:px-8 py-4 md:py-6">
                      <div className="flex items-center gap-4">
                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 leading-none group-hover:scale-105 transition-transform border border-[var(--surface-border)]">
-                          <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
+                          <img src={player.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
                        </div>
                        <div>
                           <span className="font-black text-[var(--text-main)] uppercase text-sm tracking-tighter block line-clamp-1 italic group-hover:text-primary-600 transition-colors">{player.name}</span>

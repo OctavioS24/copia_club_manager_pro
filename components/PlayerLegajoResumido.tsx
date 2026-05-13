@@ -12,6 +12,15 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
   const [activeTab, setActiveTab] = useState<'ID' | 'SALUD' | 'CONTACTO'>('ID');
   const [titularityCount, setTitularityCount] = useState<number | null>(null);
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -30,48 +39,54 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
   }, [player.id]);
 
   const tabs = [
-    { id: 'ID', label: 'Identidad', icon: User },
+    { id: 'ID', label: 'ID', icon: User },
     { id: 'SALUD', label: 'Salud', icon: HeartPulse },
-    { id: 'CONTACTO', label: 'Contactos', icon: Users },
+    { id: 'CONTACTO', label: 'Contacto', icon: Users },
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center p-2 md:p-4 overflow-y-auto custom-scrollbar">
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative w-full max-w-2xl bg-surface-card rounded-[3.5rem] border border-[var(--surface-border)] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-400">
+      <div className="relative w-full max-w-2xl bg-surface-card rounded-[2rem] md:rounded-[3.5rem] border border-[var(--surface-border)] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-400 my-4 md:my-0">
         {/* Banner de Perfil */}
-        <div className="relative h-48 bg-surface-ground">
+        <div className="relative h-28 md:h-48 bg-surface-ground">
           <div className="absolute inset-0 bg-primary-500/10" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-1 h-32 bg-primary-500/10 rounded-full blur-xl" />
+            <div className="w-1 h-20 md:h-32 bg-primary-500/10 rounded-full blur-xl" />
           </div>
           
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-all z-20"
+            className="absolute top-4 right-4 md:top-6 md:right-6 w-8 h-8 md:w-10 md:h-10 rounded-xl bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-all z-20"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
 
-          <div className="absolute -bottom-16 left-12 flex items-end gap-6">
-            <div className="w-32 h-32 rounded-[2.5rem] bg-surface-card border-4 border-surface-card shadow-2xl overflow-hidden relative group">
-              <img 
-                src={player.photourl || 'https://via.placeholder.com/150'} 
-                alt={player.name}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                referrerPolicy="no-referrer"
-              />
+          <div className="absolute -bottom-12 md:-bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 md:gap-4 w-full">
+            <div className="w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[3rem] bg-surface-card border-4 md:border-8 border-surface-card shadow-2xl overflow-hidden relative group shrink-0">
+              {player.photourl ? (
+                <img 
+                  src={player.photourl} 
+                  alt={player.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full bg-surface-hover flex items-center justify-center">
+                  <span className="text-2xl md:text-5xl font-black text-primary-600 italic tracking-tighter">{getInitials(player.name)}</span>
+                </div>
+              )}
             </div>
-            <div className="mb-4">
-              <h3 className="text-3xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none mb-2">{player.name}</h3>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-500/5 px-3 py-1 rounded-full border border-primary-500/10 italic">Jugador</span>
-                <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-50">DNI: {player.dni}</span>
-                {titularityCount !== null && (
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20">
-                    <Star size={10} fill="currentColor" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{titularityCount} TITULARIDADES</span>
+            <div className="text-center w-full px-4 md:px-6">
+              <h3 className="text-xl md:text-5xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none mb-1 md:mb-3">{player.name}</h3>
+              <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-3">
+                <span className="text-[8px] md:text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-500/10 px-3 md:px-4 py-1 rounded-full border border-primary-500/20 italic">JUGADOR</span>
+                <span className="text-[8px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-50 px-3 md:px-4 py-1 bg-surface-ground rounded-full">DNI: {player.dni}</span>
+                {titularityCount !== null && titularityCount > 0 && (
+                  <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 shadow-lg shadow-amber-500/5">
+                    <Star size={10} md:size={12} fill="currentColor" />
+                    <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">{titularityCount} TITULARIDADES</span>
                   </div>
                 )}
               </div>
@@ -80,26 +95,27 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
         </div>
 
         {/* Contenido Principal */}
-        <div className="mt-20 px-10 pb-10 space-y-8">
+        <div className="mt-24 md:mt-32 px-4 md:px-10 pb-6 md:pb-10 space-y-6 md:space-y-8">
           {/* Tabs */}
-          <div className="flex gap-2 p-1.5 bg-surface-ground rounded-2xl border border-[var(--surface-border)]">
+          <div className="flex gap-1 md:gap-2 p-1 md:p-1.5 bg-surface-ground rounded-xl md:rounded-2xl border border-[var(--surface-border)] shadow-inner">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-2 md:py-3 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] transition-all ${
                   activeTab === tab.id 
                     ? 'bg-surface-card text-primary-500 shadow-xl shadow-black/5' 
                     : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
-                <tab.icon size={14} />
-                {tab.label}
+                <tab.icon size={12} md:size={14} />
+                <span className="hidden xs:inline">{tab.label}</span>
+                <span className="xs:hidden">{tab.id}</span>
               </button>
             ))}
           </div>
 
-          <div className="min-h-[300px]">
+          <div className="min-h-[200px] md:min-h-[300px]">
             {activeTab === 'ID' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
                 <InfoCard icon={User} label="Género" value={player.gender} />

@@ -182,7 +182,7 @@ const Squads: React.FC<SquadsProps> = ({ clubConfig, onGoToSettings }) => {
                       <div key={athlete.id} className="bg-white dark:bg-[#0f1219] rounded-[4rem] border border-secondary-500/20 p-10 shadow-xl hover:shadow-3xl transition-all group overflow-hidden relative">
                           <div className="flex flex-col items-center relative z-10">
                               <div className="w-36 h-36 rounded-full border-4 border-slate-50 dark:border-slate-800 p-1.5 mb-8 group-hover:scale-110 transition-transform duration-700 shadow-2xl relative">
-                                  <img src={athlete.photoUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover rounded-full" />
+                                  <img src={athlete.photoUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop'} className="w-full h-full object-cover rounded-full" />
                                   <div className="absolute -bottom-2 -right-2 bg-primary-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-black italic text-xl shadow-lg">
                                       {athlete.overallRating || 0}
                                   </div>

@@ -234,7 +234,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
           <div key={member.id} className="bg-surface-card rounded-[2.5rem] p-6 md:p-8 border border-[var(--surface-border)] shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
             <div className="flex items-center gap-5 relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0">
-                <img src={member.photourl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                <img src={member.photourl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between items-start">

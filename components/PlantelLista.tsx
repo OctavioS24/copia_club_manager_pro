@@ -150,6 +150,15 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
 
   const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   const getRoleDisplayName = (role: string) => {
     switch (role.toUpperCase()) {
       case 'COACH':
@@ -215,13 +224,17 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {staffList.map(staff => (
                     <div key={staff.id} className="bg-surface-card hover:bg-surface-hover border border-[var(--surface-border)] rounded-[2.5rem] p-6 flex items-center gap-5 transition-all group">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[var(--surface-border)] shadow-lg shrink-0">
-                        <img 
-                          src={staff.photourl || 'https://via.placeholder.com/150'} 
-                          alt={staff.name}
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer"
-                        />
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[var(--surface-border)] shadow-lg shrink-0 flex items-center justify-center bg-surface-ground">
+                        {staff.photourl ? (
+                          <img 
+                            src={staff.photourl} 
+                            alt={staff.name}
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="text-xl font-black text-primary-500 italic">{getInitials(staff.name)}</span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <h4 className="font-black text-lg uppercase tracking-tight text-[var(--text-main)] truncate">{staff.name}</h4>
@@ -261,13 +274,17 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
                   className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] p-6 hover:bg-surface-hover transition-all group relative overflow-hidden cursor-pointer"
                 >
                   <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-[var(--surface-border)] shadow-xl group-hover:scale-105 transition-transform duration-500 shrink-0">
-                      <img 
-                        src={player.photourl || 'https://via.placeholder.com/150'} 
-                        alt={player.name}
-                        className="w-full h-full object-cover" 
-                        referrerPolicy="no-referrer"
-                      />
+                    <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-[var(--surface-border)] shadow-xl group-hover:scale-105 transition-transform duration-500 shrink-0 flex items-center justify-center bg-surface-ground">
+                      {player.photourl ? (
+                        <img 
+                          src={player.photourl} 
+                          alt={player.name}
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="text-2xl font-black text-primary-500 italic">{getInitials(player.name)}</span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
