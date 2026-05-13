@@ -19,10 +19,15 @@ export const getRivals = async (discipline?: string): Promise<Rival[]> => {
   return data || [];
 };
 
-export const createRival = async (name: string, discipline: string): Promise<Rival> => {
+export const createRival = async (name: string, discipline: string, address_url?: string, logo_url?: string): Promise<Rival> => {
   const { data, error } = await supabase
     .from('rivals')
-    .insert([{ name, discipline: normalizeName(discipline) }])
+    .insert([{ 
+      name, 
+      discipline: normalizeName(discipline),
+      address_url,
+      logo_url
+    }])
     .select()
     .single();
   
@@ -30,10 +35,14 @@ export const createRival = async (name: string, discipline: string): Promise<Riv
   return data;
 };
 
-export const updateRival = async (id: string, name: string): Promise<Rival> => {
+export const updateRival = async (id: string, name: string, address_url?: string, logo_url?: string): Promise<Rival> => {
   const { data, error } = await supabase
     .from('rivals')
-    .update({ name })
+    .update({ 
+      name,
+      address_url,
+      logo_url
+    })
     .eq('id', id)
     .select()
     .single();

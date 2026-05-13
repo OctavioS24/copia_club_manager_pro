@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Filter, Plus, Edit3, Calendar, Trophy, Loader2, AlertTriangle, Activity, RefreshCcw, Users } from 'lucide-react';
+import { ArrowLeft, Filter, Plus, Edit3, X, Save, Calendar, Trophy, Loader2, AlertTriangle, Activity, RefreshCcw, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Tournament, Match, Rival, Player, ClubConfig } from '../../types';
 import { getPartidosByTorneo, updateMatchStatus, rescheduleMatch, suspendFullDate, resumeFullDate } from '../../lib/torneos';
@@ -35,6 +35,10 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
   const [suspensionReason, setSuspensionReason] = useState('');
   const [suspensionNewDate, setSuspensionNewDate] = useState('');
   const [isProcessingSuspension, setIsProcessingSuspension] = useState(false);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
+  const [newDateValue, setNewDateValue] = useState('');
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
 
   const getCategoryName = (catId: string) => {
     if (!clubConfig) return catId;
@@ -149,6 +153,53 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
     }
   };
 
+  const handleUpdateDate = async (oldDate: string) => {
+    if (!newDateValue || newDateValue === oldDate) {
+      setEditingDate(null);
+      return;
+    }
+
+    if (sortedDates.includes(newDateValue)) {
+      alert('NO PUEDES MOVER LOS PARTIDOS A UNA FECHA QUE YA TIENE OTROS PARTIDOS PROGRAMADOS.');
+      return;
+    }
+
+    setIsUpdatingDate(true);
+    try {
+      const matchesToUpdate = groupedMatches[oldDate];
+      const promises = matchesToUpdate.map(match => 
+        db.matches.update(match.id, { date: newDateValue })
+      );
+      await Promise.all(promises);
+      await loadMatches();
+      setEditingDate(null);
+    } catch (error) {
+      console.error('Error updating matches date:', error);
+      alert('Error al actualizar la fecha');
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
+  const handleUpdateIndividualMatchDate = async (matchId: string) => {
+    if (!newDateValue) {
+      setEditingMatchId(null);
+      return;
+    }
+
+    setIsUpdatingDate(true);
+    try {
+      await db.matches.update(matchId, { date: newDateValue });
+      await loadMatches();
+      setEditingMatchId(null);
+    } catch (error) {
+      console.error('Error updating individual match date:', error);
+      alert('Error al actualizar la fecha del partido');
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
   const handleSuspensionAction = async (reprogram: boolean) => {
     if (!suspensionTarget) return;
     setIsProcessingSuspension(true);
@@ -196,12 +247,12 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                 <Trophy size={32} className="md:w-12 md:h-12 text-white" />
               </div>
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <span className="px-4 py-1.5 bg-primary-600/10 text-primary-500 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest border border-primary-500/20">Calendario Oficial</span>
                 <span className="hidden md:inline-block w-8 h-[1px] bg-[var(--surface-border)]" />
               </div>
-              <h1 className="text-2xl md:text-5xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-[0.9] truncate pr-4">
+              <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none pr-4 max-w-3xl">
                 {tournament.name}
               </h1>
               <p className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mt-3 opacity-40 flex items-center gap-2">
@@ -211,7 +262,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             </div>
           </div>
           
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 shrink-0">
             <p className="text-[9px] font-black uppercase text-[var(--text-muted)] tracking-widest ml-3 opacity-40 italic">Filtrar por segmentación</p>
             <div className="flex items-center gap-3 bg-surface-card backdrop-blur-xl p-3 md:p-3.5 rounded-[1.2rem] md:rounded-[1.8rem] border border-[var(--surface-border)] shadow-xl w-full lg:w-[280px] focus-within:border-primary-500 transition-all">
               <Filter size={16} className="text-primary-500 shrink-0" />
@@ -275,7 +326,42 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                       </div>
                       <p className="text-[8px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
                         <Calendar size={12} className="text-primary-500 md:w-[14px] md:h-[14px]" />
-                        <span className="truncate">{new Date(date).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                        {editingDate === date ? (
+                          <div className="flex items-center gap-2 bg-surface-card p-1 rounded-xl border border-primary-500/50 shadow-lg">
+                            <input 
+                              type="date"
+                              value={newDateValue}
+                              onChange={(e) => setNewDateValue(e.target.value)}
+                              className="bg-transparent border-none px-2 py-1 text-[10px] text-primary-500 font-black outline-none w-32"
+                            />
+                            <button 
+                              onClick={() => handleUpdateDate(date)}
+                              disabled={isUpdatingDate}
+                              className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+                              title="Confirmar cambio para toda la fecha"
+                            >
+                              {isUpdatingDate ? <Loader2 size={12} className="animate-spin" /> : <Save size={14} />}
+                            </button>
+                            <button 
+                              onClick={() => setEditingDate(null)}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              setEditingDate(date);
+                              setNewDateValue(date);
+                            }}
+                            className="group/btn hover:text-primary-500 transition-all flex items-center gap-2 bg-surface-card/50 px-3 py-1.5 rounded-lg border border-transparent hover:border-primary-500/30"
+                            title="Haz clic para corregir la fecha de todos estos partidos"
+                          >
+                            <span className="truncate">{new Date(date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                            <Edit3 size={10} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                          </button>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -379,6 +465,39 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                           </button>
                           
                           <div className="flex items-center gap-2 shrink-0">
+                            {editingMatchId === match.id ? (
+                              <div className="flex items-center gap-1 bg-surface-card p-1 rounded-lg border border-primary-500/50">
+                                <input 
+                                  type="date"
+                                  value={newDateValue}
+                                  onChange={(e) => setNewDateValue(e.target.value)}
+                                  className="bg-transparent text-[9px] text-primary-500 outline-none w-24"
+                                />
+                                <button 
+                                  onClick={() => handleUpdateIndividualMatchDate(match.id)}
+                                  className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded"
+                                >
+                                  {isUpdatingDate ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                                </button>
+                                <button 
+                                  onClick={() => setEditingMatchId(null)}
+                                  className="p-1 text-red-500 hover:bg-red-500/10 rounded"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => {
+                                  setEditingMatchId(match.id);
+                                  setNewDateValue(match.date);
+                                }}
+                                className="p-3 md:p-4 bg-surface-card hover:bg-primary-600 text-[var(--text-muted)] hover:text-white rounded-xl transition-all border border-[var(--surface-border)] hover:border-primary-600 shadow-sm"
+                                title="Corregir Fecha de este Partido"
+                              >
+                                <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
+                              </button>
+                            )}
                             <button 
                               onClick={() => handleOpenResultModal(match)}
                               className="p-3 md:p-4 bg-surface-card hover:bg-primary-600 text-[var(--text-muted)] hover:text-white rounded-xl transition-all border border-[var(--surface-border)] hover:border-primary-600 shadow-sm"
@@ -471,6 +590,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
             categories={tournament.assigned_categories || []}
             rivals={rivals}
             clubName={clubName}
+            existingDates={sortedDates}
             onClose={() => setShowAddFechaModal(false)}
             onSuccess={() => {
               setShowAddFechaModal(false);

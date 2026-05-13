@@ -53,10 +53,18 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
   }, [disciplineId, disciplines]);
 
   const handleAddFixture = () => {
+    let nextDate = new Date().toISOString().split('T')[0];
+    
+    if (fixturebase.length > 0) {
+      const lastDate = new Date(fixturebase[fixturebase.length - 1].date);
+      lastDate.setDate(lastDate.getDate() + 7); // Default to next week
+      nextDate = lastDate.toISOString().split('T')[0];
+    }
+
     setFixtureBase([...fixturebase, {
       id: crypto.randomUUID(),
       rival: '',
-      date: new Date().toISOString().split('T')[0],
+      date: nextDate,
       condition: 'Local'
     }]);
   };
@@ -84,6 +92,28 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
 
   const handleSubmit = async () => {
     if (!name || !disciplineId || assignedcategories.length === 0) return;
+
+    // Validate fixture base
+    if (fixturebase.length === 0) {
+      alert('DEBES AGREGAR AL MENOS UNA FECHA AL FIXTURE.');
+      return;
+    }
+
+    const invalidEntries = fixturebase.some(f => !f.rival || !f.date);
+    if (invalidEntries) {
+      alert('TODAS LAS FECHAS DEBEN TENER UN RIVAL Y UNA FECHA ASIGNADA.');
+      return;
+    }
+
+    // Validate duplicate dates
+    const dates = fixturebase.map(f => f.date.trim());
+    const hasDuplicates = dates.some((date, index) => dates.indexOf(date) !== index);
+    
+    if (hasDuplicates) {
+      const duplicateDate = dates.find((date, index) => dates.indexOf(date) !== index);
+      alert('NO PUEDES TENER DOS FECHAS PROGRAMADAS PARA EL MISMO DÍA (Detección de Duplicados en: ' + duplicateDate + '). POR FAVOR CORRIGE LAS FECHAS.');
+      return;
+    }
     
     try {
       setIsSubmitting(true);

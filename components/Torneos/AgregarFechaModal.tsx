@@ -10,6 +10,7 @@ interface AgregarFechaModalProps {
   categories: string[];
   rivals: Rival[];
   clubName: string;
+  existingDates: string[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -19,6 +20,7 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
   categories, 
   rivals, 
   clubName, 
+  existingDates,
   onClose, 
   onSuccess 
 }) => {
@@ -26,11 +28,18 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [condition, setCondition] = useState<'Local' | 'Visitante'>('Local');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rival) return;
 
+    if (existingDates.includes(date)) {
+      setError('YA EXISTE UNA FECHA PROGRAMADA PARA ESTE DÍA.');
+      return;
+    }
+
+    setError(null);
     setIsSubmitting(true);
     try {
       const fechaData: MatchFixture = {
@@ -100,8 +109,11 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all"
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setError(null);
+                }}
+                className={`w-full px-6 py-4 bg-slate-800 border ${error ? 'border-red-500' : 'border-slate-700'} rounded-2xl text-white font-bold text-sm outline-none focus:border-primary-600 transition-all`}
                 required
               />
             </div>
@@ -117,6 +129,12 @@ const AgregarFechaModal: React.FC<AgregarFechaModalProps> = ({
               </select>
             </div>
           </div>
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+            </div>
+          )}
 
           <div className="pt-4">
             <button

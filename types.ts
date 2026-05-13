@@ -245,6 +245,8 @@ export interface Rival {
   id: string;
   name: string;
   discipline: string;
+  address_url?: string;
+  logo_url?: string;
   created_at: string;
 }
 

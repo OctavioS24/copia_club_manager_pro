@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, Edit3, Trash2, Shield, Loader2, Save, X, LayoutGrid, ChevronDown
+  Plus, Edit3, Trash2, Shield, Loader2, Save, X, LayoutGrid, ChevronDown, MapPin, Image, ExternalLink
 } from 'lucide-react';
 import { Discipline, Rival } from '../../types';
 import { getRivals, createRival, updateRival, deleteRival } from '../../lib/rivals';
@@ -16,8 +16,18 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [newValue, setNewValue] = useState('');
+  const [editValue, setEditValue] = useState({ name: '', address_url: '', logo_url: '' });
+  const [newValue, setNewValue] = useState({ name: '', address_url: '', logo_url: '' });
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .filter(Boolean)
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   useEffect(() => {
     let active = true;
@@ -43,13 +53,18 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
   }, [selectedDiscipline]);
 
   const handleAdd = async () => {
-    if (!newValue.trim()) return;
+    if (!newValue.name.trim()) return;
     setIsSaving(true);
     try {
-      const newRival = await createRival(newValue.trim().toUpperCase(), selectedDiscipline);
+      const newRival = await createRival(
+        newValue.name.trim().toUpperCase(), 
+        selectedDiscipline,
+        newValue.address_url.trim(),
+        newValue.logo_url.trim()
+      );
       if (newRival) {
         setRivals(prev => [...prev, newRival].sort((a, b) => a.name.localeCompare(b.name)));
-        setNewValue('');
+        setNewValue({ name: '', address_url: '', logo_url: '' });
       }
     } catch (error) {
       console.error('Error adding rival:', error);
@@ -59,12 +74,17 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
   };
 
   const handleUpdate = async (id: string) => {
-    if (!editValue.trim()) return;
+    if (!editValue.name.trim()) return;
     setIsSaving(true);
     try {
-      const updated = await updateRival(id, editValue.trim().toUpperCase());
+      const updated = await updateRival(
+        id, 
+        editValue.name.trim().toUpperCase(),
+        editValue.address_url.trim(),
+        editValue.logo_url.trim()
+      );
       if (updated) {
-        setRivals(rivals.map(r => r.id === id ? { ...r, name: editValue.trim().toUpperCase() } : r).sort((a, b) => a.name.localeCompare(b.name)));
+        setRivals(rivals.map(r => r.id === id ? updated : r).sort((a, b) => a.name.localeCompare(b.name)));
         setEditingId(null);
       }
     } catch (error) {
@@ -142,31 +162,81 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
               </div>
             ) : (
               rivals.map((rival) => (
-                <div key={rival.id} className="group flex items-center gap-4 bg-surface-ground p-4 rounded-2xl border border-transparent hover:border-primary-500/30 transition-all">
-                  <div className="flex-1">
-                    {editingId === rival.id ? (
-                      <input 
-                        autoFocus
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleUpdate(rival.id)}
-                        className="w-full bg-surface-card px-4 py-2 rounded-xl font-bold text-sm uppercase tracking-widest text-primary-500 outline-none border-2 border-primary-500/50"
-                      />
-                    ) : (
-                      <span className="font-black text-sm uppercase tracking-widest text-[var(--text-main)] px-4">
-                        {rival.name}
-                      </span>
-                    )}
+                <div key={rival.id} className="group flex flex-col md:flex-row md:items-center gap-4 bg-surface-ground p-4 rounded-3xl border border-transparent hover:border-primary-500/30 transition-all">
+                  <div className="flex items-center gap-4 flex-1">
+                    {/* Logo */}
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-surface-card border border-[var(--surface-border)] flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                      {rival.logo_url ? (
+                        <img 
+                          src={rival.logo_url} 
+                          alt={rival.name} 
+                          className="w-full h-full object-contain p-2"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-lg md:text-xl font-black text-primary-500 italic">${getInitials(rival.name)}</span>`;
+                          }}
+                        />
+                      ) : (
+                        <span className="text-lg md:text-xl font-black text-primary-500 italic">{getInitials(rival.name)}</span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      {editingId === rival.id ? (
+                        <div className="space-y-2">
+                          <input 
+                            autoFocus
+                            value={editValue.name}
+                            onChange={(e) => setEditValue({ ...editValue, name: e.target.value })}
+                            placeholder="NOMBRE DEL RIVAL..."
+                            className="w-full bg-surface-card px-4 py-2 rounded-xl font-bold text-sm uppercase tracking-widest text-primary-500 outline-none border-2 border-primary-500/50"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <input 
+                              value={editValue.address_url}
+                              onChange={(e) => setEditValue({ ...editValue, address_url: e.target.value })}
+                              placeholder="URL GOOGLE MAPS..."
+                              className="w-full bg-surface-card px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest text-[var(--text-main)] outline-none border border-[var(--surface-border)]"
+                            />
+                            <input 
+                              value={editValue.logo_url}
+                              onChange={(e) => setEditValue({ ...editValue, logo_url: e.target.value })}
+                              placeholder="URL LOGO/ESCUDO..."
+                              className="w-full bg-surface-card px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest text-[var(--text-main)] outline-none border border-[var(--surface-border)]"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="font-black text-sm md:text-base uppercase tracking-widest text-[var(--text-main)] truncate">
+                            {rival.name}
+                          </span>
+                          {rival.address_url && (
+                             <a 
+                               href={rival.address_url} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="text-[9px] md:text-[10px] font-bold text-primary-600 uppercase tracking-widest flex items-center gap-1.5 mt-1 hover:underline w-fit"
+                             >
+                                <MapPin size={10} />
+                                Ver Ubicación
+                                <ExternalLink size={8} />
+                             </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 justify-end">
                     {editingId === rival.id ? (
                       <>
-                        <button onClick={() => handleUpdate(rival.id)} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all">
-                          <Save size={18} />
+                        <button onClick={() => handleUpdate(rival.id)} className="p-3 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all flex items-center gap-2 font-black text-[9px] uppercase tracking-widest">
+                          <Save size={16} />
+                          Guardar
                         </button>
-                        <button onClick={() => setEditingId(null)} className="p-2 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] rounded-lg transition-all">
-                          <X size={18} />
+                        <button onClick={() => setEditingId(null)} className="p-3 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] rounded-xl transition-all">
+                          <X size={16} />
                         </button>
                       </>
                     ) : (
@@ -174,17 +244,23 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
                         <button 
                           onClick={() => {
                             setEditingId(rival.id);
-                            setEditValue(rival.name);
+                            setEditValue({ 
+                              name: rival.name, 
+                              address_url: rival.address_url || '', 
+                              logo_url: rival.logo_url || '' 
+                            });
                           }}
-                          className="p-2 text-[var(--text-muted)] hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all"
+                          className="p-2.5 text-[var(--text-muted)] hover:text-primary-500 hover:bg-primary-500/10 rounded-xl transition-all shadow-sm bg-surface-card opacity-0 group-hover:opacity-100"
+                          title="Editar Rival"
                         >
-                          <Edit3 size={18} />
+                          <Edit3 size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(rival.id)}
-                          className="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          className="p-2.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all shadow-sm bg-surface-card opacity-0 group-hover:opacity-100"
+                          title="Eliminar Rival"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       </>
                     )}
@@ -194,22 +270,52 @@ const RivalesPorDisciplina: React.FC<RivalesPorDisciplinaProps> = ({ disciplines
             )}
 
             {/* Input para nuevo rival */}
-            <div className="mt-8 pt-8 border-t border-[var(--surface-border)]">
-              <div className="flex items-center gap-4">
-                <input 
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                  placeholder="NOMBRE DEL CLUB RIVAL..."
-                  className="flex-1 bg-surface-ground px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/30 transition-all"
-                />
+            <div className="mt-10 pt-10 border-t border-[var(--surface-border)]">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 px-2">Registrar Nuevo Rival</h4>
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+                <div className="xl:col-span-2">
+                  <div className="relative group">
+                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary-500 transition-colors" size={18} />
+                    <input 
+                      value={newValue.name}
+                      onChange={(e) => setNewValue({ ...newValue, name: e.target.value })}
+                      placeholder="NOMBRE DEL CLUB..."
+                      className="w-full bg-surface-ground pl-12 pr-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/30 transition-all placeholder:opacity-30"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="relative group">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary-500 transition-colors" size={16} />
+                    <input 
+                      value={newValue.address_url}
+                      onChange={(e) => setNewValue({ ...newValue, address_url: e.target.value })}
+                      placeholder="URL GOOGLE MAPS..."
+                      className="w-full bg-surface-ground pl-12 pr-6 py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/20 transition-all placeholder:opacity-30"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="relative group">
+                    <Image className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary-500 transition-colors" size={16} />
+                    <input 
+                      value={newValue.logo_url}
+                      onChange={(e) => setNewValue({ ...newValue, logo_url: e.target.value })}
+                      placeholder="LINK DIRECTO A IMAGEN (.PNG, .JPG)..."
+                      className="w-full bg-surface-ground pl-12 pr-6 py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest text-[var(--text-main)] outline-none border-2 border-transparent focus:border-primary-500/20 transition-all placeholder:opacity-30"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 flex justify-end">
                 <button 
                   onClick={handleAdd}
-                  disabled={!newValue.trim() || isSaving}
-                  className="bg-primary-500 text-primary-contrast px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                  disabled={!newValue.name.trim() || isSaving}
+                  className="w-full md:w-auto bg-primary-500 text-primary-contrast px-12 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-primary-500/20 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Agregar
+                  Registrar Rival
                 </button>
               </div>
             </div>
