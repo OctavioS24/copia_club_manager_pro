@@ -27,6 +27,13 @@ const FALLBACK_TYPES: InjuryType[] = [
   { id: '550e8400-e29b-41d4-a716-446655440008', name: 'Otro (S)' }
 ];
 
+const getInitials = (name: string) => {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+};
+
 const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, onSave, readOnly = false }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'ficha' | 'enfermeria'>('ficha');
@@ -313,8 +320,14 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({ player, onClose, on
         {/* Header */}
         <div className="px-6 md:px-16 py-6 md:py-10 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 dark:bg-white/5 shrink-0 relative gap-4 sm:gap-8">
           <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 md:gap-8 w-full sm:w-auto">
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-200 overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 shrink-0">
-              <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-200 overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 shrink-0 flex items-center justify-center">
+              {player.photourl ? (
+                <img src={player.photourl} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl md:text-3xl font-black text-primary-600 italic tracking-tighter">
+                  {getInitials(player.name)}
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <h3 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none italic truncate max-w-[250px] sm:max-w-none">{player.name}</h3>

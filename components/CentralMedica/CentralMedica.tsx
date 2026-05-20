@@ -8,6 +8,13 @@ import {
 import { db } from '../../lib/supabase';
 import MedicalEditModal from './MedicalEditModal';
 
+const getInitials = (name: string) => {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+};
+
 interface CentralMedicaProps {
   config: ClubConfig;
 }
@@ -158,8 +165,14 @@ const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
                 {/* Mobile Layout: Horizontal Structured */}
                 <div className="flex md:hidden items-center justify-between gap-4 py-1">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative border border-slate-200 dark:border-white/5">
-                      <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                      {player.photourl ? (
+                        <img src={player.photourl} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                          {getInitials(player.name)}
+                        </span>
+                      )}
                       {hasExpired && (
                         <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
                           <AlertTriangle size={14} className="text-white" />
@@ -197,8 +210,14 @@ const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
                 {/* Desktop Layout: Cards (Hidden on Mobile) */}
                 <div className="hidden md:block">
                   <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
-                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/5">
-                      <img src={player.photourl || 'https://via.placeholder.com/128'} className="w-full h-full object-cover" />
+                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner shrink-0 relative group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                      {player.photourl ? (
+                        <img src={player.photourl} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-sm md:text-lg font-black text-primary-600 italic tracking-tighter">
+                          {getInitials(player.name)}
+                        </span>
+                      )}
                       {hasExpired && (
                         <div className="absolute inset-0 bg-orange-500/40 flex items-center justify-center" title="Ficha Vencida">
                           <AlertTriangle size={16} md:size={24} className="text-white" />

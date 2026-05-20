@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 
+const getInitials = (name: string) => {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+};
+
 const FeesManagement: React.FC = () => {
   const [fees, setFees] = useState<MemberFee[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -524,8 +531,14 @@ const FeesManagement: React.FC = () => {
                   <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
-                          <img src={fee.member?.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                          {fee.member?.photourl ? (
+                            <img src={fee.member.photourl} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                              {getInitials(fee.member?.name || 'DESCONOCIDO')}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
@@ -576,8 +589,14 @@ const FeesManagement: React.FC = () => {
                   <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5">
-                          <img src={member.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                          {member.photourl ? (
+                            <img src={member.photourl} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                              {getInitials(member.name)}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
@@ -744,8 +763,14 @@ const FeesManagement: React.FC = () => {
                                   onClick={() => { setFormData({...formData, member_id: m.id}); setIsMemberDropdownOpen(false); }}
                                   className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0"
                                 >
-                                  <div className="w-10 h-10 rounded-xl bg-slate-200 overflow-hidden shrink-0">
-                                    <img src={m.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
+                                  <div className="w-10 h-10 rounded-xl bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                    {m.photourl ? (
+                                      <img src={m.photourl} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                                        {getInitials(m.name)}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-left">
                                     <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase italic">{m.name}</p>
@@ -762,8 +787,14 @@ const FeesManagement: React.FC = () => {
                      ) : (
                        <div className="flex items-center justify-between p-5 bg-primary-600/5 dark:bg-primary-600/10 rounded-3xl border-2 border-primary-600/20 animate-fade-in">
                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 rounded-2xl bg-white shadow-md overflow-hidden p-1">
-                                <img src={selectedMemberInModal.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop'} className="w-full h-full object-cover rounded-xl" />
+                             <div className="w-12 h-12 rounded-2xl bg-white shadow-md overflow-hidden p-1 flex items-center justify-center">
+                                {selectedMemberInModal.photourl ? (
+                                   <img src={selectedMemberInModal.photourl} className="w-full h-full object-cover rounded-xl" />
+                                ) : (
+                                   <span className="text-sm font-black text-primary-600 italic tracking-tighter">
+                                      {getInitials(selectedMemberInModal.name)}
+                                   </span>
+                                )}
                              </div>
                              <div>
                                 <p className="text-sm font-black text-primary-600 uppercase italic leading-none">{selectedMemberInModal.name}</p>
