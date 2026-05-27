@@ -101,7 +101,7 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
         const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
         players.push({
           ...m,
-          number: savedData?.number || '00',
+          number: m.dorsal || savedData?.number || '00',
           position: assignment.position || savedData?.position || '',
         });
       } else {
@@ -310,6 +310,16 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
         <PlayerLegajoResumido 
           player={selectedPlayer} 
           onClose={() => setSelectedPlayer(null)} 
+          onPlayerUpdated={async () => {
+             try {
+               const membersRes = await db.members.getAll();
+               if (!membersRes.error) {
+                 setMembers(membersRes.data || []);
+               }
+             } catch (err) {
+               console.error("Error refreshing members in PlantelLista:", err);
+             }
+          }}
         />
       )}
 

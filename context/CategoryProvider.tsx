@@ -11,6 +11,9 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [selectedDivision, setSelectedDivision] = useState<string | null>(() => {
     return localStorage.getItem('selectedDivision');
   });
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(() => {
+    return localStorage.getItem('selectedTournamentId');
+  });
 
   useEffect(() => {
     if (selectedDiscipline) localStorage.setItem('selectedDiscipline', selectedDiscipline);
@@ -27,15 +30,22 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     else localStorage.removeItem('selectedDivision');
   }, [selectedDivision]);
 
+  useEffect(() => {
+    if (selectedTournamentId) localStorage.setItem('selectedTournamentId', selectedTournamentId);
+    else localStorage.removeItem('selectedTournamentId');
+  }, [selectedTournamentId]);
+
   return (
     <CategoryContext.Provider
       value={{
         selectedDiscipline,
         selectedGender,
         selectedDivision,
+        selectedTournamentId,
         setSelectedDiscipline,
         setSelectedGender,
         setSelectedDivision,
+        setSelectedTournamentId,
       }}
     >
       {children}

@@ -186,7 +186,7 @@ function App() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, location.pathname]);
 
   // Actualización dinámica de identidad visual (Favicon y Título)
   useEffect(() => {

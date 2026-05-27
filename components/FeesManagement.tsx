@@ -6,9 +6,9 @@ import {
   Trash2, Save, CreditCard, Loader2, History, TrendingUp, 
   ArrowUpRight, AlertTriangle, Clock, Receipt, 
   Camera, ExternalLink, Image as ImageIcon,
-  ChevronDown, RefreshCw
+  ChevronDown, RefreshCw, Calendar
 } from 'lucide-react';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -32,6 +32,18 @@ const FeesManagement: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estados para compromisos de pago
+  const [commitments, setCommitments] = useState<any[]>([]);
+  const [showCommitmentModal, setShowCommitmentModal] = useState(false);
+  const [selectedPlayerIdForCommitment, setSelectedPlayerIdForCommitment] = useState('');
+  const [commitmentDate, setCommitmentDate] = useState('');
+  const [commitmentDetail, setCommitmentDetail] = useState('');
+  const [isSavingCommitment, setIsSavingCommitment] = useState(false);
+  const [selectedCommitment, setSelectedCommitment] = useState<any | null>(null);
+  const [commitmentSearchMemberQuery, setCommitmentSearchMemberQuery] = useState('');
+  const [isCommitmentMemberDropdownOpen, setIsCommitmentMemberDropdownOpen] = useState(false);
+  const commitmentDropdownRef = useRef<HTMLDivElement>(null);
+
   // Estados para el buscador de miembros dentro del modal
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
@@ -48,7 +60,7 @@ const FeesManagement: React.FC = () => {
     reference: ''
   });
 
-  const [viewMode, setViewMode] = useState<'history' | 'registry' | 'settings'>('history');
+  const [viewMode, setViewMode] = useState<'history' | 'registry' | 'settings' | 'commitments'>('history');
   const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [configFormData, setConfigFormData] = useState<any>({
     discipline: '',
@@ -65,21 +77,25 @@ const FeesManagement: React.FC = () => {
         { data: feesData, error: feesError }, 
         { data: membersData, error: memError }, 
         { data: configData, error: configError },
-        { data: feeConfigsData, error: feeConfigsError }
+        { data: feeConfigsData, error: feeConfigsError },
+        { data: commitmentsData, error: commitmentsError }
       ] = await Promise.all([
         db.fees.getAll(),
         db.members.getAll(),
         db.config.get(),
-        db.feeConfigs.getAll()
+        db.feeConfigs.getAll(),
+        supabase.from('payment_commitments').select('*').order('created_at', { ascending: false })
       ]);
       
       if (feesError) console.error("Error loading fees:", feesError);
       if (memError) console.error("Error loading members:", memError);
       if (configError) console.error("Error loading config:", configError);
       if (feeConfigsError) console.error("Error loading fee configs:", feeConfigsError);
+      if (commitmentsError) console.error("Error loading commitments:", commitmentsError);
 
       if (configData) setConfig(configData);
       if (feeConfigsData) setFeeConfigs(feeConfigsData);
+      if (commitmentsData) setCommitments(commitmentsData);
       
       if (feesData && membersData) {
         const enrichedFees = feesData.map(f => ({
@@ -105,10 +121,91 @@ const FeesManagement: React.FC = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsMemberDropdownOpen(false);
       }
+      if (commitmentDropdownRef.current && !commitmentDropdownRef.current.contains(event.target as Node)) {
+        setIsCommitmentMemberDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const filteredMembersForCommitmentSelect = useMemo(() => {
+    if (!commitmentSearchMemberQuery.trim()) return members.slice(0, 10);
+    const tokens = commitmentSearchMemberQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    return members.filter(m => {
+      const name = m.name.toLowerCase();
+      const dni = m.dni.toLowerCase();
+      return tokens.every(token => name.includes(token) || dni.includes(token));
+    }).slice(0, 8);
+  }, [members, commitmentSearchMemberQuery]);
+
+  const selectedMemberInCommitmentModal = useMemo(() => 
+    members.find(m => m.id === selectedPlayerIdForCommitment), 
+  [members, selectedPlayerIdForCommitment]);
+
+  const handleSaveCommitment = async () => {
+    if (!selectedPlayerIdForCommitment) return alert("Selecciona un miembro");
+    if (!commitmentDate) return alert("Selecciona una fecha");
+    if (!commitmentDetail.trim()) return alert("Ingresa un detalle");
+
+    setIsSavingCommitment(true);
+    try {
+      const { error } = await supabase
+        .from('payment_commitments')
+        .insert({
+          member_id: selectedPlayerIdForCommitment,
+          commitment_date: commitmentDate,
+          detail: commitmentDetail,
+          fulfilled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      await loadData();
+      setShowCommitmentModal(false);
+      setSelectedPlayerIdForCommitment('');
+      setCommitmentDate('');
+      setCommitmentDetail('');
+      setCommitmentSearchMemberQuery('');
+      alert("Compromiso de pago guardado correctamente");
+    } catch (e: any) {
+      console.error("Error saving commitment:", e);
+      alert("Error al guardar: " + (e.message || JSON.stringify(e)));
+    } finally {
+      setIsSavingCommitment(false);
+    }
+  };
+
+  const toggleCommitmentFulfilled = async (commitmentId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('payment_commitments')
+        .update({ fulfilled: !currentStatus, updated_at: new Date().toISOString() })
+        .eq('id', commitmentId);
+      if (error) throw error;
+      await loadData();
+    } catch (err: any) {
+      console.error("Error toggling commitment:", err);
+      alert("Error al cambiar estado: " + err.message);
+    }
+  };
+
+  const deleteCommitment = async (commitmentId: string) => {
+    if (!confirm("¿Eliminar este compromiso de pago?")) return;
+    try {
+      const { error } = await supabase
+        .from('payment_commitments')
+        .delete()
+        .eq('id', commitmentId);
+      if (error) throw error;
+      await loadData();
+    } catch (err: any) {
+      console.error("Error deleting commitment:", err);
+      alert("Error al eliminar compromiso: " + err.message);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = fees.reduce((acc, f) => acc + (f.amount || 0), 0);
@@ -350,6 +447,18 @@ const FeesManagement: React.FC = () => {
             >
               <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
             </button>
+          ) : viewMode === 'commitments' ? (
+            <button 
+              onClick={() => {
+                setSelectedPlayerIdForCommitment('');
+                setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
+                setCommitmentDetail('');
+                setShowCommitmentModal(true);
+              }} 
+              className="bg-amber-500 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto mt-2 sm:mt-0"
+            >
+              <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nuevo Compromiso</span>
+            </button>
           ) : (
             <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto">
               <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
@@ -372,6 +481,12 @@ const FeesManagement: React.FC = () => {
             className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
           >
             Registro Mensual
+          </button>
+          <button 
+            onClick={() => setViewMode('commitments')}
+            className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'commitments' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Compromisos
           </button>
           <button 
             onClick={() => setViewMode('settings')}
@@ -541,7 +656,23 @@ const FeesManagement: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
+                          <div className="flex items-center flex-wrap gap-2">
+                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
+                            {(() => {
+                              const activeCommitment = commitments.find(c => c.member_id === fee.member_id && !c.fulfilled);
+                              return activeCommitment ? (
+                                <button 
+                                  type="button" 
+                                  onClick={(e) => { e.stopPropagation(); setSelectedCommitment(activeCommitment); }}
+                                  className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider transition-all"
+                                  title="Ver Compromiso de Pago"
+                                >
+                                  <Calendar size={8} />
+                                  <span>Compromiso</span>
+                                </button>
+                              ) : null;
+                            })()}
+                          </div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {fee.member?.dni || '---'}</p>
                         </div>
                       </div>
@@ -564,10 +695,24 @@ const FeesManagement: React.FC = () => {
                     <td className="px-8 py-6 text-right">
                       <div className="flex justify-end gap-2">
                         {fee.status !== 'Paid' && (
-                          <button onClick={() => markAsPaid(fee)} className="p-2.5 bg-emerald-500 text-white rounded-xl hover:scale-110 transition-all shadow-lg shadow-emerald-500/20"><Check size={16} strokeWidth={3} /></button>
+                          <>
+                            <button onClick={() => markAsPaid(fee)} className="p-2.5 bg-emerald-500 text-white rounded-xl hover:scale-110 transition-all shadow-lg shadow-emerald-500/20" title="Marcar como Pagado"><Check size={16} strokeWidth={3} /></button>
+                            <button 
+                              onClick={() => {
+                                setSelectedPlayerIdForCommitment(fee.member_id);
+                                setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
+                                setCommitmentDetail('');
+                                setShowCommitmentModal(true);
+                              }}
+                              className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-xl border border-amber-500/10 hover:border-transparent transition-all shadow-sm"
+                              title="Registrar Compromiso"
+                            >
+                              <Calendar size={16} />
+                            </button>
+                          </>
                         )}
-                        <button onClick={() => setSelectedMemberHistory(fee.member || null)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"><History size={16} /></button>
-                        <button onClick={async () => { if(confirm('¿Eliminar registro?')) { await db.fees.delete(fee.id); loadData(); } }} className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                        <button onClick={() => setSelectedMemberHistory(fee.member || null)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm" title="Historial"><History size={16} /></button>
+                        <button onClick={async () => { if(confirm('¿Eliminar registro?')) { await db.fees.delete(fee.id); loadData(); } }} className="p-2.5 text-slate-300 hover:text-red-500 transition-colors" title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -599,7 +744,23 @@ const FeesManagement: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
+                          <div className="flex items-center flex-wrap gap-2">
+                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
+                            {(() => {
+                              const activeCommitment = commitments.find(c => c.member_id === member.id && !c.fulfilled);
+                              return activeCommitment ? (
+                                <button 
+                                  type="button" 
+                                  onClick={(e) => { e.stopPropagation(); setSelectedCommitment(activeCommitment); }}
+                                  className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider transition-all"
+                                  title="Ver Compromiso de Pago"
+                                >
+                                  <Calendar size={8} />
+                                  <span>Compromiso</span>
+                                </button>
+                              ) : null;
+                            })()}
+                          </div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
                         </div>
                       </div>
@@ -615,39 +776,150 @@ const FeesManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end items-center gap-2">
                         {!fee || fee.status !== 'Paid' ? (
-                          <button 
-                            onClick={() => {
-                              const suggestion = fee ? null : suggestFee(member);
-                              const dueDate = fee ? fee.due_date : (
-                                suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
-                              );
+                          <>
+                            <button 
+                              onClick={() => {
+                                const suggestion = fee ? null : suggestFee(member);
+                                const dueDate = fee ? fee.due_date : (
+                                  suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
+                                );
 
-                              setFormData({
-                                ...formData,
-                                ...(fee || {}),
-                                member_id: member.id,
-                                period: selectedPeriod,
-                                amount: fee?.amount || suggestion?.amount || 5000,
-                                due_date: dueDate
-                              });
-                              setShowModal(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
-                          >
-                            <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
-                          </button>
+                                setFormData({
+                                  ...formData,
+                                  ...(fee || {}),
+                                  member_id: member.id,
+                                  period: selectedPeriod,
+                                  amount: fee?.amount || suggestion?.amount || 5000,
+                                  due_date: dueDate
+                                });
+                                setShowModal(true);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
+                            >
+                              <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedPlayerIdForCommitment(member.id);
+                                setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
+                                setCommitmentDetail('');
+                                setShowCommitmentModal(true);
+                              }}
+                              className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-xl border border-amber-500/10 hover:border-transparent transition-all shadow-sm"
+                              title="Registrar Compromiso de Pago"
+                            >
+                              <Calendar size={16} />
+                            </button>
+                          </>
                         ) : (
                           <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500 tracking-widest pr-4 italic">
                             <Check size={14} strokeWidth={3} /> Pago Confirmado
                           </div>
                         )}
-                        <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"><History size={16} /></button>
+                        <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm" title="Historial"><History size={16} /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          ) : viewMode === 'commitments' ? (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                  <th className="px-8 py-6">Socio / Miembro</th>
+                  <th className="px-8 py-6">Fecha Límite</th>
+                  <th className="px-8 py-6">Detalles / Compromiso</th>
+                  <th className="px-8 py-6 text-center">Estado</th>
+                  <th className="px-8 py-6 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {commitments.filter(c => {
+                  if (!searchTerm.trim()) return true;
+                  const member = members.find(m => m.id === c.member_id);
+                  if (!member) return false;
+                  const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+                  const name = member.name.toLowerCase();
+                  const dni = member.dni.toLowerCase();
+                  return tokens.every(token => name.includes(token) || dni.includes(token));
+                }).map(commitment => {
+                  const member = members.find(m => m.id === commitment.member_id);
+                  return (
+                    <tr key={commitment.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                            {member?.photourl ? (
+                              <img src={member.photourl} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                                {getInitials(member?.name || 'DESCONOCIDO')}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member?.name || 'DESCONOCIDO'}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member?.dni || '---'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">{commitment.commitment_date}</span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase">Límite acordado</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-2">{commitment.detail}</span>
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        {commitment.fulfilled ? (
+                          <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase rounded-full border border-emerald-500/20">Cumplido</span>
+                        ) : (
+                          <span className="px-3 py-1 bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase rounded-full border border-amber-500/20 animate-pulse">Pendiente</span>
+                        )}
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => toggleCommitmentFulfilled(commitment.id, commitment.fulfilled)} 
+                            className={`p-2.5 rounded-xl hover:scale-110 transition-all shadow-lg ${commitment.fulfilled ? 'bg-amber-500 text-white shadow-amber-500/20' : 'bg-emerald-500 text-white shadow-emerald-500/20'}`}
+                            title={commitment.fulfilled ? 'Marcar como Pendiente' : 'Marcar como Cumplido'}
+                          >
+                            {commitment.fulfilled ? <X size={16} strokeWidth={3} /> : <Check size={16} strokeWidth={3} />}
+                          </button>
+                          <button 
+                            onClick={() => setSelectedCommitment(commitment)} 
+                            className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                            title="Ver Detalles de Ficha"
+                          >
+                            <Receipt size={16} />
+                          </button>
+                          <button 
+                            onClick={() => deleteCommitment(commitment.id)} 
+                            className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
+                            title="Eliminar Compromiso"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {commitments.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-8 py-20 text-center">
+                      <div className="flex flex-col items-center gap-4 opacity-30">
+                        <Calendar size={48} className="text-slate-400" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay compromisos registrados</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (
@@ -1035,6 +1307,244 @@ const FeesManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Nuevo Compromiso de Pago */}
+      {showCommitmentModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20"><Calendar size={20} /></div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Crear Compromiso de Pago</h3>
+                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest font-bold">Plan acordado</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCommitmentModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="p-8 space-y-6">
+              <div className="space-y-6">
+                <div className="space-y-2 relative" ref={commitmentDropdownRef}>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Seleccionar Miembro / Jugador</label>
+                  {selectedMemberInCommitmentModal ? (
+                    <div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 flex items-center justify-center">
+                          {selectedMemberInCommitmentModal.photourl ? (
+                            <img src={selectedMemberInCommitmentModal.photourl} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-black text-primary-600 italic">{getInitials(selectedMemberInCommitmentModal.name)}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{selectedMemberInCommitmentModal.name}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {selectedMemberInCommitmentModal.dni}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedPlayerIdForCommitment('')}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="BUSCAR MIEMBRO POR NOMBRE O DNI..."
+                          value={commitmentSearchMemberQuery}
+                          onFocus={() => setIsCommitmentMemberDropdownOpen(true)}
+                          onChange={e => {
+                            setCommitmentSearchMemberQuery(e.target.value);
+                            setIsCommitmentMemberDropdownOpen(true);
+                          }}
+                          className="w-full pl-14 pr-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5"
+                        />
+                      </div>
+                      {isCommitmentMemberDropdownOpen && (
+                        <div className="absolute z-[503] left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-2xl shadow-2xl custom-scrollbar divide-y divide-slate-100 dark:divide-white/5 animate-fade-in">
+                          {filteredMembersForCommitmentSelect.map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlayerIdForCommitment(m.id);
+                                setIsCommitmentMemberDropdownOpen(false);
+                                setCommitmentSearchMemberQuery('');
+                              }}
+                              className="w-full px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-left flex items-center gap-4"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 flex items-center justify-center">
+                                {m.photourl ? <img src={m.photourl} className="w-full h-full object-cover" /> : <span className="text-[10px] font-black text-primary-600 italic">{getInitials(m.name)}</span>}
+                              </div>
+                              <div>
+                                <p className="text-xs font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{m.name}</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">DNI: {m.dni}</p>
+                              </div>
+                            </button>
+                          ))}
+                          {filteredMembersForCommitmentSelect.length === 0 && (
+                            <div className="p-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                              No se encontraron socios
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Fecha Límite</label>
+                    <input
+                      required
+                      type="date"
+                      value={commitmentDate}
+                      onChange={e => setCommitmentDate(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-sm dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Detalle / Notas del acuerdo</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={commitmentDetail}
+                    onChange={e => setCommitmentDetail(e.target.value)}
+                    placeholder="Escribe los detalles del compromiso o plan de pago..."
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-medium text-sm dark:text-white outline-none border border-transparent dark:border-white/5 resize-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCommitmentModal(false)}
+                  className="flex-1 px-8 py-5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCommitment}
+                  disabled={isSavingCommitment}
+                  className="flex-1 bg-amber-500 text-white px-8 py-5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSavingCommitment ? <Loader2 className="animate-spin" size={18} /> : <Calendar size={18} />}
+                  Crear Compromiso
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Ficha / Detalles de Compromiso */}
+      {selectedCommitment && (() => {
+        const member = members.find(m => m.id === selectedCommitment.member_id);
+        return (
+          <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+              <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20"><Calendar size={20} /></div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Ficha de Compromiso</h3>
+                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Detalle del acuerdo</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedCommitment(null)}
+                  className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </header>
+
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-2xl">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 flex items-center justify-center">
+                    {member?.photourl ? (
+                      <img src={member.photourl} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-black text-primary-600 italic">{getInitials(member?.name || 'DESCONOCIDO')}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member?.name || 'DESCONOCIDO'}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member?.dni || '---'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Fecha Compromiso</p>
+                    <p className="text-xs font-black text-slate-800 dark:text-white mt-1 uppercase tracking-wider">{selectedCommitment.commitment_date}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedCommitment.fulfilled ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                      <p className="text-xs font-black text-slate-800 dark:text-white uppercase">{selectedCommitment.fulfilled ? 'Cumplido' : 'Pendiente'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-3">Detalle del compromiso de pago</p>
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 min-h-[100px] whitespace-pre-wrap">
+                    {selectedCommitment.detail}
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-4">
+                  <button
+                    onClick={async () => {
+                      await toggleCommitmentFulfilled(selectedCommitment.id, selectedCommitment.fulfilled);
+                      setSelectedCommitment(null);
+                    }}
+                    className={`flex-1 px-8 py-5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-white shadow-xl ${
+                      selectedCommitment.fulfilled 
+                        ? 'bg-amber-500 shadow-amber-500/20' 
+                        : 'bg-emerald-500 shadow-emerald-500/20'
+                    }`}
+                  >
+                    {selectedCommitment.fulfilled ? (
+                      <>
+                        <X size={14} strokeWidth={3} /> Reabrir Compromiso
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} strokeWidth={3} /> Marcar como Cumplido
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setSelectedCommitment(null)}
+                    className="px-8 py-5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

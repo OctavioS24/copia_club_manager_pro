@@ -3,10 +3,12 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Member, AppRole, ClubConfig, MemberAssignment, DisciplinePosition } from '../types';
 import { 
   UserPlus, Search, Trash2, X, Save, Camera, Loader2, PlusCircle, Heart, 
-  Fingerprint, ShieldCheck, Briefcase, 
-  Contact2, UserCircle, AlertCircle
+  Fingerprint, ShieldCheck, 
+  Contact2, UserCircle, AlertCircle, Shirt, Settings, GraduationCap,
+  ExternalLink, FileText, Upload, Trash
 } from 'lucide-react';
 import { getPositionsByDiscipline } from '../lib/disciplinePositions';
+import { db } from '../lib/supabase';
 
 interface MemberManagementProps {
   members: Member[];
@@ -15,7 +17,7 @@ interface MemberManagementProps {
   onDeleteMember: (id: string) => Promise<void>;
 }
 
-type ModalTab = 'identity' | 'health' | 'contacts' | 'sports' | 'system';
+type ModalTab = 'identity' | 'health' | 'contacts' | 'schooling' | 'sports_data' | 'sports' | 'system';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -40,8 +42,41 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     photourl: '', address: '', city: '', province: '', postalcode: '',
     bloodtype: '', medicalinsurance: '', weight: '', height: '',
     status: 'Active', assignments: [], systemrole: 'Socio', canlogin: false,
-    tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
+    tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' },
+    dorsal: '',
+    plays_since_year: '',
+    frequent_position: '',
+    skilled_leg: '',
+    injury_history: '',
+    training_days_per_week: '',
+    gym_attendance: false,
+    gym_frequency: '',
+    carnet_number: '',
+    school_name: '',
+    school_shift: '',
+    school_schedule: '',
+    extra_activity: '',
+    extra_activity_schedule: '',
+    school_contact: '',
+    contacts_list: [],
+    has_preexisting_condition: false,
+    preexisting_condition_details: '',
+    medical_file_url: ''
   });
+
+  const [isUploadingMedicalFile, setIsUploadingMedicalFile] = useState(false);
+
+  // Local states for managing multiple contacts
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    relationship: 'Padre',
+    phone: '',
+    email: '',
+    address: ''
+  });
+  const [contactError, setContactError] = useState<string | null>(null);
 
   // Fetch positions for a discipline
   const fetchPositionsForDiscipline = useCallback(async (disciplineName: string) => {
@@ -77,9 +112,40 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const handleEdit = (member: Member) => {
     setSelectedMember(member);
     setSaveError(null);
+    let initialContacts = member.contacts_list || [];
+    if (initialContacts.length === 0 && member.tutor && member.tutor.name) {
+      initialContacts = [{
+        id: crypto.randomUUID(),
+        name: member.tutor.name,
+        relationship: member.tutor.relationship || 'Otro',
+        phone: member.tutor.phone || '',
+        email: member.tutor.email || '',
+        address: member.address || ''
+      }];
+    }
+
     setFormData({
       ...member,
-      tutor: member.tutor || { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
+      tutor: member.tutor || { name: '', dni: '', relationship: 'Padre', phone: '', email: '' },
+      dorsal: member.dorsal || '',
+      plays_since_year: member.plays_since_year || '',
+      frequent_position: member.frequent_position || '',
+      skilled_leg: member.skilled_leg || '',
+      injury_history: member.injury_history || '',
+      training_days_per_week: member.training_days_per_week || '',
+      gym_attendance: member.gym_attendance || false,
+      gym_frequency: member.gym_frequency || '',
+      carnet_number: member.carnet_number || member.carnetNumber || '',
+      school_name: member.school_name || '',
+      school_shift: member.school_shift || '',
+      school_schedule: member.school_schedule || '',
+      extra_activity: member.extra_activity || '',
+      extra_activity_schedule: member.extra_activity_schedule || '',
+      school_contact: member.school_contact || '',
+      contacts_list: initialContacts,
+      has_preexisting_condition: member.has_preexisting_condition || false,
+      preexisting_condition_details: member.preexisting_condition_details || '',
+      medical_file_url: member.medical_file_url || ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -93,7 +159,26 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       photourl: '', address: '', city: '', province: '', postalcode: '',
       bloodtype: '', medicalinsurance: '', weight: '', height: '',
       status: 'Active', assignments: [], systemrole: 'Socio', canlogin: false,
-      tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' }
+      tutor: { name: '', dni: '', relationship: 'Padre', phone: '', email: '' },
+      dorsal: '',
+      plays_since_year: '',
+      frequent_position: '',
+      skilled_leg: '',
+      injury_history: '',
+      training_days_per_week: '',
+      gym_attendance: false,
+      gym_frequency: '',
+      carnet_number: '',
+      school_name: '',
+      school_shift: '',
+      school_schedule: '',
+      extra_activity: '',
+      extra_activity_schedule: '',
+      school_contact: '',
+      contacts_list: [],
+      has_preexisting_condition: false,
+      preexisting_condition_details: '',
+      medical_file_url: ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -107,6 +192,22 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
         setFormData(prev => ({ ...prev, photourl: reader.result as string }));
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMedicalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingMedicalFile(true);
+    try {
+      const publicUrl = await db.medical.uploadAttachment(file);
+      setFormData(prev => ({ ...prev, medical_file_url: publicUrl }));
+    } catch (err: any) {
+      console.error("Error al subir archivo médico:", err);
+      alert("Error al subir el archivo. Por favor, reintente.");
+    } finally {
+       setIsUploadingMedicalFile(false);
     }
   };
 
@@ -127,9 +228,20 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     setIsSaving(true);
     setSaveError(null);
     try {
-      // Destructure to remove tutor if it's not in the database schema
       const dataToSave = { ...formData };
-      delete (dataToSave as any).tutor;
+      
+      // Backward compatible mapping of tutor object with the first contact if available
+      if (dataToSave.contacts_list && dataToSave.contacts_list.length > 0) {
+        const firstContact = dataToSave.contacts_list[0];
+        dataToSave.tutor = {
+          name: firstContact.name,
+          dni: '',
+          relationship: (firstContact.relationship === 'Padre' || firstContact.relationship === 'Madre' || firstContact.relationship === 'Tutor Legal') ? firstContact.relationship as any : 'Otro',
+          phone: firstContact.phone,
+          email: firstContact.email
+        };
+      }
+
       const memberId = selectedMember?.id || crypto.randomUUID();
       const memberToSave = {
         ...dataToSave,
@@ -150,6 +262,79 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     } finally { 
       setIsSaving(false); 
     }
+  };
+
+  const handleAddContactClick = () => {
+    if ((formData.contacts_list || []).length >= 3) {
+      alert("No se permiten más de 3 contactos por jugador.");
+      return;
+    }
+    setContactForm({
+      name: '',
+      relationship: 'Padre',
+      phone: '',
+      email: '',
+      address: ''
+    });
+    setEditingContactId(null);
+    setIsAddingContact(true);
+    setContactError(null);
+  };
+
+  const handleEditContactClick = (contact: PlayerContact) => {
+    setContactForm({
+      name: contact.name,
+      relationship: contact.relationship,
+      phone: contact.phone,
+      email: contact.email,
+      address: contact.address
+    });
+    setEditingContactId(contact.id);
+    setIsAddingContact(true);
+    setContactError(null);
+  };
+
+  const handleDeleteContact = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contacts_list: (prev.contacts_list || []).filter(c => c.id !== id)
+    }));
+  };
+
+  const handleSaveContact = () => {
+    if (!contactForm.name.trim() || !contactForm.phone.trim() || !contactForm.email.trim() || !contactForm.address.trim()) {
+      setContactError("TODOS LOS CAMPOS: NOMBRE, TELÉFONO, EMAIL Y DIRECCIÓN SON OBLIGATORIOS");
+      return;
+    }
+
+    const currentContacts = formData.contacts_list || [];
+
+    if (editingContactId) {
+      // Editing Mode
+      const updated = currentContacts.map(c => 
+        c.id === editingContactId ? { ...c, ...contactForm, name: contactForm.name.toUpperCase(), address: contactForm.address.toUpperCase() } : c
+      );
+      setFormData(prev => ({ ...prev, contacts_list: updated }));
+    } else {
+      // Create Mode
+      if (currentContacts.length >= 3) {
+        setContactError("MÁXIMO 3 CONTACTOS PERMITIDOS");
+        return;
+      }
+      const newContact: PlayerContact = {
+        id: crypto.randomUUID(),
+        name: contactForm.name.toUpperCase(),
+        relationship: contactForm.relationship,
+        phone: contactForm.phone,
+        email: contactForm.email,
+        address: contactForm.address.toUpperCase()
+      };
+      setFormData(prev => ({ ...prev, contacts_list: [...currentContacts, newContact] }));
+    }
+
+    setIsAddingContact(false);
+    setEditingContactId(null);
+    setContactError(null);
   };
 
   const addAssignment = () => {
@@ -200,9 +385,11 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
   const tabs = [
     { id: 'identity', label: 'Identidad', icon: Fingerprint },
+    { id: 'sports_data', label: 'Datos Deportivos', icon: Shirt },
     { id: 'health', label: 'Salud', icon: Heart },
     { id: 'contacts', label: 'Contactos', icon: Contact2 },
-    { id: 'sports', label: 'Deportes', icon: Briefcase },
+    { id: 'schooling', label: 'Escolaridad', icon: GraduationCap },
+    { id: 'sports', label: 'Config. Deportiva', icon: Settings },
     { id: 'system', label: 'Sistema', icon: ShieldCheck },
   ];
 
@@ -354,12 +541,116 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 <option>Otro</option>
                               </select>
                             </div>
-                            <div className="space-y-2 col-span-1 md:col-span-2">
+                            <div className="space-y-2">
                               <label className={labelClasses}>Fecha de Nacimiento</label>
                               <input type="date" value={formData.birthdate} onChange={e => setFormData({...formData, birthdate: e.target.value})} className={inputClasses} />
                             </div>
+                            <div className="space-y-2">
+                              <label className={labelClasses}>N° Carnet</label>
+                              <input value={formData.carnet_number || ''} onChange={e => setFormData({...formData, carnet_number: e.target.value})} className={inputClasses} placeholder="EJ: C-12345" />
+                            </div>
                           </div>
                        </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'sports_data' && (
+                    <div className="space-y-8 animate-fade-in">
+                      <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                          <Shirt size={16} />
+                        </div>
+                        Datos Deportivos
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Dorsal (No. Camiseta)</label>
+                          <input 
+                            value={formData.dorsal || ''} 
+                            onChange={e => setFormData({...formData, dorsal: e.target.value})} 
+                            className={inputClasses} 
+                            placeholder="EJ: 10" 
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Desde qué año juega en el club</label>
+                          <input 
+                            value={formData.plays_since_year || ''} 
+                            onChange={e => setFormData({...formData, plays_since_year: e.target.value})} 
+                            className={inputClasses} 
+                            placeholder="EJ: 2018" 
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Puesto Frecuente</label>
+                          <input 
+                            value={formData.frequent_position || ''} 
+                            onChange={e => setFormData({...formData, frequent_position: e.target.value.toUpperCase()})} 
+                            className={inputClasses} 
+                            placeholder="EJ: DELANTERO" 
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Pierna Hábil</label>
+                          <select 
+                            value={formData.skilled_leg || ''} 
+                            onChange={e => setFormData({...formData, skilled_leg: e.target.value})} 
+                            className={selectClasses}
+                          >
+                            <option value="">No definido</option>
+                            <option value="Derecha">Derecha (Diestro)</option>
+                            <option value="Izquierda">Izquierda (Zurdo)</option>
+                            <option value="Ambidiestro">Ambidiestro</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Días de entrenamiento por semana</label>
+                          <input 
+                            value={formData.training_days_per_week || ''} 
+                            onChange={e => setFormData({...formData, training_days_per_week: e.target.value})} 
+                            className={inputClasses} 
+                            placeholder="EJ: 3" 
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className={labelClasses}>Asiste al Gimnasio</label>
+                          <select 
+                            value={formData.gym_attendance ? 'Sí' : 'No'} 
+                            onChange={e => setFormData({...formData, gym_attendance: e.target.value === 'Sí'})} 
+                            className={selectClasses}
+                          >
+                            <option value="No">No</option>
+                            <option value="Sí">Sí</option>
+                          </select>
+                        </div>
+
+                        {formData.gym_attendance && (
+                          <div className="space-y-2 col-span-1 md:col-span-2">
+                            <label className={labelClasses}>Frecuencia del Gimnasio</label>
+                            <input 
+                              value={formData.gym_frequency || ''} 
+                              onChange={e => setFormData({...formData, gym_frequency: e.target.value.toUpperCase()})} 
+                              className={inputClasses} 
+                              placeholder="EJ: 3 VECES POR SEMANA, 1 HORA" 
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-2 col-span-1 md:col-span-2">
+                          <label className={labelClasses}>Antecedentes de Lesiones (más de 2 meses inactivo)</label>
+                          <textarea 
+                            value={formData.injury_history || ''} 
+                            onChange={e => setFormData({...formData, injury_history: e.target.value})} 
+                            className={inputClasses + " h-24 resize-none py-3"} 
+                            placeholder="EJ: DESGARRO DE ISQUIOTIBIALES EN 2024 CON 3 MESES DE BAJA..." 
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -387,6 +678,82 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           <div className="space-y-2">
                              <label className={labelClasses}>Altura (cm)</label>
                              <input value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} className={inputClasses} placeholder="000" />
+                          </div>
+                          <div className="space-y-2 col-span-1 md:col-span-2">
+                             <label className={labelClasses}>¿Posee alguna Enfermedad Preexistente o Alergia?</label>
+                             <select 
+                               value={formData.has_preexisting_condition ? 'Sí' : 'No'} 
+                               onChange={e => setFormData({...formData, has_preexisting_condition: e.target.value === 'Sí'})} 
+                               className={selectClasses}
+                             >
+                                <option value="No">No</option>
+                                <option value="Sí">Sí</option>
+                             </select>
+                          </div>
+                          <div className="space-y-2 col-span-1 md:col-span-2">
+                             <label className={labelClasses}>Detalles a considerar (Enfermedades, Alergias, Medicación, etc.)</label>
+                             <textarea 
+                               value={formData.preexisting_condition_details || ''} 
+                               onChange={e => setFormData({...formData, preexisting_condition_details: e.target.value.toUpperCase()})} 
+                               className={inputClasses + " h-24 resize-none py-3"} 
+                               placeholder="EJ: ALÉRGICO A LA PENICILINA, MEDICACIÓN DIARIA DE ASMA, DIABETES..." 
+                             />
+                          </div>
+                          <div className="space-y-2 col-span-1 md:col-span-2">
+                             <label className={labelClasses}>Adjunto (certificado médico, estudios, etc.)</label>
+                             {formData.medical_file_url ? (
+                               <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">
+                                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                   <FileText size={18} />
+                                   <span className="truncate max-w-[200px] md:max-w-xs block font-bold">Documento Médico Adjunto</span>
+                                 </div>
+                                 <div className="flex gap-2">
+                                   <a 
+                                     href={formData.medical_file_url} 
+                                     target="_blank" 
+                                     rel="noreferrer noopener" 
+                                     className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider transition-colors inline-flex items-center"
+                                   >
+                                     <ExternalLink size={12} className="mr-1" />
+                                     Ver archivo
+                                   </a>
+                                   <button 
+                                     type="button"
+                                     onClick={() => setFormData({...formData, medical_file_url: ''})}
+                                     className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors cursor-pointer"
+                                     title="Eliminar adjunto"
+                                   >
+                                     <Trash size={14} />
+                                   </button>
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="flex items-center justify-center w-full">
+                                 <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[var(--surface-border)] rounded-2xl cursor-pointer hover:bg-surface-ground transition-all group">
+                                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                     {isUploadingMedicalFile ? (
+                                       <>
+                                         <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mb-2" />
+                                         <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Subiendo archivo...</p>
+                                       </>
+                                     ) : (
+                                       <>
+                                         <Upload className="w-5 h-5 mb-2 text-[var(--text-muted)] group-hover:text-emerald-500" />
+                                         <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] group-hover:text-[var(--text-main)]">Seleccionar Certificado Médico / Estudios (PDF, Imagen)</p>
+                                         <p className="text-[9px] text-[var(--text-muted)] mt-1 font-bold">Máximo recomendado: 5MB</p>
+                                       </>
+                                     )}
+                                   </div>
+                                   <input 
+                                     type="file" 
+                                     className="hidden" 
+                                     disabled={isUploadingMedicalFile}
+                                     onChange={handleMedicalFileUpload} 
+                                     accept=".pdf,image/*"
+                                   />
+                                 </label>
+                               </div>
+                             )}
                           </div>
                        </div>
                     </div>
@@ -423,37 +790,269 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                        </section>
 
                        <section className="space-y-6">
-                          <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                            <div className="w-1 h-4 bg-emerald-500 rounded-full"></div> Responsable / Tutor
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">
-                             <div className="space-y-2 col-span-1 md:col-span-2">
-                                <label className={labelClasses}>Nombre Tutor</label>
-                                <input value={formData.tutor?.name} onChange={e => setFormData({...formData, tutor: {...formData.tutor!, name: e.target.value.toUpperCase()}})} className={inputClasses} />
+                          <div className="flex justify-between items-center">
+                             <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                               <div className="w-1 h-4 bg-emerald-500 rounded-full"></div> Contactos de Emergencia / Familiares
+                             </h4>
+                             {!(formData.contacts_list && formData.contacts_list.length >= 3) && !isAddingContact && (
+                                <button
+                                  type="button"
+                                  onClick={handleAddContactClick}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                >
+                                  <PlusCircle size={12} />
+                                  Agregar Contacto
+                                </button>
+                             )}
+                          </div>
+
+                          {/* Interactive Add/Edit Form */}
+                          {isAddingContact && (
+                             <div className="p-6 bg-surface-ground rounded-3xl border border-emerald-500/20 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="flex justify-between items-center pb-2 border-b border-[var(--surface-border)]">
+                                   <h5 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                                      {editingContactId ? "Editar Contacto" : "Nuevo Contacto de Emergencia"}
+                                   </h5>
+                                   <button
+                                      type="button"
+                                      onClick={() => { setIsAddingContact(false); setEditingContactId(null); setContactError(null); }}
+                                      className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all cursor-pointer"
+                                   >
+                                      <X size={16} />
+                                   </button>
+                                </div>
+
+                                {contactError && (
+                                   <div className="p-3 bg-red-500/10 border border-red-500/20 text-[10px] font-black text-red-500 uppercase rounded-xl">
+                                      {contactError}
+                                   </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                   <div className="space-y-1">
+                                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">Nombre Completo</label>
+                                      <input 
+                                         value={contactForm.name} 
+                                         onChange={e => setContactForm({...contactForm, name: e.target.value.toUpperCase()})}
+                                         className={inputClasses}
+                                         placeholder="Ej: MARÍA GÓMEZ"
+                                      />
+                                   </div>
+                                   <div className="space-y-1">
+                                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">Relación / Vínculo</label>
+                                      <select 
+                                         value={contactForm.relationship}
+                                         onChange={e => setContactForm({...contactForm, relationship: e.target.value})}
+                                         className={selectClasses}
+                                      >
+                                         <option value="Padre">Padre</option>
+                                         <option value="Madre">Madre</option>
+                                         <option value="Tutor Legal">Tutor Legal</option>
+                                         <option value="Familiar">Familiar / Familiar Indirecto</option>
+                                         <option value="Otro">Otro</option>
+                                      </select>
+                                   </div>
+                                   <div className="space-y-1">
+                                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">Teléfono</label>
+                                      <input 
+                                         value={contactForm.phone} 
+                                         onChange={e => setContactForm({...contactForm, phone: e.target.value})}
+                                         className={inputClasses}
+                                         placeholder="Ej: +54 341 5551234"
+                                      />
+                                   </div>
+                                   <div className="space-y-1">
+                                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">Email</label>
+                                      <input 
+                                         value={contactForm.email} 
+                                         onChange={e => setContactForm({...contactForm, email: e.target.value})}
+                                         className={inputClasses}
+                                         placeholder="Ej: marina@correo.com"
+                                      />
+                                   </div>
+                                   <div className="space-y-1 col-span-1 md:col-span-2">
+                                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">Dirección (Donde reside)</label>
+                                      <input 
+                                         value={contactForm.address} 
+                                         onChange={e => setContactForm({...contactForm, address: e.target.value.toUpperCase()})}
+                                         className={inputClasses}
+                                         placeholder="Ej: AV. PELLEGRINI 1234, ROSARIO"
+                                      />
+                                   </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-2">
+                                   <button
+                                      type="button"
+                                      onClick={() => { setIsAddingContact(false); setEditingContactId(null); setContactError(null); }}
+                                      className="px-4 py-2 rounded-xl bg-[var(--surface-border)] hover:bg-opacity-80 font-black text-[9px] uppercase tracking-wider text-[var(--text-main)] transition-all cursor-pointer"
+                                   >
+                                      Cancelar
+                                   </button>
+                                   <button
+                                      type="button"
+                                      onClick={handleSaveContact}
+                                      className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-black text-[9px] uppercase tracking-wider text-white transition-all shadow-lg shadow-emerald-500/10 cursor-pointer"
+                                   >
+                                      {editingContactId ? "Actualizar" : "Agregar"}
+                                   </button>
+                                 </div>
                              </div>
-                             <div className="space-y-2">
-                                <label className={labelClasses}>Relación</label>
-                                <select value={formData.tutor?.relationship} onChange={e => setFormData({...formData, tutor: {...formData.tutor!, relationship: e.target.value as any}})} className={selectClasses}>
-                                   <option>Padre</option>
-                                   <option>Madre</option>
-                                   <option>Tutor Legal</option>
-                                   <option>Otro</option>
-                                </select>
-                             </div>
-                             <div className="space-y-2">
-                                <label className={labelClasses}>DNI Tutor</label>
-                                <input value={formData.tutor?.dni} onChange={e => setFormData({...formData, tutor: {...formData.tutor!, dni: e.target.value}})} className={inputClasses} />
-                             </div>
+                          )}
+
+                          {/* Contacts List */}
+                          <div className="space-y-3">
+                             {(!formData.contacts_list || formData.contacts_list.length === 0) ? (
+                                <div className="p-8 text-center bg-surface-ground rounded-3xl border border-dashed border-[var(--surface-border)] text-[var(--text-muted)] italic text-xs">
+                                   No hay contactos de emergencia registrados. Haz clic en "+ Agregar contacto" (mínimo 1, máximo 3).
+                                </div>
+                             ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                   {(formData.contacts_list || []).map((contact, index) => (
+                                      <div 
+                                         key={contact.id || index}
+                                         className="p-5 bg-surface-ground rounded-2xl border border-[var(--surface-border)] relative flex flex-col justify-between hover:border-emerald-500/30 transition-all shadow-sm"
+                                      >
+                                         <div>
+                                            <div className="flex justify-between items-start gap-2 mb-3">
+                                               <div>
+                                                  <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                                                     {contact.relationship}
+                                                  </span>
+                                                  <h5 className="font-black text-xs text-[var(--text-main)] mt-1 break-words">{contact.name}</h5>
+                                               </div>
+                                               <div className="flex gap-1 shrink-0">
+                                                  <button
+                                                     type="button"
+                                                     onClick={() => handleEditContactClick(contact)}
+                                                     className="p-1 px-1.5 rounded-lg bg-[var(--surface-border)] hover:bg-opacity-80 text-[var(--text-muted)] hover:text-indigo-500 transition-all text-[9px] font-black cursor-pointer"
+                                                     title="Editar"
+                                                  >
+                                                     Editar
+                                                  </button>
+                                                  <button
+                                                     type="button"
+                                                     onClick={() => handleDeleteContact(contact.id || '')}
+                                                     className="p-1 px-1.5 rounded-lg bg-[var(--surface-border)] hover:bg-opacity-80 text-[var(--text-muted)] hover:text-red-500 transition-all text-[9px] font-black cursor-pointer"
+                                                     title="Eliminar"
+                                                  >
+                                                     Borrar
+                                                  </button>
+                                               </div>
+                                            </div>
+
+                                            <div className="space-y-1.5 text-[11px] font-bold text-[var(--text-muted)]">
+                                               <div className="flex items-center gap-1.5 break-all">
+                                                  <span className="font-extrabold text-[var(--text-main)] shrink-0">Tel:</span>
+                                                  <span>{contact.phone}</span>
+                                               </div>
+                                               <div className="flex items-center gap-1.5 break-all">
+                                                  <span className="font-extrabold text-[var(--text-main)] shrink-0">Email:</span>
+                                                  <span>{contact.email}</span>
+                                               </div>
+                                               <div className="flex items-start gap-1.5 break-all">
+                                                  <span className="font-extrabold text-[var(--text-main)] shrink-0">Dir:</span>
+                                                  <span className="leading-tight">{contact.address}</span>
+                                               </div>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
                           </div>
                        </section>
                     </div>
+                  )}
+
+                  {activeTab === 'schooling' && (
+                    <div className="space-y-8 animate-fade-in">
+                       <section className="space-y-6">
+                          <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+                              <GraduationCap size={16} />
+                            </div>
+                            Información Escolar / Educativa
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">
+                             <div className="space-y-2 col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Nombre de la Escuela</label>
+                                <input 
+                                  value={formData.school_name || ''} 
+                                  onChange={e => setFormData({...formData, school_name: e.target.value.toUpperCase()})} 
+                                  className={inputClasses} 
+                                  placeholder="EJ: COLEGIO NACIONAL N° 1..." 
+                                />
+                             </div>
+
+                             <div className="space-y-2">
+                                <label className={labelClasses}>Turno Escolar</label>
+                                <select 
+                                  value={formData.school_shift || ''} 
+                                  onChange={e => setFormData({...formData, school_shift: e.target.value.toUpperCase()})} 
+                                  className={selectClasses}
+                                >
+                                  <option value="">SELECCIONAR TURNO</option>
+                                  <option value="MAÑANA">MAÑANA</option>
+                                  <option value="TARDE">TARDE</option>
+                                  <option value="NOCHE">NOCHE</option>
+                                  <option value="DOBLE TURNO">DOBLE TURNO</option>
+                                  <option value="OTRO">OTRO</option>
+                                </select>
+                             </div>
+
+                             <div className="space-y-2">
+                                <label className={labelClasses}>Horario Escolar</label>
+                                <input 
+                                  value={formData.school_schedule || ''} 
+                                  onChange={e => setFormData({...formData, school_schedule: e.target.value.toUpperCase()})} 
+                                  className={inputClasses} 
+                                  placeholder="EJ: 07:30 A 13:00 HS..." 
+                                />
+                             </div>
+
+                             <div className="space-y-2 col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Actividad Extraescolar (si realiza alguna)</label>
+                                <input 
+                                  value={formData.extra_activity || ''} 
+                                  onChange={e => setFormData({...formData, extra_activity: e.target.value.toUpperCase()})} 
+                                  className={inputClasses} 
+                                  placeholder="EJ: INGLES, COMPUTACION, APOYO ESCOLAR..." 
+                                />
+                             </div>
+
+                             <div className="space-y-2">
+                                <label className={labelClasses}>Horarios de la Actividad Extraescolar</label>
+                                <input 
+                                  value={formData.extra_activity_schedule || ''} 
+                                  onChange={e => setFormData({...formData, extra_activity_schedule: e.target.value.toUpperCase()})} 
+                                  className={inputClasses} 
+                                  placeholder="EJ: MAR Y JUE - 16:30 A 18:00 HS..." 
+                                />
+                             </div>
+
+                             <div className="space-y-2">
+                                <label className={labelClasses}>Contacto de la Escuela / Teléfono</label>
+                                <input 
+                                  value={formData.school_contact || ''} 
+                                  onChange={e => setFormData({...formData, school_contact: e.target.value.toUpperCase()})} 
+                                  className={inputClasses} 
+                                  placeholder="EJ: DIRECTOR PEREZ / +54 341 443..." 
+                                 />
+                              </div>
+                           </div>
+                        </section>
+                     </div>
                   )}
 
                   {activeTab === 'sports' && (
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
                       <div className="flex justify-between items-center">
                         <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                          <div className="w-1 h-4 bg-blue-500 rounded-full"></div> Perfil Deportivo
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                            <Settings size={16} />
+                          </div>
+                          Config. Deportiva
                         </h4>
                         <button onClick={addAssignment} className="flex items-center gap-2 text-[var(--primary-600)] text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all">
                           <PlusCircle size={16} /> Agregar Actividad

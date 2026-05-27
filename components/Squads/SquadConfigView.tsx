@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, Users, CalendarCheck, Trophy, Activity, Loader2 } from 'lucide-react';
-import { db } from '../../lib/supabase';
+import { ChevronDown, LayoutDashboard, Users, CalendarCheck, Trophy, Activity, Loader2, DollarSign } from 'lucide-react';
+import { db, supabase } from '../../lib/supabase';
 import { useCategory } from '../../context/useCategory';
 import { Discipline } from '../../types';
 
@@ -13,6 +13,7 @@ import Asistencia from '../Asistencia';
 import FixtureView from '../Torneos/FixtureView';
 import MedicalDashboard from '../MedicalDashboard';
 import SquadsTab from './SquadsTab';
+import PaymentCommitments from './PaymentCommitments';
 
 interface SquadConfigViewProps {
   config?: ClubConfig;
@@ -27,12 +28,52 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
     setSelectedGender, 
     selectedDivision, 
     setSelectedDivision,
-    setSelectedDiscipline
+    setSelectedDiscipline,
+    selectedTournamentId,
+    setSelectedTournamentId
   } = useCategory();
 
   const [discipline, setDiscipline] = useState<Discipline | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [tournaments, setTournaments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchTourneys = async () => {
+      try {
+        const { data } = await supabase.from('tournaments').select('*');
+        if (data) {
+          const normalized = data.map(t => ({
+            ...t,
+            discipline_id: t.discipline_id || t.discipline,
+            category_id: t.category_id || t.categoryid,
+            assigned_categories: t.assigned_categories || t.assignedcategories || []
+          }));
+          setTournaments(normalized);
+        }
+      } catch (err) {
+        console.error('Error fetching tournaments in SquadConfigView:', err);
+      }
+    };
+    fetchTourneys();
+  }, []);
+
+  const filteredTournaments = useMemo(() => {
+    if (!selectedDivision || !discipline) return [];
+    return tournaments.filter(t => {
+      const matchDisc = (t.discipline_id === discipline.id || t.disciplineid === discipline.id);
+      const matchGender = !t.gender || !selectedGender || t.gender.toLowerCase() === selectedGender.toLowerCase();
+      const hasCat = t.assigned_categories?.includes(selectedDivision) || t.assignedcategories?.includes(selectedDivision);
+      return matchDisc && matchGender && hasCat;
+    });
+  }, [tournaments, selectedDivision, discipline, selectedGender]);
+
+  // Sync effect to reset tournament if division/gender becomes invalid or null
+  useEffect(() => {
+    if (!selectedDivision || !selectedGender) {
+      setSelectedTournamentId(null);
+    }
+  }, [selectedDivision, selectedGender, setSelectedTournamentId]);
 
   useEffect(() => {
     const fetchDiscipline = async () => {
@@ -114,10 +155,12 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
   const handleGenderChange = (gender: string) => {
     setSelectedGender(gender);
     setSelectedDivision(null); // Reset division when gender changes
+    setSelectedTournamentId(null); // Reset tournament when gender changes
   };
 
   const handleDivisionChange = (divisionId: string) => {
     setSelectedDivision(divisionId);
+    setSelectedTournamentId(null); // Reset tournament when division changes
   };
 
   if (loading) {
@@ -170,6 +213,8 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
         return <SquadsTab />;
       case 'medico':
         return <MedicalDashboard readOnly={true} />;
+      case 'compromisos':
+        return <PaymentCommitments />;
       default:
         return <PlantelDashboard />;
     }
@@ -182,6 +227,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
     { id: 'fixture', label: 'FIXTURE', icon: Trophy },
     { id: 'squads', label: 'CONVOCATORIAS', icon: Users },
     { id: 'medico', label: 'MÉDICO', icon: Activity },
+    { id: 'compromisos', label: 'COMPROMISOS', icon: DollarSign },
   ];
 
   return (
@@ -235,6 +281,32 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" size={20} />
                   </div>
                 </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--text-muted)] font-black tracking-[0.2em] uppercase mb-3 block">Torneo Actual de Selección</label>
+                  <div className="relative">
+                    <select 
+                      disabled={!selectedDivision || filteredTournaments.length === 0}
+                      value={selectedTournamentId || ''}
+                      onChange={(e) => setSelectedTournamentId(e.target.value || null)}
+                      className={`w-full bg-surface-ground border border-[var(--surface-border)] rounded-xl px-4 py-4 text-[var(--text-main)] font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer ${(!selectedDivision || filteredTournaments.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="" disabled={filteredTournaments.length > 0}>
+                        {!selectedDivision 
+                          ? 'SELECCIONE CATEGORÍA PRIMERO' 
+                          : filteredTournaments.length === 0 
+                            ? 'SIN TORNEOS PARA ESTA CATEGORÍA' 
+                            : 'SELECCIONAR TORNEO'}
+                      </option>
+                      {filteredTournaments.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" size={20} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -242,7 +314,7 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
           {/* Right Section: Tabs */}
           <div className="lg:col-span-8">
             <div className="bg-surface-card border border-[var(--surface-border)] rounded-[2rem] p-4 h-full flex flex-col justify-center">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;

@@ -4,7 +4,7 @@ import { Users, Star, Check, X, Loader2, Save, Info, DollarSign } from 'lucide-r
 import { motion } from 'motion/react';
 import { Match, Member, MatchSquadPlayer } from '../../types';
 import { getMatchSquad, saveMatchSquad } from '../../lib/squads';
-import { db } from '../../lib/supabase';
+import { db, supabase } from '../../lib/supabase';
 
 interface ConvocatoriaModalProps {
   match: Match;
@@ -24,10 +24,12 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [playerDebts, setPlayerDebts] = useState<Set<string>>(new Set());
+  const [activeCommitments, setActiveCommitments] = useState<Set<string>>(new Set());
   
   // State for selected players and starters
   const [selection, setSelection] = useState<Record<string, { selected: boolean, starting: boolean }>>({});
   const [notes, setNotes] = useState('');
+  const [appointmentTime, setAppointmentTime] = useState('');
 
   useEffect(() => {
     const loadSquadAndDebts = async () => {
@@ -41,6 +43,15 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         if (debts) {
           setPlayerDebts(new Set(debts.map(d => d.member_id)));
         }
+
+        // Cargar compromisos de pago activos
+        const { data: commitments } = await supabase
+          .from('payment_commitments')
+          .select('member_id')
+          .eq('fulfilled', false);
+        if (commitments) {
+          setActiveCommitments(new Set(commitments.map(c => c.member_id)));
+        }
         
         const initialSelection: Record<string, { selected: boolean, starting: boolean }> = {};
         
@@ -51,6 +62,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
         if (existingSquad) {
           setNotes(existingSquad.notes || '');
+          setAppointmentTime(existingSquad.appointment_time || '');
           existingSquad.players?.forEach(sp => {
             if (initialSelection[sp.player_id]) {
               initialSelection[sp.player_id] = { selected: true, starting: sp.is_starting };
@@ -123,7 +135,8 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
           tournament_id: match.tournamentid || (match as any).tournament_id || match.tournament_id,
           category_id: match.categoryid || (match as any).category_id,
           discipline: discipline,
-          notes: notes
+          notes: notes,
+          appointment_time: appointmentTime || null
         },
         playersToSave
       );
@@ -220,6 +233,39 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                 </div>
               )}
 
+              {/* Horarios de Convocatoria */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
+                  <div>
+                    <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 block italic opacity-60">Hora de Inicio del Partido</span>
+                    <span className="text-2xl font-black italic text-[var(--text-main)] uppercase">
+                      {match.time ? `${match.time.slice(0, 5)} HS` : 'SIN REGISTRAR'}
+                    </span>
+                  </div>
+                  <div className="p-4 bg-slate-500/10 text-[var(--text-muted)] rounded-2xl border border-[var(--surface-border)] shadow-md">
+                    <Info size={24} />
+                  </div>
+                </div>
+
+                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm group">
+                  <div className="flex-1 mr-4">
+                    <label htmlFor="citation-time-field" className="text-[9px] font-black text-primary-500 uppercase tracking-widest mb-1 block italic">
+                      Hora de Citación
+                    </label>
+                    <input
+                      id="citation-time-field"
+                      type="time"
+                      value={appointmentTime}
+                      onChange={(e) => setAppointmentTime(e.target.value)}
+                      className="w-full bg-surface-card border-2 border-[var(--surface-border)] hover:border-primary-500/50 focus:border-primary-600 rounded-2xl px-5 py-3 text-sm font-black uppercase text-[var(--text-main)] outline-none transition-all mt-1"
+                    />
+                  </div>
+                  <div className="p-4 bg-primary-600/10 text-primary-600 rounded-2xl border border-primary-600/20 shadow-xl self-end">
+                    <Users size={24} />
+                  </div>
+                </div>
+              </div>
+
               {/* Player Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {playersList.map((player) => {
@@ -250,8 +296,8 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                         <div>
                           <div className="flex items-center gap-3">
                              <p className={`text-sm font-black uppercase italic tracking-tighter ${selData.selected ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>{player.name}</p>
-                             {playerDebts.has(player.id) && (
-                               <div className="bg-orange-500/10 text-orange-500 p-1.5 rounded-lg animate-pulse border border-orange-500/20" title="Jugador con deuda pendiente">
+                             {playerDebts.has(player.id) && !activeCommitments.has(player.id) && (
+                               <div className="bg-orange-500/10 text-orange-500 p-1.5 rounded-lg animate-pulse border border-orange-500/20" title="Jugador con deuda pendiente / Compromiso activo suspende advertencia">
                                  <DollarSign size={10} strokeWidth={4} />
                                </div>
                              )}

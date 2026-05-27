@@ -25,7 +25,8 @@ const FixtureView: React.FC<FixtureViewProps> = ({
   const { 
     selectedDivision: contextCategoryId, 
     selectedDiscipline: contextDisciplineId, 
-    selectedGender: contextGender 
+    selectedGender: contextGender,
+    selectedTournamentId
   } = useCategory();
 
   const selectedDivision = propCategoryId || contextCategoryId;
@@ -52,15 +53,17 @@ const FixtureView: React.FC<FixtureViewProps> = ({
       // Fetch tournaments to find the active one for this category
       const tData = await getTournaments();
 
-      // Find tournament that matches discipline and gender and has this category
-      const activeTournament = tData.find(t => 
-        (t.discipline_id === selectedDiscipline || t.disciplineid === selectedDiscipline) && 
-        t.gender === selectedGender &&
-        (t.assigned_categories?.includes(selectedDivision) || t.assignedcategories?.includes(selectedDivision))
-      );
+      // Find the tournament to use: either selectedTournamentId or a fallback
+      const chosenTournament = selectedTournamentId 
+        ? tData.find(t => t.id === selectedTournamentId)
+        : tData.find(t => 
+            (t.discipline_id === selectedDiscipline || t.disciplineid === selectedDiscipline) && 
+            t.gender === selectedGender &&
+            (t.assigned_categories?.includes(selectedDivision) || t.assignedcategories?.includes(selectedDivision))
+          );
 
-      if (activeTournament) {
-        const mData = await getFixturesByCategory(activeTournament.id, selectedDivision);
+      if (chosenTournament) {
+        const mData = await getFixturesByCategory(chosenTournament.id, selectedDivision);
         setMatches(mData);
       } else {
         setMatches([]);
@@ -86,7 +89,7 @@ const FixtureView: React.FC<FixtureViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDivision, selectedDiscipline, selectedGender]);
+  }, [selectedDivision, selectedDiscipline, selectedGender, selectedTournamentId]);
 
   useEffect(() => {
     if (selectedDivision) {

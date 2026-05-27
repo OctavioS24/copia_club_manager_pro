@@ -8,7 +8,7 @@ import ConvocatoriaModal from '../Torneos/ConvocatoriaModal';
 import { getPlayersByCategory } from '../../lib/playerUtils';
 
 const SquadsTab: React.FC = () => {
-  const { selectedDiscipline, selectedDivision, selectedGender } = useCategory();
+  const { selectedDiscipline, selectedDivision, selectedGender, selectedTournamentId } = useCategory();
   const [matches, setMatches] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +17,7 @@ const SquadsTab: React.FC = () => {
   
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showSquadModal, setShowSquadModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,13 +29,35 @@ const SquadsTab: React.FC = () => {
         const { data: clubData } = await supabase.from('club_config').select('name').eq('id', 1).single();
         if (clubData) setClubName(clubData.name);
 
-        // Fetch matches for this category/discipline/gender
+        // Fetch tournaments to find the correct active tournament filter
+        const { data: tourneysData } = await supabase.from('tournaments').select('*');
+        const tournaments = (tourneysData || []).map(t => ({
+          ...t,
+          discipline_id: t.discipline_id || t.discipline,
+          category_id: t.category_id || t.categoryid,
+          assigned_categories: t.assigned_categories || t.assignedcategories || []
+        }));
+
+        const targetTournament = selectedTournamentId 
+          ? tournaments.find(t => t.id === selectedTournamentId)
+          : tournaments.find(t => 
+              (t.discipline_id === selectedDiscipline || t.disciplineid === selectedDiscipline) && 
+              t.gender === selectedGender &&
+              (t.assigned_categories?.includes(selectedDivision) || t.assignedcategories?.includes(selectedDivision))
+            );
+
+        // Fetch matches for this category/discipline/gender and tournament
         // We filter by category_id or category
-        const { data: matchesData, error: matchesError } = await supabase
+        let query = supabase
           .from('matches')
-          .select('*, squad:match_squads(id)')
-          .eq('categoryid', selectedDivision)
-          .order('date', { ascending: true });
+          .select('*, squad:match_squads(id, appointment_time)')
+          .eq('categoryid', selectedDivision);
+
+        if (targetTournament) {
+          query = query.eq('tournamentid', targetTournament.id);
+        }
+
+        const { data: matchesData, error: matchesError } = await query.order('date', { ascending: true });
 
         if (matchesError) throw matchesError;
         if (matchesData) setMatches(matchesData);
@@ -61,7 +84,7 @@ const SquadsTab: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedDivision, selectedDiscipline, selectedGender]);
+  }, [selectedDivision, selectedDiscipline, selectedGender, selectedTournamentId, refreshTrigger]);
 
   const filteredMatches = useMemo(() => {
     return matches.filter(m => {
@@ -125,10 +148,15 @@ const SquadsTab: React.FC = () => {
                   </div>
                 )}
                 
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-6 flex-wrap">
                   <div className="px-3 py-1 bg-surface-ground border border-[var(--surface-border)] rounded-lg text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                     {new Date(m.date).toLocaleDateString()}
                   </div>
+                  {hasSquad && (m as any).squad?.[0]?.appointment_time && (
+                    <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                      CITACIÓN: {(m as any).squad[0].appointment_time.slice(0, 5)} HS
+                    </div>
+                  )}
                   {!hasSquad && !isFinished && (
                     <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-orange-500 animate-pulse">
                       <AlertCircle size={12} /> Pendiente
@@ -183,16 +211,7 @@ const SquadsTab: React.FC = () => {
           onSuccess={() => {
             setSelectedMatch(null);
             setShowSquadModal(false);
-            // Refresh local matches list
-            const fetchData = async () => {
-               const { data: matchesData } = await supabase
-                .from('matches')
-                .select('*, squad:match_squads(id)')
-                .eq('categoryid', selectedDivision)
-                .order('date', { ascending: true });
-               if (matchesData) setMatches(matchesData);
-            };
-            fetchData();
+            setRefreshTrigger(prev => prev + 1);
           }}
         />
       )}

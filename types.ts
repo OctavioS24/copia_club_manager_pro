@@ -43,6 +43,15 @@ export interface Tutor {
   email?: string;
 }
 
+export interface PlayerContact {
+  id: string;
+  name: string;
+  relationship: string;
+  phone: string;
+  email: string;
+  address: string;
+}
+
 export interface Assignment {
   id: string;
   discipline_id: string;
@@ -94,6 +103,26 @@ export interface Member {
   username?: string;
   stats: Record<string, number>;
   overallrating?: number;
+  dorsal?: string;
+  plays_since_year?: string;
+  frequent_position?: string;
+  skilled_leg?: string;
+  injury_history?: string;
+  training_days_per_week?: string;
+  gym_attendance?: boolean;
+  gym_frequency?: string;
+  assigned_categories_sports?: string[];
+  carnet_number?: string;
+  school_name?: string;
+  school_shift?: string;
+  school_schedule?: string;
+  extra_activity?: string;
+  extra_activity_schedule?: string;
+  school_contact?: string;
+  contacts_list?: PlayerContact[];
+  has_preexisting_condition?: boolean;
+  preexisting_condition_details?: string;
+  medical_file_url?: string;
 }
 
 export interface MedicalHistoryItem {
@@ -288,6 +317,7 @@ export interface MatchSquad {
   discipline: string;
   notes?: string;
   players?: MatchSquadPlayer[];
+  appointment_time?: string;
   created_at?: string;
   updated_at?: string;
 }
