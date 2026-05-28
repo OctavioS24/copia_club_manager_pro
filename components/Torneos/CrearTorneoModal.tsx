@@ -149,7 +149,7 @@ const CrearTorneoModal: React.FC<CrearTorneoModalProps> = ({ onClose, onSuccess,
   const availableCategories = selectedDiscipline?.branches.find(b => b.gender === gender)?.categories || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

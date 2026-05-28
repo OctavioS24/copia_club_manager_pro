@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Player } from '../types';
-import { Calendar as CalendarIcon, Save, Users, Loader2, CheckCircle2, X } from 'lucide-react';
-import { db } from '../lib/supabase';
+import { Calendar as CalendarIcon, Save, Users, Loader2, CheckCircle2, X, DollarSign } from 'lucide-react';
+import { db, supabase } from '../lib/supabase';
 
 interface AsistenciaProps {
   players: Player[];
@@ -16,21 +16,51 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
   const { selectedDiscipline, selectedDivision, selectedGender } = useCategory();
   const [players, setPlayers] = useState<Player[]>(propPlayers || []);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendance, setAttendance] = useState<Record<string, string>>({});
+  
+  // Rich attendance state tracking status, excuse type, and details
+  const [attendance, setAttendance] = useState<Record<string, { status: string; excuse_type: string; excuse_detail: string; }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentDisciplineName, setCurrentDisciplineName] = useState<string>('');
 
-  // Fetch club config and players
+  // States for player debts and active commitments
+  const [playerDebts, setPlayerDebts] = useState<Set<string>>(new Set());
+  const [activeCommitments, setActiveCommitments] = useState<Set<string>>(new Set());
+  const [expiredCommitments, setExpiredCommitments] = useState<Set<string>>(new Set());
+
+  // Fetch club config, players, debts, and commitments
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedDiscipline || !selectedDivision) return;
       setIsLoading(true);
       try {
-        const [configRes, membersRes] = await Promise.all([
+        const [configRes, membersRes, debtsRes, commitmentsRes] = await Promise.all([
           db.config.get(),
-          db.members.getAll()
+          db.members.getAll(),
+          db.fees.getAllDebts(),
+          supabase.from('payment_commitments').select('member_id, commitment_date').eq('fulfilled', false)
         ]);
+
+        if (debtsRes.data) {
+          setPlayerDebts(new Set(debtsRes.data.map((d: any) => d.member_id)));
+        }
+
+        if (commitmentsRes.data) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const activeSet = new Set<string>();
+          const expiredSet = new Set<string>();
+
+          commitmentsRes.data.forEach((c: any) => {
+            if (c.commitment_date < todayStr) {
+              expiredSet.add(c.member_id);
+            } else {
+              activeSet.add(c.member_id);
+            }
+          });
+
+          setActiveCommitments(activeSet);
+          setExpiredCommitments(expiredSet);
+        }
 
         let discName = '';
         let categoryName = '';
@@ -68,7 +98,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
     fetchData();
   }, [selectedDiscipline, selectedDivision, selectedGender]);
 
-  // Cargar asistencia existente
+  // Cargar asistencia existente incluyendo justificaciones
   useEffect(() => {
     const fetchAttendance = async () => {
       if (!currentDisciplineName || !date) return;
@@ -80,9 +110,13 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
         const { data, error } = await db.attendance.getByDate(date, normalizedDisc);
         if (error) throw error;
         
-        const records: Record<string, string> = {};
+        const records: Record<string, { status: string; excuse_type: string; excuse_detail: string; }> = {};
         data?.forEach((record: any) => {
-          records[record.player_id] = record.status;
+          records[record.player_id] = {
+            status: record.status || 'A',
+            excuse_type: record.excuse_type || 'No justificado',
+            excuse_detail: record.excuse_detail || ''
+          };
         });
         setAttendance(records);
       } catch (err) {
@@ -103,12 +137,17 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       try {
         // Normalize discipline name for DB save
         const normalizedDisc = currentDisciplineName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const recordsToSave = players.map(p => ({
-          player_id: p.id,
-          date: date,
-          status: attendance[p.id] || 'A',
-          discipline: normalizedDisc
-        }));
+        const recordsToSave = players.map(p => {
+          const record = attendance[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+          return {
+            player_id: p.id,
+            date: date,
+            status: record.status || 'A',
+            discipline: normalizedDisc,
+            excuse_type: ['A', 'L'].includes(record.status) ? (record.excuse_type || 'No justificado') : null,
+            excuse_detail: ['A', 'L'].includes(record.status) ? (record.excuse_detail || null) : null
+          };
+        });
 
         const { error } = await db.attendance.upsert(recordsToSave);
         if (error) throw error;
@@ -122,9 +161,12 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       }
   };
 
-  // Ordenar jugadores por apellido (asumiendo que el apellido es la última palabra o el formato es Apellido Nombre)
-  const sortedPlayers = useMemo(() => {
-    return [...players].sort((a, b) => {
+  // Agrupamiento por situación de deuda:
+  // Primer grupo: Jugadores con cuota vencida o compromiso de pago vencido
+  // Segundo grupo: El resto de los jugadores (al día)
+  // Dentro de cada grupo se ordena por apellido
+  const playerGroups = useMemo(() => {
+    const sortByName = (a: Player, b: Player) => {
       const getLastName = (fullName: string) => {
         const parts = fullName.trim().split(' ');
         return parts.length > 1 ? parts[parts.length - 1] : parts[0];
@@ -134,14 +176,174 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       if (nameA < nameB) return -1;
       if (nameA > nameB) return 1;
       return a.name.localeCompare(b.name);
+    };
+
+    const sortedAll = [...players].sort(sortByName);
+    const adeudan: Player[] = [];
+    const alDia: Player[] = [];
+
+    sortedAll.forEach(p => {
+      const hasDebt = playerDebts.has(p.id);
+      const hasActiveCommitment = activeCommitments.has(p.id);
+
+      if (hasDebt && !hasActiveCommitment) {
+        adeudan.push(p);
+      } else {
+        alDia.push(p);
+      }
     });
-  }, [players]);
+
+    return { adeudan, alDia };
+  }, [players, playerDebts, activeCommitments]);
 
   const formatDate = (dateStr: string) => {
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const d = new Date(dateStr + 'T12:00:00'); // Evitar problemas de zona horaria
     return d.toLocaleDateString('es-ES', options).replace(/^\w/, (c) => c.toUpperCase());
   };
+
+  const getPlayerDebtStatus = (pId: string) => {
+    const hasDebt = playerDebts.has(pId);
+    const hasExpiredCommitment = expiredCommitments.has(pId);
+    if (hasDebt && hasExpiredCommitment) {
+      return "Deuda y compromiso vencido";
+    }
+    if (hasDebt) {
+      return "Cuota pendiente";
+    }
+    return null;
+  };
+
+  const renderPlayerRow = (p: Player) => {
+    const attRecord = attendance[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+    const status = attRecord.status;
+    const debtReason = getPlayerDebtStatus(p.id);
+
+    return (
+      <div 
+        key={p.id} 
+        className="flex flex-col p-4 md:p-6 hover:bg-surface-hover/50 transition-colors group border-b border-[var(--surface-border)] last:border-b-0"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            {/* INDICADOR DE ESTADO */}
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${
+              status === 'P' ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 
+              status === 'L' ? 'bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20' :
+              'bg-red-500 border-red-500 shadow-lg shadow-red-500/20'
+            }`}>
+              {status === 'P' && <CheckCircle2 size={20} className="text-white" />}
+              {status === 'L' && <span className="text-white font-black text-xs">T</span>}
+              {status === 'A' && <X size={20} className="text-white" />}
+            </div>
+
+            {/* INFO JUGADOR */}
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-sm md:text-lg leading-tight break-words">
+                {p.name}
+              </span>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  #{p.number || 'S/N'} • {p.position || 'SIN POSICIÓN'}
+                </span>
+                {debtReason && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20 text-[8px] font-black uppercase tracking-wider animate-pulse" title={debtReason}>
+                    <DollarSign size={8} strokeWidth={4} />
+                    {debtReason}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center self-end sm:self-center gap-2">
+            <select
+              value={status}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                setAttendance(prev => {
+                  const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+                  return {
+                    ...prev,
+                    [p.id]: {
+                      ...currentRecord,
+                      status: newStatus
+                    }
+                  };
+                });
+              }}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all outline-none cursor-pointer ${
+                status === 'P' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                status === 'L' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                'bg-red-500/10 text-red-500 border-red-500/20'
+              }`}
+            >
+              <option value="A" className="bg-surface-card text-[var(--text-main)]">AUSENTE</option>
+              <option value="P" className="bg-surface-card text-[var(--text-main)]">PRESENTE</option>
+              <option value="L" className="bg-surface-card text-[var(--text-main)]">TARDANZA</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Detalle de ausencias y tardanzas (Tipo y Detalle libre) */}
+        {['A', 'L'].includes(status) && (
+          <div className="mt-4 p-4 rounded-2xl bg-slate-500/5 border border-[var(--surface-border)] grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-top-1 duration-200">
+            <div>
+              <label className="block text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest mb-1.5">
+                Tipo de Falta
+              </label>
+              <select
+                value={attRecord.excuse_type || 'No justificado'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAttendance(prev => {
+                    const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+                    return {
+                      ...prev,
+                      [p.id]: {
+                        ...currentRecord,
+                        excuse_type: val
+                      }
+                    };
+                  });
+                }}
+                className="w-full px-3 py-2 bg-surface-card border-2 border-[var(--surface-border)] rounded-xl text-xs font-bold text-[var(--text-main)] outline-none focus:border-primary-500 transition-colors"
+              >
+                <option value="No justificado">No justificado</option>
+                <option value="Justificado">Justificado</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest mb-1.5">
+                Detalle / Motivo de ausencia o tardanza
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Avisó por WhatsApp que está con fiebre, examen..."
+                value={attRecord.excuse_detail || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAttendance(prev => {
+                    const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+                    return {
+                      ...prev,
+                      [p.id]: {
+                        ...currentRecord,
+                        excuse_detail: val
+                      }
+                    };
+                  });
+                }}
+                className="w-full px-4 py-2 bg-surface-card border-2 border-[var(--surface-border)] rounded-xl text-xs font-semibold text-[var(--text-main)] placeholder-slate-400 outline-none focus:border-primary-500 transition-colors"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const totalPlayers = players.length;
 
   return (
     <div className="p-4 md:p-10 max-w-4xl mx-auto">
@@ -180,8 +382,6 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
         </div>
       </div>
 
-      {/* SELECTOR DE DISCIPLINA REMOVIDO POR SOLICITUD - SE USA LA DEL CONTEXTO */}
-
       {/* LISTADO VERTICAL */}
       <div className="bg-surface-card rounded-[2.5rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden relative min-h-[300px]">
         {isLoading && (
@@ -190,59 +390,46 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando registros...</p>
           </div>
         )}
-        <div className="p-2 md:p-4">
-            {sortedPlayers.length > 0 ? (
-              <div className="divide-y divide-[var(--surface-border)]">
-                {sortedPlayers.map(p => {
-                  const status = attendance[p.id] || 'A';
-                  return (
-                    <div 
-                      key={p.id} 
-                      className="flex items-center gap-3 p-4 md:p-6 hover:bg-surface-hover transition-colors group"
-                    >
-                        {/* INDICADOR DE ESTADO */}
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${
-                          status === 'P' ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 
-                          status === 'L' ? 'bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20' :
-                          'bg-red-500 border-red-500 shadow-lg shadow-red-500/20'
-                        }`}>
-                          {status === 'P' && <CheckCircle2 size={20} className="text-white" />}
-                          {status === 'L' && <span className="text-white font-black text-xs">T</span>}
-                          {status === 'A' && <X size={20} className="text-white" />}
-                        </div>
-
-                        {/* INFO JUGADOR */}
-                        <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between min-w-0 gap-4">
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-sm md:text-lg leading-tight break-words">
-                              {p.name}
-                            </span>
-                            <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              #{p.number} • {p.position}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={status}
-                              onChange={(e) => {
-                                setAttendance(prev => ({ ...prev, [p.id]: e.target.value }));
-                              }}
-                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all outline-none cursor-pointer ${
-                                status === 'P' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                                status === 'L' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                'bg-red-500/10 text-red-500 border-red-500/20'
-                              }`}
-                            >
-                              <option value="A" className="bg-white text-slate-800">AUSENTE</option>
-                              <option value="P" className="bg-white text-slate-800">PRESENTE</option>
-                              <option value="L" className="bg-white text-slate-800">TARDANZA</option>
-                            </select>
-                          </div>
-                        </div>
+        <div className="p-4 md:p-8">
+            {totalPlayers > 0 ? (
+              <div className="space-y-8">
+                {/* Primer Grupo: Jugadores que Adeudan */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 border-b border-orange-500/20 pb-3">
+                    <span className="flex h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse" />
+                    <h3 className="text-xs font-black uppercase text-orange-500 tracking-[0.2em] italic">
+                      Adeudan ({playerGroups.adeudan.length})
+                    </h3>
+                  </div>
+                  {playerGroups.adeudan.length > 0 ? (
+                    <div className="border border-orange-500/10 rounded-3xl bg-orange-500/[0.02] divide-y divide-[var(--surface-border)] overflow-hidden">
+                      {playerGroups.adeudan.map(renderPlayerRow)}
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="p-6 bg-emerald-500/5 text-emerald-500 rounded-2xl border border-dashed border-emerald-500/10 text-center text-xs font-bold uppercase tracking-wider italic">
+                      ¡Todos los jugadores están al día con sus pagos! 🎉
+                    </div>
+                  )}
+                </div>
+
+                {/* Segundo Grupo: Jugadores Al Día */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 border-b border-[var(--surface-border)] pb-3">
+                    <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <h3 className="text-xs font-black uppercase text-emerald-500 tracking-[0.2em] italic">
+                      Al Día ({playerGroups.alDia.length})
+                    </h3>
+                  </div>
+                  {playerGroups.alDia.length > 0 ? (
+                    <div className="border border-[var(--surface-border)] rounded-3xl divide-y divide-[var(--surface-border)] overflow-hidden">
+                      {playerGroups.alDia.map(renderPlayerRow)}
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-surface-ground rounded-2xl border border-dashed border-[var(--surface-border)] text-center text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider italic">
+                      No hay jugadores sin deudas pendientes.
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
                 <div className="py-24 text-center opacity-30">
@@ -253,7 +440,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
         </div>
 
         {/* BOTON GUARDAR */}
-        {players.length > 0 && (
+        {totalPlayers > 0 && (
             <div className="p-8 bg-surface-ground border-t border-[var(--surface-border)] flex justify-center">
                 <button 
                   onClick={handleSave} 

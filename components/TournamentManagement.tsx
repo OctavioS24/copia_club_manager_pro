@@ -879,7 +879,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       )}
 
       {tournamentToDelete && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl animate-in fade-in duration-200">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -922,7 +922,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       )}
 
       {reschedulingMatch && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl animate-in fade-in duration-200">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -974,7 +974,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       )}
 
       {showWizard && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[600] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-[#0f121a] w-full max-w-5xl max-h-[90vh] rounded-[3.5rem] shadow-2xl border border-white/5 overflow-hidden flex flex-col">
             <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
                <h3 className="text-2xl font-black uppercase italic tracking-tighter dark:text-white">Configurador de Torneo</h3>
@@ -1121,7 +1121,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
       )}
 
       {showMatchModal && activeTournament && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[600] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-white dark:bg-[#0f121a] w-full max-w-2xl max-h-[90vh] rounded-[3.5rem] shadow-2xl border border-white/5 overflow-hidden flex flex-col">
               <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter dark:text-white">Registrar Score</h3>

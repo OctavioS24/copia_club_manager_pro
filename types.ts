@@ -318,6 +318,7 @@ export interface MatchSquad {
   notes?: string;
   players?: MatchSquadPlayer[];
   appointment_time?: string;
+  location?: string | null;
   created_at?: string;
   updated_at?: string;
 }

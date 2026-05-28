@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, Users, CalendarCheck, Trophy, Activity, Loader2, DollarSign } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, Users, CalendarCheck, Trophy, Activity, Loader2, DollarSign, UserCheck, BarChart3 } from 'lucide-react';
 import { db, supabase } from '../../lib/supabase';
 import { useCategory } from '../../context/useCategory';
-import { Discipline } from '../../types';
+import { Discipline, ClubConfig, Member } from '../../types';
 
 // Import child components
 import PlantelDashboard from '../PlantelDashboard';
@@ -14,6 +14,8 @@ import FixtureView from '../Torneos/FixtureView';
 import MedicalDashboard from '../MedicalDashboard';
 import SquadsTab from './SquadsTab';
 import PaymentCommitments from './PaymentCommitments';
+import PlayerPermits from './PlayerPermits';
+import SquadReports from './SquadReports';
 
 interface SquadConfigViewProps {
   config?: ClubConfig;
@@ -215,6 +217,10 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
         return <MedicalDashboard readOnly={true} />;
       case 'compromisos':
         return <PaymentCommitments />;
+      case 'permisos':
+        return <PlayerPermits />;
+      case 'informes':
+        return <SquadReports />;
       default:
         return <PlantelDashboard />;
     }
@@ -228,6 +234,8 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
     { id: 'squads', label: 'CONVOCATORIAS', icon: Users },
     { id: 'medico', label: 'MÉDICO', icon: Activity },
     { id: 'compromisos', label: 'COMPROMISOS', icon: DollarSign },
+    { id: 'permisos', label: 'PERMISOS', icon: UserCheck },
+    { id: 'informes', label: 'INFORMES', icon: BarChart3 },
   ];
 
   return (
@@ -312,9 +320,8 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
           </div>
 
           {/* Right Section: Tabs */}
-          <div className="lg:col-span-8">
-            <div className="bg-surface-card border border-[var(--surface-border)] rounded-[2rem] p-4 h-full flex flex-col justify-center">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-8 bg-surface-card border border-[var(--surface-border)] rounded-[2rem] p-6 shadow-xl flex flex-col justify-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -339,7 +346,6 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
               </div>
             </div>
           </div>
-        </div>
 
         {/* Main Content Area */}
         <div className="bg-surface-card border border-[var(--surface-border)] rounded-[3rem] p-8 min-h-[500px] animate-fade-in">

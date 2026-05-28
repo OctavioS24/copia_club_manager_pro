@@ -321,8 +321,8 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center p-2 md:p-4 overflow-y-auto custom-scrollbar">
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[1000] flex items-start md:items-center justify-center p-2 md:p-4 overflow-y-auto custom-scrollbar">
+      <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl" onClick={onClose} />
       
       <div className="relative w-full max-w-2xl bg-surface-card rounded-[2rem] md:rounded-[3.5rem] border border-[var(--surface-border)] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-400 my-4 md:my-0">
         {/* Banner de Perfil */}

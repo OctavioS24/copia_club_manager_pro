@@ -995,7 +995,7 @@ const FeesManagement: React.FC = () => {
 
       {/* MODAL: Nueva Cuota con Buscador Inteligente */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-0 md:p-10 animate-fade-in">
           <div className="bg-surface-card w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] md:rounded-[3rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden flex flex-col">
             <div className="p-8 border-b border-[var(--surface-border)] flex justify-between items-center bg-surface-hover">
               <div className="flex items-center gap-4">
@@ -1159,7 +1159,7 @@ const FeesManagement: React.FC = () => {
 
       {/* MODAL: Historial Individual */}
       {selectedMemberHistory && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[501] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-surface-card w-full max-w-3xl rounded-[3rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden flex flex-col h-[80vh]">
               <div className="p-8 border-b border-[var(--surface-border)] flex justify-between items-center bg-surface-hover">
                 <div className="flex items-center gap-6">
@@ -1196,7 +1196,7 @@ const FeesManagement: React.FC = () => {
 
       {/* MODAL: Configuración de Tarifas */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
             <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
               <div className="flex items-center gap-4">
@@ -1310,7 +1310,7 @@ const FeesManagement: React.FC = () => {
 
       {/* MODAL: Nuevo Compromiso de Pago */}
       {showCommitmentModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
             <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
               <div className="flex items-center gap-4">
@@ -1457,7 +1457,7 @@ const FeesManagement: React.FC = () => {
       {selectedCommitment && (() => {
         const member = members.find(m => m.id === selectedCommitment.member_id);
         return (
-          <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[502] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
               <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
                 <div className="flex items-center gap-4">

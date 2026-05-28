@@ -16,8 +16,8 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose }) =
   const sortedEvents = [...events].sort((a, b) => (a.minute || 0) - (b.minute || 0));
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl" onClick={onClose} />
       
       <div className="relative w-full max-w-2xl bg-surface-card rounded-[2rem] border border-[var(--surface-border)] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 max-h-[85vh] flex flex-col">
         {/* Header Header */}

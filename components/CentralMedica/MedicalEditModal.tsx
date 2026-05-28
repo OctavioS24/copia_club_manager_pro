@@ -433,7 +433,7 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
     "text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 mb-2 md:mb-3 block";
 
   return (
-    <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
+    <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-0 md:p-10 animate-fade-in">
       <div className="bg-white dark:bg-[#0f121a] rounded-none md:rounded-[4rem] shadow-2xl w-full max-w-7xl border border-secondary-600/30 dark:border-secondary-400/20 flex flex-col h-full md:h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 md:px-16 py-6 md:py-10 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 dark:bg-white/5 shrink-0 relative gap-4 sm:gap-8">

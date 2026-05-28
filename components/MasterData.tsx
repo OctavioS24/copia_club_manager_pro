@@ -626,13 +626,13 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
       {/* --- MODAL DE ELIMINACIÓN --- */}
       <AnimatePresence>
         {deleteConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirm(null)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl"
             />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0, y: 20 }}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
   TrendingDown, ShieldAlert, Target,
-  Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw
+  Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw, HeartPulse, Heart, X
 } from 'lucide-react';
 import { ClubConfig, Match, Member, MatchEvent } from '../types';
 import { db, supabase } from '../lib/supabase';
@@ -78,6 +78,10 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showStatsType, setShowStatsType] = useState<'Goles' | 'Amarillas' | 'Rojas' | null>(null);
+  
+  // Medical fitness warnings states
+  const [showMedicalWarningModal, setShowMedicalWarningModal] = useState(false);
+  const [medicalFilter, setMedicalFilter] = useState<'squad' | 'all'>('squad');
 
   // Jugadores del plantel seleccionado
   const squadPlayers = useMemo(() => {
@@ -110,6 +114,61 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
     return filtered;
   }, [members, selectedCategory, clubConfig]);
+
+  const disciplinePlayers = useMemo(() => {
+    if (!selectedDiscipline || !clubConfig) return [];
+    const disc = clubConfig.disciplines.find(d => d.id === selectedDiscipline);
+    const discName = disc?.name || '';
+
+    return members.filter(m => 
+      m.assignments?.some(a => {
+        const aDisc = (a.discipline || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const dName = (discName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const discMatch = a.discipline_id === selectedDiscipline || aDisc === dName;
+        const role = (a.role || '').toUpperCase();
+        const isPlayer = role === 'PLAYER' || role === 'JUGADOR';
+        
+        return discMatch && isPlayer;
+      })
+    );
+  }, [members, selectedDiscipline, clubConfig]);
+
+  const checkExpiring = (v: string | undefined): boolean => {
+    if (!v) return false;
+    const expiryDate = new Date(v);
+    if (isNaN(expiryDate.getTime())) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    expiryDate.setHours(0,0,0,0);
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30;
+  };
+
+  const expiringOverall = useMemo(() => {
+    return disciplinePlayers.filter(p => checkExpiring(p.medical?.expiry_date));
+  }, [disciplinePlayers]);
+
+  const expiringInSquad = useMemo(() => {
+    return squadPlayers.filter(p => checkExpiring(p.medical?.expiry_date));
+  }, [squadPlayers]);
+
+  const displayedMedicalPlayers = useMemo(() => {
+    return medicalFilter === 'squad' ? expiringInSquad : expiringOverall;
+  }, [medicalFilter, expiringInSquad, expiringOverall]);
+
+  const getPlayerCategoryName = (player: Member) => {
+    const assignment = player.assignments?.find(a => {
+      if (!selectedDiscipline || !clubConfig) return false;
+      const disc = clubConfig.disciplines.find(d => d.id === selectedDiscipline);
+      const discName = disc?.name || '';
+      const aDisc = (a.discipline || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const dName = (discName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return a.discipline_id === selectedDiscipline || aDisc === dName;
+    });
+    return assignment?.category || 'Sin Categoría';
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -284,7 +343,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       ) : (
         <div className="space-y-8 animate-fade-in">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PUNTOS_ACUMULADOS')) && (
               <div className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-primary-500/30 transition-all group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-primary-500/5 rounded-bl-full"></div>
@@ -344,6 +403,30 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                 </div>
               </div>
             )}
+
+            {/* APTOS MÉDICOS POR VENCER (30 DÍAS) */}
+            <div 
+              onClick={() => { setMedicalFilter('squad'); setShowMedicalWarningModal(true); }}
+              className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/5 transition-all cursor-pointer group relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-orange-500/5 rounded-bl-full"></div>
+              <div className="flex justify-between items-start relative z-10">
+                <div>
+                  <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 md:mb-3">
+                    Aptos a Vencer <span className="text-orange-500 font-extrabold">(30d)</span>
+                  </p>
+                  <h3 className="text-2xl md:text-5xl font-black text-orange-500 italic tracking-tighter">
+                    {expiringInSquad.length}
+                    <span className="text-[10px] md:text-xs not-italic text-[var(--text-muted)] ml-1.5 font-bold">
+                      / {expiringOverall.length} total
+                    </span>
+                  </h3>
+                </div>
+                <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-orange-500/10 text-orange-500 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/5">
+                  <HeartPulse size={18} md:size={24} className="animate-pulse" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Estadísticas Personales del Plantel */}
@@ -606,6 +689,150 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
           matches={matches} 
           onClose={() => setShowStatsType(null)} 
         />
+      )}
+
+      {showMedicalWarningModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl" onClick={() => setShowMedicalWarningModal(false)} />
+          
+          <div className="relative w-full max-w-2xl bg-surface-card rounded-[2.5rem] border border-[var(--surface-border)] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b border-[var(--surface-border)] flex justify-between items-center bg-surface-ground shrink-0">
+              <div>
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none flex items-center gap-2">
+                  <HeartPulse className="text-orange-500 animate-pulse" size={24} />
+                  Controles de Apto Médico
+                </h3>
+                <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest mt-1">
+                  Jugadores con apto vencido o por vencer en 30 días
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowMedicalWarningModal(false)}
+                className="w-10 h-10 rounded-xl bg-surface-hover flex items-center justify-center text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                type="button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Selector de Filtro */}
+            <div className="p-5 border-b border-[var(--surface-border)] bg-surface-card shrink-0">
+              <div className="flex gap-2 bg-surface-ground p-1.5 rounded-2xl border border-[var(--surface-border)]">
+                <button
+                  type="button"
+                  onClick={() => setMedicalFilter('squad')}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    medicalFilter === 'squad'
+                      ? 'bg-primary-600 text-white shadow-md'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  Plantel Actual ({expiringInSquad.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMedicalFilter('all')}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    medicalFilter === 'all'
+                      ? 'bg-primary-600 text-white shadow-md'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  Todos los Planteles ({expiringOverall.length})
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto p-6 space-y-4 flex-1 bg-surface-ground/30">
+              {displayedMedicalPlayers.length > 0 ? (
+                displayedMedicalPlayers.map((player) => {
+                  const getInitials = (name: string) => {
+                    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                  };
+                  
+                  // Calculate remaining days details
+                  const getRemainingDaysLabel = (expiryDateStr: string) => {
+                    const expiry = new Date(expiryDateStr);
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    expiry.setHours(0,0,0,0);
+                    const diffTime = expiry.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays < 0) {
+                      return {
+                        text: `Venció hace ${Math.abs(diffDays)} días`,
+                        style: 'bg-red-500/10 text-red-500 border border-red-500/20'
+                      };
+                    } else if (diffDays === 0) {
+                      return {
+                        text: 'Vence hoy',
+                        style: 'bg-orange-500/10 text-orange-500 border border-orange-500/20 shadow-orange-500/10'
+                      };
+                    } else {
+                      return {
+                        text: `Vence en ${diffDays} días`,
+                        style: 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      };
+                    }
+                  };
+
+                  const remainingDays = getRemainingDaysLabel(player.medical!.expiry_date);
+
+                  return (
+                    <div 
+                      key={player.id}
+                      className="flex items-center justify-between p-4 bg-surface-card rounded-2xl border border-[var(--surface-border)] hover:border-primary-500/20 transition-all gap-4 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-surface-hover overflow-hidden shrink-0 relative border border-[var(--surface-border)] flex items-center justify-center">
+                          {player.photourl ? (
+                            <img src={player.photourl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-xs font-black text-primary-600 italic">
+                              {getInitials(player.name)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-[var(--text-main)] uppercase truncate">
+                            {player.name}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">
+                            <span>DNI: {player.dni || 'N/A'}</span>
+                            <span className="opacity-30">•</span>
+                            <span className="text-primary-500 font-extrabold">{getPlayerCategoryName(player)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end shrink-0 gap-1 text-right">
+                        <span className="text-[9px] font-black uppercase text-[var(--text-main)] tracking-wider">
+                          VTO: {player.medical!.expiry_date.split('-').reverse().join('/')}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${remainingDays.style}`}>
+                          {remainingDays.text}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-16 text-center border-2 border-dashed border-[var(--surface-border)] rounded-3xl bg-surface-card">
+                  <Heart className="mx-auto text-emerald-500 mb-4 opacity-50 h-12 w-12 animate-pulse" />
+                  <p className="text-xs font-black uppercase text-[var(--text-main)] tracking-widest">
+                    ¡Todo bajo control!
+                  </p>
+                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">
+                    No hay jugadores con vencimientos en los próximos 30 días.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

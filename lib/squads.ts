@@ -31,6 +31,7 @@ export const saveMatchSquad = async (
       discipline: squad.discipline,
       notes: squad.notes,
       appointment_time: squad.appointment_time,
+      location: squad.location,
       updated_at: new Date().toISOString()
     }, { onConflict: 'match_id' })
     .select()

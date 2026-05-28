@@ -457,7 +457,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-surface-ground/95 backdrop-blur-3xl z-[500] flex items-center justify-center p-0 md:p-10 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-0 md:p-10 animate-fade-in">
           <div className="bg-surface-card w-full max-w-6xl h-full md:h-[90vh] md:rounded-[3rem] shadow-2xl flex flex-col border border-[var(--surface-border)] overflow-hidden">
             <div className="px-6 md:px-10 py-5 flex justify-between items-center border-b border-[var(--surface-border)] shrink-0 bg-surface-hover">
               <div className="flex items-center gap-4">

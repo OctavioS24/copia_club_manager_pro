@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Star, Check, X, Loader2, Save, Info, DollarSign } from 'lucide-react';
+import { Users, Star, Check, X, Loader2, Save, Info, DollarSign, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Match, Member, MatchSquadPlayer } from '../../types';
 import { getMatchSquad, saveMatchSquad } from '../../lib/squads';
@@ -30,6 +30,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const [selection, setSelection] = useState<Record<string, { selected: boolean, starting: boolean }>>({});
   const [notes, setNotes] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
+  const [location, setLocation] = useState('');
 
   useEffect(() => {
     const loadSquadAndDebts = async () => {
@@ -38,6 +39,11 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         // Cargar convocatoria existente
         const existingSquad = await getMatchSquad(match.id);
         
+        // Cargar rival para obtener la ubicación por defecto
+        const { data: rivalsData } = await supabase.from('rivals').select('*');
+        const matchRival = rivalsData?.find(r => r.name === match.hometeam || r.name === match.awayteam);
+        const defaultLocation = matchRival?.address_url || '';
+
         // Cargar morosos
         const { data: debts } = await db.fees.getAllDebts();
         if (debts) {
@@ -63,11 +69,14 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         if (existingSquad) {
           setNotes(existingSquad.notes || '');
           setAppointmentTime(existingSquad.appointment_time || '');
+          setLocation(existingSquad.location || defaultLocation);
           existingSquad.players?.forEach(sp => {
             if (initialSelection[sp.player_id]) {
               initialSelection[sp.player_id] = { selected: true, starting: sp.is_starting };
             }
           });
+        } else {
+          setLocation(defaultLocation);
         }
 
         setSelection(initialSelection);
@@ -79,7 +88,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
     };
 
     loadSquadAndDebts();
-  }, [match.id, players]);
+  }, [match.id, match.hometeam, match.awayteam, players]);
 
   const toggleSelected = (playerId: string) => {
     setSelection(prev => {
@@ -136,7 +145,8 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
           category_id: match.categoryid || (match as any).category_id,
           discipline: discipline,
           notes: notes,
-          appointment_time: appointmentTime || null
+          appointment_time: appointmentTime || null,
+          location: location || null
         },
         playersToSave
       );
@@ -150,10 +160,75 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
     }
   };
 
-  const playersList = [...players].sort((a, b) => a.name.localeCompare(b.name));
+  const playersUpToDate = players.filter(player => !(playerDebts.has(player.id) && !activeCommitments.has(player.id)));
+  const playersWithDebts = players.filter(player => playerDebts.has(player.id) && !activeCommitments.has(player.id));
+
+  const sortedUpToDate = [...playersUpToDate].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedWithDebts = [...playersWithDebts].sort((a, b) => a.name.localeCompare(b.name));
+
+  const renderPlayerCard = (player: Member) => {
+    const selData = selection[player.id] || { selected: false, starting: false };
+    const hasDebt = playerDebts.has(player.id) && !activeCommitments.has(player.id);
+    return (
+      <div 
+        key={player.id}
+        className={`p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between gap-4 group cursor-pointer ${
+          selData.selected 
+            ? (selData.starting ? 'border-primary-600 bg-primary-600/5 shadow-xl shadow-primary-900/5' : 'border-[var(--surface-border)] bg-surface-ground') 
+            : 'border-[var(--surface-border)] bg-surface-card grayscale hover:grayscale-0 opacity-40 hover:opacity-100 hover:scale-[1.01]'
+        }`}
+        onClick={() => toggleSelected(player.id)}
+      >
+        <div className="flex items-center gap-6 flex-1">
+          <div className="relative">
+            <img 
+              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
+              alt={player.name}
+              className={`w-14 h-14 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-lg' : 'border-[var(--surface-border)] opacity-30 group-hover:opacity-100'}`}
+            />
+            {selData.selected && (
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-surface-card shadow-lg">
+                <Check size={12} className="text-white" strokeWidth={4} />
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+               <p className={`text-sm font-black uppercase italic tracking-tighter ${selData.selected ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>{player.name}</p>
+               {hasDebt && (
+                 <div className="bg-orange-500/10 text-orange-500 p-1.5 rounded-lg animate-pulse border border-orange-500/20" title="Jugador con deuda pendiente / Compromiso activo acuerda plan de pagos">
+                   <DollarSign size={10} strokeWidth={4} />
+                 </div>
+               )}
+            </div>
+            <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2 opacity-60">
+            {player.dni ? `Documento: ${player.dni}` : 'IDENTIDAD NO REGISTRADA'} 
+            {selData.selected ? (selData.starting ? ' • ESTRATEGIA: TITULAR' : ' • ESTRATEGIA: BANCO') : ' • ESTADO: DISPONIBLE'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button 
+            type="button"
+            onClick={() => toggleStarting(player.id)}
+            disabled={!selData.selected}
+            className={`p-4 rounded-2xl border-2 transition-all ${
+              selData.starting 
+                ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-600/30' 
+                : (selData.selected ? 'bg-surface-card border-[var(--surface-border)] text-[var(--text-muted)] hover:text-primary-500 hover:border-primary-500 shadow-sm' : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)]/20 cursor-not-allowed opacity-20')
+            }`}
+            title={selData.starting ? 'Remover Titular' : 'Marcar como Titular'}
+          >
+            <Star size={20} fill={selData.starting ? 'currentColor' : 'none'} strokeWidth={selData.starting ? 1 : 2} />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -234,7 +309,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
               )}
 
               {/* Horarios de Convocatoria */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-2">
                 <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
                   <div>
                     <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 block italic opacity-60">Hora de Inicio del Partido</span>
@@ -264,68 +339,75 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                     <Users size={24} />
                   </div>
                 </div>
+
+                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm group">
+                  <div className="flex-1 mr-4">
+                    <label htmlFor="location-field" className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1 block italic">
+                      Ubicación del Partido
+                    </label>
+                    <input
+                      id="location-field"
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Dirección o enlace de mapa"
+                      className="w-full bg-surface-card border-2 border-[var(--surface-border)] hover:border-emerald-500/50 focus:border-emerald-600 rounded-2xl px-5 py-3 text-xs font-bold text-[var(--text-main)] outline-none transition-all mt-1"
+                    />
+                  </div>
+                  {location ? (
+                    <a
+                      href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-2xl border border-emerald-500/20 shadow-xl self-end flex items-center gap-1.5 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
+                      title="Abrir ubicación en Google Maps"
+                    >
+                      <MapPin size={24} />
+                      <span className="text-[9px] font-black tracking-widest leading-none">IR</span>
+                    </a>
+                  ) : (
+                    <div className="p-4 bg-emerald-600/10 text-emerald-500 rounded-2xl border border-emerald-500/20 shadow-xl self-end">
+                      <MapPin size={24} />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Player Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {playersList.map((player) => {
-                  const selData = selection[player.id] || { selected: false, starting: false };
-                  return (
-                    <div 
-                      key={player.id}
-                      className={`p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between gap-4 group cursor-pointer ${
-                        selData.selected 
-                          ? (selData.starting ? 'border-primary-600 bg-primary-600/5 shadow-xl shadow-primary-900/5' : 'border-[var(--surface-border)] bg-surface-ground') 
-                          : 'border-[var(--surface-border)] bg-surface-card grayscale hover:grayscale-0 opacity-40 hover:opacity-100 hover:scale-[1.01]'
-                      }`}
-                      onClick={() => toggleSelected(player.id)}
-                    >
-                      <div className="flex items-center gap-6 flex-1">
-                        <div className="relative">
-                          <img 
-                            src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
-                            alt={player.name}
-                            className={`w-14 h-14 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-lg' : 'border-[var(--surface-border)] opacity-30 group-hover:opacity-100'}`}
-                          />
-                          {selData.selected && (
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-surface-card shadow-lg">
-                              <Check size={12} className="text-white" strokeWidth={4} />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3">
-                             <p className={`text-sm font-black uppercase italic tracking-tighter ${selData.selected ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>{player.name}</p>
-                             {playerDebts.has(player.id) && !activeCommitments.has(player.id) && (
-                               <div className="bg-orange-500/10 text-orange-500 p-1.5 rounded-lg animate-pulse border border-orange-500/20" title="Jugador con deuda pendiente / Compromiso activo suspende advertencia">
-                                 <DollarSign size={10} strokeWidth={4} />
-                               </div>
-                             )}
-                          </div>
-                          <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2 opacity-60">
-                          {player.dni ? `Documento: ${player.dni}` : 'IDENTIDAD NO REGISTRADA'} 
-                          {selData.selected ? (selData.starting ? ' • ESTRATEGIA: TITULAR' : ' • ESTRATEGIA: BANCO') : ' • ESTADO: DISPONIBLE'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button 
-                          onClick={() => toggleStarting(player.id)}
-                          disabled={!selData.selected}
-                          className={`p-4 rounded-2xl border-2 transition-all ${
-                            selData.starting 
-                              ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-600/30' 
-                              : (selData.selected ? 'bg-surface-card border-[var(--surface-border)] text-[var(--text-muted)] hover:text-primary-500 hover:border-primary-500 shadow-sm' : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)]/20 cursor-not-allowed opacity-20')
-                          }`}
-                          title={selData.starting ? 'Remover Titular' : 'Marcar como Titular'}
-                        >
-                          <Star size={20} fill={selData.starting ? 'currentColor' : 'none'} strokeWidth={selData.starting ? 1 : 2} />
-                        </button>
-                      </div>
+              {/* Listado de Jugadores por Estado de Pago */}
+              <div className="space-y-8">
+                {/* Primera sección: Jugadores con pagos al día */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 border-b border-[var(--surface-border)] pb-3">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                    <h3 className="text-xs font-black uppercase text-emerald-500 tracking-[0.2em] italic">Jugadores al día ({sortedUpToDate.length})</h3>
+                  </div>
+                  {sortedUpToDate.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {sortedUpToDate.map(renderPlayerCard)}
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="p-6 bg-surface-ground rounded-2xl border border-dashed border-[var(--surface-border)] text-center text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider italic">
+                      No hay jugadores sin deudas pendientes.
+                    </div>
+                  )}
+                </div>
+
+                {/* Segunda sección: Jugadores que deben */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 border-b border-[var(--surface-border)] pb-3">
+                    <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    <h3 className="text-xs font-black uppercase text-red-500 tracking-[0.2em] italic">Jugadores con saldos pendientes ({sortedWithDebts.length})</h3>
+                  </div>
+                  {sortedWithDebts.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {sortedWithDebts.map(renderPlayerCard)}
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-emerald-500/5 text-emerald-500 rounded-2xl border border-dashed border-emerald-500/20 text-center text-xs font-bold uppercase tracking-wider italic">
+                      ¡Todos los jugadores están al día con sus pagos! 🎉
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Notes Section */}
