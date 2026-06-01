@@ -168,7 +168,22 @@ medical: {
       .getPublicUrl(filePath);
 
     return data.publicUrl;
-  }
+  },
+
+  getPhysiotherapyByPlayer: (playerId: string) => supabase
+    .from('player_physiotherapy')
+    .select('*')
+    .eq('member_id', playerId)
+    .order('treatment_date', { ascending: false }),
+
+  upsertPhysiotherapy: (physio: any) => supabase
+    .from('player_physiotherapy')
+    .upsert(physio),
+
+  deletePhysiotherapy: (id: string) => supabase
+    .from('player_physiotherapy')
+    .delete()
+    .eq('id', id)
 },
 tournaments: {
     getAll: async () => {
@@ -530,11 +545,13 @@ tournaments: {
       .eq('id', id)
   },
   attendance: {
-    getByDate: (date: string, discipline: string) => supabase
-      .from('attendance')
-      .select('*')
-      .eq('date', date)
-      .eq('discipline', discipline),
+    getByDate: (date: string, discipline: string) => {
+      return supabase
+        .from('attendance')
+        .select('*')
+        .eq('date', date)
+        .eq('discipline', discipline);
+    },
     
     upsert: (records: any[]) => supabase
       .from('attendance')

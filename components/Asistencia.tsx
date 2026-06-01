@@ -101,7 +101,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
   // Cargar asistencia existente incluyendo justificaciones
   useEffect(() => {
     const fetchAttendance = async () => {
-      if (!currentDisciplineName || !date) return;
+      if (!currentDisciplineName || !date || !selectedDivision) return;
       
       setIsLoading(true);
       try {
@@ -109,6 +109,8 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
         const normalizedDisc = currentDisciplineName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const { data, error } = await db.attendance.getByDate(date, normalizedDisc);
         if (error) throw error;
+        
+        console.log(`Asistencia - Fetched for Date: ${date}, Disc: ${normalizedDisc}:`, data);
         
         const records: Record<string, { status: string; excuse_type: string; excuse_detail: string; }> = {};
         data?.forEach((record: any) => {
@@ -127,7 +129,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
     };
 
     fetchAttendance();
-  }, [date, currentDisciplineName]);
+  }, [date, currentDisciplineName, selectedDivision]);
 
 
   const handleSave = async () => {

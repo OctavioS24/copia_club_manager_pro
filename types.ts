@@ -66,6 +66,12 @@ export interface MemberAssignment {
   role?: AppRole;
   discipline_id?: string;
   category_id?: string;
+  dorsal?: string;
+  plays_since_year?: string;
+  skilled_leg?: string;
+  training_days_per_week?: string;
+  gym_attendance?: boolean;
+  gym_frequency?: string;
 }
 
 export interface DisciplinePosition {
@@ -161,6 +167,19 @@ export interface PlayerInjury {
   estimated_recovery?: string;
   release_date?: string;
   injury_type?: InjuryType;
+}
+
+export interface PlayerPhysiotherapy {
+  id?: string;
+  member_id: string;
+  in_physiotherapy: boolean;
+  sessions_requested: number;
+  sessions_completed: number;
+  status: 'cumplidas' | 'no cumplidas';
+  medical_order_url?: string;
+  discharge_url?: string;
+  treatment_date: string;
+  notes?: string;
 }
 
 export interface Player {

@@ -204,6 +204,13 @@ function App() {
     }
   }, [config.logo_url, config.name]);
 
+  // Guardar última ruta de planteles para persistir navegación
+  useEffect(() => {
+    if (location.pathname.startsWith('/squads')) {
+      localStorage.setItem('last_squads_path', location.pathname);
+    }
+  }, [location.pathname]);
+
   const handleSaveMember = async (member: Member) => {
     try {
       await db.members.upsert(member);
@@ -254,7 +261,17 @@ function App() {
       {user && (
         <TopNav 
           currentView={location.pathname === '/' || location.pathname.startsWith('/squads') ? 'squads' : location.pathname.slice(1)} 
-          setView={(v) => navigate(v === 'squads' ? '/' : `/${v}`)} 
+          setView={(v) => {
+            if (v === 'squads') {
+              const lastPath = localStorage.getItem('last_squads_path');
+              navigate(lastPath || '/');
+            } else if (v === 'squads_reset') {
+              localStorage.removeItem('last_squads_path');
+              navigate('/');
+            } else {
+              navigate(`/${v}`);
+            }
+          }} 
           isDarkMode={isDarkMode} 
           toggleTheme={() => setIsDarkMode(!isDarkMode)} 
           config={config}

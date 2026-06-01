@@ -47,7 +47,7 @@ const TopNav: React.FC<TopNavProps> = ({
       <nav className="fixed top-0 left-0 right-0 h-16 md:h-24 bg-[var(--surface-card)]/70 backdrop-blur-2xl border-b border-[var(--surface-border)] z-[150] px-3 md:px-12 flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-6 min-w-0">
           <div 
-            onClick={() => handleSetView('squads')}
+            onClick={() => handleSetView('squads_reset')}
             className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-primary-500 flex items-center justify-center cursor-pointer shadow-lg shadow-primary-500/20 hover:scale-105 transition-transform shrink-0"
           >
             {config.logo_url ? <img src={config.logo_url} className="w-full h-full object-contain p-1 md:p-2" /> : <Shield size={18} className="text-primary-contrast" />}

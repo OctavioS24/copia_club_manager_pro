@@ -7,22 +7,53 @@ interface PlayerLegajoResumidoProps {
   player: Member;
   onClose: () => void;
   onPlayerUpdated?: () => void;
+  currentDisciplineId?: string;
+  currentCategoryId?: string;
 }
 
-const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onClose, onPlayerUpdated }) => {
+const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ 
+  player, 
+  onClose, 
+  onPlayerUpdated,
+  currentDisciplineId,
+  currentCategoryId
+}) => {
   const [activeTab, setActiveTab] = useState<'ID' | 'DEPORTIVO' | 'SALUD' | 'CONTACTO' | 'ESCOLARIDAD'>('ID');
   const [titularityCount, setTitularityCount] = useState<number | null>(null);
 
+  // Find matching assignment
+  const matchedAssignment = player.assignments?.find((as: any) => {
+    const isCategoryMatch = currentCategoryId 
+      ? (as.category_id === currentCategoryId || as.category === currentCategoryId)
+      : false;
+    const isDisciplineMatch = currentDisciplineId 
+      ? (as.discipline_id === currentDisciplineId || as.discipline === currentDisciplineId)
+      : false;
+    return isCategoryMatch && isDisciplineMatch;
+  });
+
   // State for editable sports form
-  const [sportsForm, setSportsForm] = useState({
-    dorsal: player.dorsal || '',
-    plays_since_year: player.plays_since_year || '',
-    frequent_position: player.frequent_position || '',
-    skilled_leg: player.skilled_leg || '',
-    injury_history: player.injury_history || '',
-    training_days_per_week: player.training_days_per_week || '',
-    gym_attendance: player.gym_attendance || false,
-    gym_frequency: player.gym_frequency || ''
+  const [sportsForm, setSportsForm] = useState(() => {
+    const matched = player.assignments?.find((as: any) => {
+      const isCategoryMatch = currentCategoryId 
+        ? (as.category_id === currentCategoryId || as.category === currentCategoryId)
+        : false;
+      const isDisciplineMatch = currentDisciplineId 
+        ? (as.discipline_id === currentDisciplineId || as.discipline === currentDisciplineId)
+        : false;
+      return isCategoryMatch && isDisciplineMatch;
+    });
+
+    return {
+      dorsal: matched?.dorsal || player.dorsal || '',
+      plays_since_year: matched?.plays_since_year || player.plays_since_year || '',
+      frequent_position: matched?.position || player.frequent_position || '',
+      skilled_leg: matched?.skilled_leg || player.skilled_leg || '',
+      injury_history: player.injury_history || '',
+      training_days_per_week: matched?.training_days_per_week || player.training_days_per_week || '',
+      gym_attendance: matched?.gym_attendance !== undefined ? matched?.gym_attendance : (player.gym_attendance || false),
+      gym_frequency: matched?.gym_frequency || player.gym_frequency || ''
+    };
   });
 
   // State for editable schooling form
@@ -239,17 +270,50 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
 
       if (fetchErr) throw fetchErr;
 
+      // Update specific category-level assignment if matches exist
+      let updatedAssignments = currentMember.assignments || [];
+      const hasMatch = currentCategoryId && currentDisciplineId;
+
+      if (hasMatch) {
+        updatedAssignments = (currentMember.assignments || []).map((as: any) => {
+          const isCategoryMatch = currentCategoryId 
+            ? (as.category_id === currentCategoryId || as.category === currentCategoryId)
+            : false;
+          const isDisciplineMatch = currentDisciplineId 
+            ? (as.discipline_id === currentDisciplineId || as.discipline === currentDisciplineId)
+            : false;
+          if (isCategoryMatch && isDisciplineMatch) {
+            return {
+              ...as,
+              dorsal: sportsForm.dorsal,
+              plays_since_year: sportsForm.plays_since_year,
+              position: sportsForm.frequent_position,
+              skilled_leg: sportsForm.skilled_leg,
+              training_days_per_week: sportsForm.training_days_per_week,
+              gym_attendance: sportsForm.gym_attendance,
+              gym_frequency: sportsForm.gym_frequency
+            };
+          }
+          return as;
+        });
+      }
+
       const updatedMember = {
         ...currentMember,
-        dorsal: sportsForm.dorsal,
-        plays_since_year: sportsForm.plays_since_year,
-        frequent_position: sportsForm.frequent_position,
-        skilled_leg: sportsForm.skilled_leg,
         injury_history: sportsForm.injury_history,
-        training_days_per_week: sportsForm.training_days_per_week,
-        gym_attendance: sportsForm.gym_attendance,
-        gym_frequency: sportsForm.gym_frequency
+        assignments: updatedAssignments
       };
+
+      // If we are configuring generally, update root fields on member as fallback
+      if (!hasMatch) {
+        updatedMember.dorsal = sportsForm.dorsal;
+        updatedMember.plays_since_year = sportsForm.plays_since_year;
+        updatedMember.frequent_position = sportsForm.frequent_position;
+        updatedMember.skilled_leg = sportsForm.skilled_leg;
+        updatedMember.training_days_per_week = sportsForm.training_days_per_week;
+        updatedMember.gym_attendance = sportsForm.gym_attendance;
+        updatedMember.gym_frequency = sportsForm.gym_frequency;
+      }
 
       const { error: saveErr } = await supabase
         .from('members')
@@ -410,6 +474,15 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({ player, onC
 
             {activeTab === 'DEPORTIVO' && (
               <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                {matchedAssignment && (
+                  <div className="p-4 bg-primary-500/10 border border-primary-500/20 rounded-2xl flex items-center gap-3">
+                    <Shirt size={18} className="text-primary-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#00E5FF]">Configuración Deportiva Específica</p>
+                      <p className="text-xs font-bold text-[var(--text-main)] uppercase">{matchedAssignment.discipline} - {matchedAssignment.category}</p>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Dorsal (No. Camiseta)</label>

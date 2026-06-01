@@ -101,8 +101,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
         const savedData = persistedPlayers.find(p => p.dni === m.dni || p.id === m.id);
         players.push({
           ...m,
-          number: m.dorsal || savedData?.number || '00',
-          position: assignment.position || savedData?.position || '',
+          number: assignment.dorsal || m.dorsal || savedData?.number || '00',
+          position: assignment.position || m.frequent_position || savedData?.position || '',
         });
       } else {
         // Agrupar técnicos por su rol
@@ -309,6 +309,8 @@ const PlantelLista: React.FC<PlantelListaProps> = ({
       {selectedPlayer && (
         <PlayerLegajoResumido 
           player={selectedPlayer} 
+          currentDisciplineId={disciplineId}
+          currentCategoryId={categoryId}
           onClose={() => setSelectedPlayer(null)} 
           onPlayerUpdated={async () => {
              try {

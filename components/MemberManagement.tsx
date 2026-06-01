@@ -36,6 +36,45 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const [availablePositions, setAvailablePositions] = useState<Record<string, DisciplinePosition[]>>({});
   const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCategoryConfigIdx, setSelectedCategoryConfigIdx] = useState<string>('global');
+
+  // Helper to get active sports value
+  const getSportsValue = (key: string): any => {
+    if (selectedCategoryConfigIdx === 'global') {
+      return (formData as any)[key];
+    }
+    const idx = parseInt(selectedCategoryConfigIdx);
+    const as = formData.assignments?.[idx];
+    if (!as) return '';
+    
+    // special mapping for position
+    if (key === 'frequent_position') {
+      return as.position || '';
+    }
+    
+    const val = (as as any)[key];
+    if (val !== undefined && val !== null) return val;
+    return '';
+  };
+
+  // Helper to set active sports value
+  const setSportsValue = (key: string, value: any) => {
+    if (selectedCategoryConfigIdx === 'global') {
+      setFormData(prev => ({ ...prev, [key]: value }));
+      return;
+    }
+    const idx = parseInt(selectedCategoryConfigIdx);
+    const newAss = [...(formData.assignments || [])];
+    if (newAss[idx]) {
+      // special mapping for position
+      if (key === 'frequent_position') {
+        newAss[idx] = { ...newAss[idx], position: value };
+      } else {
+        newAss[idx] = { ...newAss[idx], [key]: value };
+      }
+      setFormData(prev => ({ ...prev, assignments: newAss }));
+    }
+  };
 
   const [formData, setFormData] = useState<Partial<Member>>({
     name: '', dni: '', gender: 'Masculino', birthdate: '', email: '', phone: '',
@@ -112,6 +151,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const handleEdit = (member: Member) => {
     setSelectedMember(member);
     setSaveError(null);
+    setSelectedCategoryConfigIdx('global');
     let initialContacts = member.contacts_list || [];
     if (initialContacts.length === 0 && member.tutor && member.tutor.name) {
       initialContacts = [{
@@ -154,6 +194,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const handleNew = () => {
     setSelectedMember(null);
     setSaveError(null);
+    setSelectedCategoryConfigIdx('global');
     setFormData({
       name: '', dni: '', gender: 'Masculino', birthdate: '', email: '', phone: '',
       photourl: '', address: '', city: '', province: '', postalcode: '',
@@ -556,51 +597,105 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
 
                   {activeTab === 'sports_data' && (
                     <div className="space-y-8 animate-fade-in">
-                      <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                          <Shirt size={16} />
-                        </div>
-                        Datos Deportivos
-                      </h4>
+                      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                        <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                            <Shirt size={16} />
+                          </div>
+                          Datos Deportivos
+                        </h4>
+                      </div>
+
+                      {/* Selector de Ámbito */}
+                      <div className="p-5 bg-blue-500/5 rounded-3xl border border-blue-500/10 space-y-3">
+                        <label className={labelClasses}>Ámbito de Configuración Deportiva</label>
+                        <select 
+                          value={selectedCategoryConfigIdx} 
+                          onChange={e => setSelectedCategoryConfigIdx(e.target.value)} 
+                          className={selectClasses + " border-blue-500/20 text-blue-600 dark:text-blue-400"}
+                        >
+                          <option value="global">Configuración General (Por defecto para todas las categorías)</option>
+                          {(formData.assignments || []).map((as, idx) => (
+                            <option key={idx} value={String(idx)}>
+                              Específica: {as.discipline} - {as.category} {as.role ? `(${as.role})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider ml-1">
+                          {selectedCategoryConfigIdx === 'global' 
+                            ? "Los cambios aplicados aquí servirán de base general para el jugador en todas sus disciplinas." 
+                            : `Configurando datos deportivos exclusivos para el desempeño en esta categoría.`}
+                        </p>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className={labelClasses}>Dorsal (No. Camiseta)</label>
                           <input 
-                            value={formData.dorsal || ''} 
-                            onChange={e => setFormData({...formData, dorsal: e.target.value})} 
+                            value={getSportsValue('dorsal') || ''} 
+                            onChange={e => setSportsValue('dorsal', e.target.value)} 
                             className={inputClasses} 
-                            placeholder="EJ: 10" 
+                            placeholder={selectedCategoryConfigIdx === 'global' ? "EJ: 10" : (formData.dorsal ? `HEREDADO: ${formData.dorsal}` : "EJ: 10")} 
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label className={labelClasses}>Desde qué año juega en el club</label>
                           <input 
-                            value={formData.plays_since_year || ''} 
-                            onChange={e => setFormData({...formData, plays_since_year: e.target.value})} 
+                            value={getSportsValue('plays_since_year') || ''} 
+                            onChange={e => setSportsValue('plays_since_year', e.target.value)} 
                             className={inputClasses} 
-                            placeholder="EJ: 2018" 
+                            placeholder={selectedCategoryConfigIdx === 'global' ? "EJ: 2018" : (formData.plays_since_year ? `HEREDADO: ${formData.plays_since_year}` : "EJ: 2018")} 
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className={labelClasses}>Puesto Frecuente</label>
-                          <input 
-                            value={formData.frequent_position || ''} 
-                            onChange={e => setFormData({...formData, frequent_position: e.target.value.toUpperCase()})} 
-                            className={inputClasses} 
-                            placeholder="EJ: DELANTERO" 
-                          />
+                          <label className={labelClasses}>Puesto</label>
+                          {selectedCategoryConfigIdx !== 'global' && (() => {
+                            const activeAs = formData.assignments?.[parseInt(selectedCategoryConfigIdx)];
+                            const positions = activeAs ? (availablePositions[activeAs.discipline] || []) : [];
+                            if (positions.length > 0) {
+                              return (
+                                <select 
+                                  value={getSportsValue('frequent_position')} 
+                                  onChange={e => setSportsValue('frequent_position', e.target.value)} 
+                                  className={selectClasses}
+                                >
+                                  <option value="">-- SELECCIONAR PUESTO --</option>
+                                  {positions.map(p => (
+                                    <option key={p.id} value={p.position}>{p.position}</option>
+                                  ))}
+                                </select>
+                              );
+                            }
+                            return null;
+                          })()}
+                          {(selectedCategoryConfigIdx === 'global' || (() => {
+                            const activeAs = formData.assignments?.[parseInt(selectedCategoryConfigIdx)];
+                            const positions = activeAs ? (availablePositions[activeAs.discipline] || []) : [];
+                            return positions.length === 0;
+                          })()) && (
+                            <input 
+                              value={getSportsValue('frequent_position') || ''} 
+                              onChange={e => setSportsValue('frequent_position', e.target.value.toUpperCase())} 
+                              className={inputClasses} 
+                              placeholder={selectedCategoryConfigIdx === 'global' ? "EJ: DELANTERO" : (formData.frequent_position ? `HEREDADO: ${formData.frequent_position}` : "EJ: DELANTERO")} 
+                            />
+                          )}
                         </div>
 
                         <div className="space-y-2">
                           <label className={labelClasses}>Pierna Hábil</label>
                           <select 
-                            value={formData.skilled_leg || ''} 
-                            onChange={e => setFormData({...formData, skilled_leg: e.target.value})} 
+                            value={getSportsValue('skilled_leg') || ''} 
+                            onChange={e => setSportsValue('skilled_leg', e.target.value)} 
                             className={selectClasses}
                           >
-                            <option value="">No definido</option>
+                            {selectedCategoryConfigIdx !== 'global' ? (
+                              <option value="">Heredar: {formData.skilled_leg || 'No definido'}</option>
+                            ) : (
+                              <option value="">No definido</option>
+                            )}
                             <option value="Derecha">Derecha (Diestro)</option>
                             <option value="Izquierda">Izquierda (Zurdo)</option>
                             <option value="Ambidiestro">Ambidiestro</option>
@@ -610,33 +705,40 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                         <div className="space-y-2">
                           <label className={labelClasses}>Días de entrenamiento por semana</label>
                           <input 
-                            value={formData.training_days_per_week || ''} 
-                            onChange={e => setFormData({...formData, training_days_per_week: e.target.value})} 
+                            value={getSportsValue('training_days_per_week') || ''} 
+                            onChange={e => setSportsValue('training_days_per_week', e.target.value)} 
                             className={inputClasses} 
-                            placeholder="EJ: 3" 
+                            placeholder={selectedCategoryConfigIdx === 'global' ? "EJ: 3" : (formData.training_days_per_week ? `HEREDADO: ${formData.training_days_per_week}` : "EJ: 3")} 
                           />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col justify-end">
                           <label className={labelClasses}>Asiste al Gimnasio</label>
                           <select 
-                            value={formData.gym_attendance ? 'Sí' : 'No'} 
-                            onChange={e => setFormData({...formData, gym_attendance: e.target.value === 'Sí'})} 
+                            value={getSportsValue('gym_attendance') === true ? 'Sí' : getSportsValue('gym_attendance') === false ? 'No' : ''} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setSportsValue('gym_attendance', val === 'Sí' ? true : val === 'No' ? false : undefined);
+                            }} 
                             className={selectClasses}
                           >
+                            {selectedCategoryConfigIdx !== 'global' ? (
+                              <option value="">Heredar: {formData.gym_attendance ? 'Sí' : 'No'}</option>
+                            ) : null}
                             <option value="No">No</option>
                             <option value="Sí">Sí</option>
                           </select>
                         </div>
 
-                        {formData.gym_attendance && (
-                          <div className="space-y-2 col-span-1 md:col-span-2">
+                        {/* Gym frequency section */}
+                        {(getSportsValue('gym_attendance') === true || (getSportsValue('gym_attendance') === '' && formData.gym_attendance)) && (
+                          <div className="space-y-2 col-span-1 md:col-span-2 animate-fade-in">
                             <label className={labelClasses}>Frecuencia del Gimnasio</label>
                             <input 
-                              value={formData.gym_frequency || ''} 
-                              onChange={e => setFormData({...formData, gym_frequency: e.target.value.toUpperCase()})} 
+                              value={getSportsValue('gym_frequency') || ''} 
+                              onChange={e => setSportsValue('gym_frequency', e.target.value.toUpperCase())} 
                               className={inputClasses} 
-                              placeholder="EJ: 3 VECES POR SEMANA, 1 HORA" 
+                              placeholder={selectedCategoryConfigIdx === 'global' ? "EJ: 3 VECES POR SEMANA, 1 HORA" : (formData.gym_frequency ? `HEREDADO: ${formData.gym_frequency}` : "EJ: 3 VECES POR SEMANA, 1 HORA")} 
                             />
                           </div>
                         )}

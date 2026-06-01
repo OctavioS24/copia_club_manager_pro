@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Heart,
   Upload,
+  Activity,
 } from "lucide-react";
 import { db } from "../../lib/supabase";
 
@@ -61,8 +62,32 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<
-    "ficha" | "enfermeria" | "salud"
+    "ficha" | "enfermeria" | "salud" | "fisioterapia"
   >("ficha");
+
+  // Section 4: Fisioterapia State declarations
+  const [physiotherapies, setPhysiotherapies] = useState<any[]>([]);
+  const [isAddingPhysio, setIsAddingPhysio] = useState(false);
+  const [isUploadingOrder, setIsUploadingOrder] = useState(false);
+  const [isUploadingDischarge, setIsUploadingDischarge] = useState(false);
+  const [physioForm, setPhysioForm] = useState({
+    in_physiotherapy: true,
+    sessions_requested: 10,
+    sessions_completed: 0,
+    status: 'no cumplidas', // 'cumplidas' / 'no cumplidas'
+    medical_order_url: '',
+    discharge_url: '',
+    treatment_date: new Date().toISOString().split("T")[0],
+    notes: '',
+  });
+
+  const [editingPhysioId, setEditingPhysioId] = useState<string | null>(null);
+  const [complianceForm, setComplianceForm] = useState({
+    sessions_completed: 0,
+    status: 'no cumplidas' as 'cumplidas' | 'no cumplidas',
+    in_physiotherapy: true,
+    discharge_url: '',
+  });
 
   // Section 1: Ficha Médica
   const [fichaData, setFichaData] = useState<MedicalRecord>({
@@ -132,6 +157,133 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
     }
   };
 
+  // Section 4: Fisioterapia helper methods
+  const handleUploadOrder = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingOrder(true);
+    try {
+      const url = await db.medical.uploadAttachment(file);
+      setPhysioForm(prev => ({ ...prev, medical_order_url: url }));
+    } catch (err) {
+      console.error(err);
+      alert("Error al subir pedido médico");
+    } finally {
+      setIsUploadingOrder(false);
+    }
+  };
+
+  const handleSavePhysio = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        member_id: player.id,
+        in_physiotherapy: true,
+        sessions_requested: Number(physioForm.sessions_requested) || 0,
+        sessions_completed: 0,
+        status: 'no cumplidas',
+        medical_order_url: physioForm.medical_order_url || null,
+        discharge_url: null,
+        treatment_date: physioForm.treatment_date,
+        notes: physioForm.notes,
+      };
+
+      const { error } = await db.medical.upsertPhysiotherapy(payload);
+      if (error) throw error;
+      
+      alert("Registro de fisioterapia guardado con éxito.");
+      
+      // Reload lists
+      const { data } = await db.medical.getPhysiotherapyByPlayer(player.id);
+      if (data) setPhysiotherapies(data);
+
+      setIsAddingPhysio(false);
+      // Reset form
+      setPhysioForm({
+        in_physiotherapy: true,
+        sessions_requested: 10,
+        sessions_completed: 0,
+        status: 'no cumplidas',
+        medical_order_url: '',
+        discharge_url: '',
+        treatment_date: new Date().toISOString().split("T")[0],
+        notes: '',
+      });
+    } catch (err: any) {
+      console.error("Error saving physiotherapy:", err);
+      alert("Error al guardar registro: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePhysio = async (id: string) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este registro de fisioterapia?")) return;
+    try {
+      const { error } = await db.medical.deletePhysiotherapy(id);
+      if (error) throw error;
+      setPhysiotherapies(prev => prev.filter(p => p.id !== id));
+    } catch (err: any) {
+      console.error("Error deleting physiotherapy:", err);
+      alert("Error al eliminar el registro.");
+    }
+  };
+
+  const startEditingCompliance = (item: any) => {
+    setEditingPhysioId(item.id);
+    setComplianceForm({
+      sessions_completed: item.sessions_completed || 0,
+      status: item.status || 'no cumplidas',
+      in_physiotherapy: item.in_physiotherapy !== false,
+      discharge_url: item.discharge_url || '',
+    });
+  };
+
+  const handleUploadDischargeCompliance = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDischarge(true);
+    try {
+      const url = await db.medical.uploadAttachment(file);
+      setComplianceForm(prev => ({ ...prev, discharge_url: url }));
+    } catch (err) {
+      console.error(err);
+      alert("Error al subir certificado de alta");
+    } finally {
+      setIsUploadingDischarge(false);
+    }
+  };
+
+  const handleSaveCompliance = async (item: any) => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        ...item,
+        sessions_completed: Number(complianceForm.sessions_completed) || 0,
+        status: complianceForm.status,
+        in_physiotherapy: complianceForm.in_physiotherapy,
+        discharge_url: complianceForm.discharge_url || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await db.medical.upsertPhysiotherapy(payload);
+      if (error) throw error;
+
+      alert("Progreso de fisioterapia actualizado con éxito.");
+
+      // Reload lists
+      const { data } = await db.medical.getPhysiotherapyByPlayer(player.id);
+      if (data) setPhysiotherapies(data);
+
+      setEditingPhysioId(null);
+    } catch (err: any) {
+      console.error("Error saving compliance:", err);
+      alert("Error al actualizar progreso: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Section 2: Enfermería (Injuries)
   const [injuryTypes, setInjuryTypes] = useState<InjuryType[]>([]);
   const [injuries, setInjuries] = useState<PlayerInjury[]>([]);
@@ -149,9 +301,10 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
   useEffect(() => {
     const fetchMedicalData = async () => {
       try {
-        const [typesRes, injuriesRes] = await Promise.all([
+        const [typesRes, injuriesRes, physioRes] = await Promise.all([
           db.medical.getInjuryTypes(),
           db.medical.getPlayerInjuries(player.id),
+          db.medical.getPhysiotherapyByPlayer(player.id),
         ]);
 
         if (typesRes.error) {
@@ -195,6 +348,15 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
           );
         } else if (injuriesRes.data) {
           setInjuries(injuriesRes.data);
+        }
+
+        if (physioRes.error) {
+          console.error(
+            "Error cargando historial de fisioterapia:",
+            physioRes.error.message,
+          );
+        } else if (physioRes.data) {
+          setPhysiotherapies(physioRes.data);
         }
       } catch (err) {
         console.error("Error crítico en fetchMedicalData:", err);
@@ -495,6 +657,13 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
             <Heart size={16} md:size={18} />{" "}
             <span className="hidden sm:inline">Sección 3:</span> Salud /
             Antecedentes
+          </button>
+          <button
+            onClick={() => setActiveSubTab("fisioterapia")}
+            className={`px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 md:gap-3 shrink-0 ${activeSubTab === "fisioterapia" ? "bg-primary-600 text-white shadow-xl shadow-primary-600/25" : "text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5"}`}
+          >
+            <Activity size={16} md:size={18} />{" "}
+            <span className="hidden sm:inline">Sección 4:</span> Fisioterapia
           </button>
         </div>
 
@@ -1300,6 +1469,413 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
                     )}
                     Guardar Datos de Salud
                   </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSubTab === "fisioterapia" && (
+            <div className="p-6 md:p-16 animate-fade-in max-w-6xl mx-auto space-y-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 dark:border-white/5 pb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary-600/15 text-primary-600 flex items-center justify-center shrink-0">
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black uppercase text-slate-800 dark:text-white italic tracking-tight">
+                      Sesiones de Fisioterapia y Kinesiología
+                    </h4>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                      Control de sesiones, estado de tratamiento y documentación respaldatoria.
+                    </p>
+                  </div>
+                </div>
+
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingPhysio(!isAddingPhysio)}
+                    className="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl transition-all self-start md:self-auto flex items-center gap-2 shadow-lg shadow-primary-600/20"
+                  >
+                    {isAddingPhysio ? "Volver al Listado" : (
+                      <>
+                        <Plus size={14} /> Registrar Nuevo Tratamiento
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {isAddingPhysio && !readOnly ? (
+                /* Formulario de registro */
+                <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-6 md:p-10 space-y-8">
+                  <h5 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Registrar Episodio / Tratamiento de Rehabilitación
+                  </h5>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    {/* Fecha de Inicio */}
+                    <div className="space-y-3">
+                      <label className={labelClasses}>Fecha del Registro / Inicio</label>
+                      <input
+                        type="date"
+                        value={physioForm.treatment_date}
+                        onChange={(e) =>
+                          setPhysioForm({ ...physioForm, treatment_date: e.target.value })
+                        }
+                        className={inputClasses}
+                      />
+                    </div>
+
+                    {/* Detalle de Lesión / Notas */}
+                    <div className="space-y-3">
+                      <label className={labelClasses}>Detalle de Lesión / Notas</label>
+                      <input
+                        type="text"
+                        value={physioForm.notes}
+                        onChange={(e) =>
+                          setPhysioForm({ ...physioForm, notes: e.target.value.toUpperCase() })
+                        }
+                        className={inputClasses}
+                        placeholder="DESCRIPCIÓN DE LA LESIÓN O REHABILITACIÓN"
+                      />
+                    </div>
+
+                    {/* Sesiones Solicitadas */}
+                    <div className="space-y-3">
+                      <label className={labelClasses}>Sesiones Solicitadas (Pedido)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={physioForm.sessions_requested}
+                        onChange={(e) =>
+                          setPhysioForm({ ...physioForm, sessions_requested: parseInt(e.target.value) || 0 })
+                        }
+                        className={inputClasses}
+                        placeholder="NÚMERO DE SESIONES"
+                      />
+                    </div>
+
+                    {/* Adjunto: Pedido Médico */}
+                    <div className="space-y-3 lg:col-span-3">
+                      <label className={labelClasses}>Adjunto: Pedido Médico (Prescripción)</label>
+                      {physioForm.medical_order_url ? (
+                        <div className="flex items-center justify-between p-4 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-2xl">
+                          <span className="text-[10px] font-black uppercase text-emerald-600 truncate max-w-[150px]">
+                            ¡Cargado con éxito!
+                          </span>
+                          <div className="flex gap-2">
+                            <a
+                              href={physioForm.medical_order_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setPhysioForm(p => ({ ...p, medical_order_url: "" }))}
+                              className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex items-center justify-center h-16 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
+                          <div className="flex items-center gap-2">
+                            {isUploadingOrder ? (
+                              <Loader2 size={14} className="animate-spin text-primary-600" />
+                            ) : (
+                              <Upload size={14} className="text-slate-400" />
+                            )}
+                            <span className="text-[9px] font-black uppercase text-slate-400">
+                              {isUploadingOrder ? "Subiendo..." : "Subir Pedido Médico"}
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleUploadOrder}
+                            disabled={isUploadingOrder}
+                            accept=".pdf,image/*"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSavePhysio}
+                    disabled={isSaving}
+                    className="w-full py-5 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase text-[10px] md:text-xs tracking-widest rounded-2xl transition-all shadow-xl shadow-primary-600/15"
+                  >
+                    {isSaving && <Loader2 className="animate-spin mr-2 inline" size={14} />} Registrar Tratamiento
+                  </button>
+                </div>
+              ) : (
+                /* Listado de tratamiento kinesiologico */
+                <div className="space-y-6">
+                  {physiotherapies.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-6">
+                      {physiotherapies.map((item) => {
+                        const coveragePercent = item.sessions_requested > 0
+                          ? Math.min(100, Math.round((item.sessions_completed / item.sessions_requested) * 100))
+                          : 0;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`bg-white dark:bg-[#0f121a] p-6 rounded-[2rem] border-2 transition-all relative overflow-hidden flex flex-col gap-6 ${
+                              item.in_physiotherapy 
+                                ? "border-primary-500/30 shadow-md shadow-primary-500/2" 
+                                : "border-[var(--surface-border)]"
+                            }`}
+                          >
+                            <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between">
+                              {/* Left details & notes */}
+                              <div className="flex-1 space-y-4">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <span className="text-[10px] font-mono font-black uppercase bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-slate-500 flex items-center gap-1">
+                                    <Calendar size={12} /> {item.treatment_date.split("-").reverse().join("/")}
+                                  </span>
+
+                                  {item.in_physiotherapy ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-500/10 text-primary-500 border border-primary-500/20 text-[9px] font-black uppercase tracking-wider animate-pulse rounded-md">
+                                      <Activity size={10} /> En Kinesiología
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[9px] font-black uppercase tracking-wider rounded-md">
+                                      Finalizado
+                                    </span>
+                                  )}
+
+                                  {item.status === 'cumplidas' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-black uppercase tracking-wider rounded-md">
+                                      Prescripción cumplida
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-black uppercase tracking-wider rounded-md">
+                                      En curso ({item.sessions_requested - item.sessions_completed} restan)
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <h6 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                    Detalle del tratamiento
+                                  </h6>
+                                  <p className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                                    {item.notes || "SIN ESPECIFICACIÓN DE LESIÓN"}
+                                  </p>
+                                </div>
+
+                                {/* Documentos Adjuntos */}
+                                <div className="flex items-center gap-3 pt-2">
+                                  {item.medical_order_url && (
+                                    <a
+                                      href={item.medical_order_url}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600/10 text-primary-600 hover:bg-primary-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                      <FileText size={10} /> Pedido Médico
+                                    </a>
+                                  )}
+                                  {item.discharge_url && (
+                                    <a
+                                      href={item.discharge_url}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                      <ShieldCheck size={10} /> Certificado Alta
+                                    </a>
+                                  )}
+                                  {!item.medical_order_url && !item.discharge_url && (
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest italic">
+                                      Sin archivos adjuntos
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Session status count visualizer */}
+                              <div className="w-full md:w-64 flex flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                  <span className="text-slate-400">Progreso Sesiones</span>
+                                  <span className="text-slate-800 dark:text-slate-200 font-mono">
+                                    {item.sessions_completed} / {item.sessions_requested}
+                                  </span>
+                                </div>
+
+                                <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      item.status === 'cumplidas' ? "bg-emerald-500" : "bg-primary-500"
+                                    }`}
+                                    style={{ width: `${coveragePercent}%` }}
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Completado
+                                  </span>
+                                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 font-mono">
+                                    {coveragePercent}%
+                                  </span>
+                                </div>
+
+                                {!readOnly && (
+                                  <div className="flex gap-2 justify-end mt-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditingCompliance(item)}
+                                      className="px-3 py-1.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-primary-500 hover:text-white transition-all rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer flex items-center gap-1.5"
+                                    >
+                                      <Activity size={10} /> Cumplimiento
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeletePhysio(item.id)}
+                                      className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                      title="Eliminar tratamiento"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Compliance Inline Editor */}
+                            {editingPhysioId === item.id && (
+                              <div className="w-full mt-2 p-5 bg-slate-50 dark:bg-white/[0.01] border border-slate-250 dark:border-white/5 rounded-3xl space-y-4 animate-fade-in text-left">
+                                <h6 className="text-[10px] font-black uppercase tracking-wider text-primary-500">
+                                  Actualizar Progreso y Cumplimiento del Tratamiento
+                                </h6>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                  {/* Sesiones Completadas */}
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                      Sesiones Realizadas (Máx. {item.sessions_requested})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={item.sessions_requested}
+                                      value={complianceForm.sessions_completed}
+                                      onChange={(e) => {
+                                        const completed = Math.min(item.sessions_requested, parseInt(e.target.value) || 0);
+                                        setComplianceForm(prev => ({ 
+                                          ...prev, 
+                                          sessions_completed: completed,
+                                          status: completed >= item.sessions_requested ? 'cumplidas' : 'no cumplidas'
+                                        }));
+                                      }}
+                                      className={inputClasses}
+                                    />
+                                  </div>
+
+                                  {/* ¿Sigue en Fisioterapia? */}
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                      ¿Tratamiento Activo?
+                                    </label>
+                                    <select
+                                      value={complianceForm.in_physiotherapy ? "true" : "false"}
+                                      onChange={(e) => setComplianceForm(prev => ({ ...prev, in_physiotherapy: e.target.value === "true" }))}
+                                      className={inputClasses}
+                                    >
+                                      <option value="true">SÍ (ACTIVO)</option>
+                                      <option value="false">NO (DADO DE ALTA)</option>
+                                    </select>
+                                  </div>
+
+                                  {/* Estado */}
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                      Estado del Tratamiento
+                                    </label>
+                                    <select
+                                      value={complianceForm.status}
+                                      onChange={(e) => setComplianceForm(prev => ({ ...prev, status: e.target.value as any }))}
+                                      className={inputClasses}
+                                    >
+                                      <option value="no cumplidas">NO CUMPLIDAS (EN CURSO)</option>
+                                      <option value="cumplidas">CUMPLIDAS</option>
+                                    </select>
+                                  </div>
+
+                                  {/* Adjunto Certificado de Alta */}
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                      Certificado de Alta
+                                    </label>
+                                    {complianceForm.discharge_url ? (
+                                      <div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-xl">
+                                        <span className="text-[8px] font-black uppercase text-emerald-600 truncate max-w-[100px]">
+                                          ¡Cargado!
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setComplianceForm(prev => ({ ...prev, discharge_url: "" }))}
+                                          className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors animate-fade-in"
+                                        >
+                                          <Trash2 size={10} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <label className="flex items-center justify-center p-2.5 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-center">
+                                        <span className="text-[8px] font-black uppercase text-slate-400">
+                                          {isUploadingDischarge ? "Subiendo..." : "Subir Alta (.pdf/img)"}
+                                        </span>
+                                        <input
+                                          type="file"
+                                          className="hidden"
+                                          onChange={handleUploadDischargeCompliance}
+                                          disabled={isUploadingDischarge}
+                                          accept=".pdf,image/*"
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingPhysioId(null)}
+                                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-black uppercase text-[8px] tracking-widest rounded-xl transition-all"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveCompliance(item)}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase text-[8px] tracking-widest rounded-xl transition-all flex items-center gap-1 shadow-lg shadow-primary-600/20"
+                                  >
+                                    {isSaving && <Loader2 className="animate-spin" size={10} />} Guardar Avance
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-28 text-center border-4 border-dashed border-slate-100 dark:border-white/5 rounded-[4rem] opacity-30">
+                      <Activity size={48} className="mx-auto mb-6" />
+                      <p className="font-black uppercase tracking-widest text-xs">
+                        Sin expedientes de kinesiología activos o anteriores
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

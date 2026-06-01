@@ -37,8 +37,14 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
 
   const [discipline, setDiscipline] = useState<Discipline | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('squad_active_tab') || 'dashboard';
+  });
   const [tournaments, setTournaments] = useState<any[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem('squad_active_tab', activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchTourneys = async () => {
@@ -246,6 +252,15 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-surface-card border border-[var(--surface-border)] rounded-[2rem] p-8 shadow-xl">
               <div className="mb-8">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('last_squads_path');
+                    navigate('/');
+                  }}
+                  className="mb-4 text-[9px] font-black uppercase text-primary-500 hover:text-primary-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  ← Cambiar Disciplina
+                </button>
                 <p className="text-[10px] text-[var(--text-muted)] font-black tracking-[0.3em] uppercase mb-2">Disciplina Seleccionada</p>
                 <h2 className="text-[var(--text-main)] font-black text-3xl italic uppercase tracking-tighter">{discipline.name}</h2>
               </div>

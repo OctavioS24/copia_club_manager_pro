@@ -5,7 +5,7 @@ import {
   X, Save, Edit3, Heart, 
   Loader2, CheckCircle, Fingerprint, 
   BarChart3, Target, Info, History, Clock, UserCircle,
-  AlertTriangle, Stethoscope
+  AlertTriangle, Stethoscope, Activity, FileText, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { db } from '../lib/supabase.ts';
@@ -26,6 +26,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [injuries, setInjuries] = useState<PlayerInjury[]>([]);
   const [isLoadingInjuries, setIsLoadingInjuries] = useState(false);
+  const [physiotherapies, setPhysiotherapies] = useState<any[]>([]);
+  const [isLoadingPhysio, setIsLoadingPhysio] = useState(false);
 
   // Resolución robusta de métricas desde la matriz
   const currentMetrics = useMemo(() => {
@@ -70,20 +72,26 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
   }, [player.stats, currentMetrics, player.overallrating]);
 
   useEffect(() => {
-    const fetchInjuries = async () => {
+    const fetchMedicalData = async () => {
       if (activeTab === 'medical_record') {
         setIsLoadingInjuries(true);
+        setIsLoadingPhysio(true);
         try {
-          const { data } = await db.medical.getPlayerInjuries(player.id);
-          if (data) setInjuries(data);
+          const [injuriesRes, physioRes] = await Promise.all([
+            db.medical.getPlayerInjuries(player.id),
+            db.medical.getPhysiotherapyByPlayer(player.id)
+          ]);
+          if (injuriesRes.data) setInjuries(injuriesRes.data);
+          if (physioRes.data) setPhysiotherapies(physioRes.data);
         } catch (err) {
-          console.error("Error fetching injuries in PlayerCard:", err);
+          console.error("Error fetching medical data in PlayerCard:", err);
         } finally {
           setIsLoadingInjuries(false);
+          setIsLoadingPhysio(false);
         }
       }
     };
-    fetchInjuries();
+    fetchMedicalData();
   }, [player.id, activeTab]);
 
   const radarData = currentMetrics.map(m => ({
@@ -352,6 +360,115 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
                           <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[2.5rem] opacity-30">
                              <p className="text-[9px] font-black uppercase tracking-widest">Sin registro de lesiones en enfermería</p>
                           </div>
+                        )}
+                     </div>
+                  </div>
+
+                  {/* Historial de Fisioterapia y Kinesiología (Read-only) */}
+                  <div className="mt-16">
+                     <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                           <Activity size={18} className="text-primary-600" />
+                           <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial de Fisioterapia y Kinesiología</h5>
+                        </div>
+                        {isLoadingPhysio && <Loader2 size={14} className="animate-spin text-primary-600" />}
+                     </div>
+
+                     <div className="space-y-4">
+                        {physiotherapies.length > 0 ? (
+                           physiotherapies.map(item => {
+                              const coveragePercent = item.sessions_requested > 0
+                                ? Math.min(100, Math.round((item.sessions_completed / item.sessions_requested) * 100))
+                                : 0;
+
+                              return (
+                                 <div key={item.id} className={`bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2rem] border relative ${item.in_physiotherapy ? 'border-primary-500/25' : 'border-slate-100 dark:border-white/5'}`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                       <div className="flex items-center gap-4">
+                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.in_physiotherapy ? 'bg-primary-500/10 text-primary-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                                             <Activity size={18} />
+                                          </div>
+                                          <div>
+                                             <h6 className="text-[11px] font-black uppercase text-slate-800 dark:text-white leading-none">
+                                                {item.notes || 'Tratamiento de Fisioterapia'}
+                                             </h6>
+                                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                Fecha: {item.treatment_date.split('-').reverse().join('/')}
+                                             </p>
+                                          </div>
+                                       </div>
+
+                                       <div className="flex flex-wrap items-center gap-2">
+                                          {item.in_physiotherapy ? (
+                                             <span className="px-2.5 py-1 bg-primary-500/10 text-primary-500 text-[8px] font-black uppercase tracking-widest rounded-md animate-pulse">
+                                                En Curso
+                                             </span>
+                                          ) : (
+                                             <span className="px-2.5 py-1 bg-slate-500/10 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                Alta / Finalizado
+                                             </span>
+                                          )}
+
+                                          {item.status === 'cumplidas' ? (
+                                             <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                Cumplidas
+                                             </span>
+                                          ) : (
+                                             <span className="px-2.5 py-1 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                No Cumplidas
+                                             </span>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    {/* Progreso de sesiones */}
+                                    <div className="space-y-2 mt-4 bg-white/20 dark:bg-black/10 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                                       <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                          <span>Progreso Sesiones:</span>
+                                          <span className="font-mono text-slate-800 dark:text-slate-200">
+                                             {item.sessions_completed} / {item.sessions_requested} ({coveragePercent}%)
+                                          </span>
+                                       </div>
+                                       <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
+                                          <div
+                                             className={`h-full rounded-full transition-all duration-300 ${item.status === 'cumplidas' ? 'bg-emerald-500' : 'bg-primary-500'}`}
+                                             style={{ width: `${coveragePercent}%` }}
+                                          />
+                                       </div>
+                                    </div>
+
+                                    {/* Documentos Adjuntos (Read-only Links!) */}
+                                    {(item.medical_order_url || item.discharge_url) && (
+                                       <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex flex-wrap gap-2.5">
+                                          {item.medical_order_url && (
+                                             <a
+                                                href={item.medical_order_url}
+                                                target="_blank"
+                                                rel="noreferrer noopener"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600/10 text-primary-600 hover:bg-primary-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                                             >
+                                                <FileText size={10} /> Pedido Médico <ExternalLink size={10} />
+                                             </a>
+                                          )}
+                                          {item.discharge_url && (
+                                             <a
+                                                href={item.discharge_url}
+                                                target="_blank"
+                                                rel="noreferrer noopener"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                                             >
+                                                <ShieldCheck size={10} /> Certificado Alta <ExternalLink size={10} />
+                                             </a>
+                                          )}
+                                       </div>
+                                    )}
+                                 </div>
+                              );
+                           })
+                        ) : !isLoadingPhysio && (
+                           <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[2.5rem] opacity-30">
+                              <p className="text-[9px] font-black uppercase tracking-widest">Sin registro de fisioterapia o kinesiología</p>
+                           </div>
                         )}
                      </div>
                   </div>
