@@ -81,7 +81,19 @@ const FixtureView: React.FC<FixtureViewProps> = ({
           selectedDiscipline,
           selectedDivision
         );
-        setPlayers(filtered as any);
+        
+        const onlyAthletes = filtered.filter(p => {
+          const m = p as any;
+          if (!m.assignments || !Array.isArray(m.assignments)) return false;
+          return m.assignments.some((asign: any) => {
+            const matchesDisc = !selectedDiscipline || asign.discipline_id === selectedDiscipline || asign.discipline === selectedDiscipline;
+            const matchesCat = !selectedDivision || asign.category_id === selectedDivision || asign.category === selectedDivision;
+            const isPlayer = asign.role === 'PLAYER' || asign.role === 'JUGADOR';
+            return matchesDisc && matchesCat && isPlayer;
+          });
+        });
+        
+        setPlayers(onlyAthletes as any);
       }
 
     } catch (error) {

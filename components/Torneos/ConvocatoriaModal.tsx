@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Users, Star, Check, X, Loader2, Save, Info, DollarSign, MapPin } from 'lucide-react';
+import { Users, Star, Check, X, Loader2, Save, Info, DollarSign, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Match, Member, MatchSquadPlayer } from '../../types';
 import { getMatchSquad, saveMatchSquad } from '../../lib/squads';
@@ -26,6 +25,9 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const [playerDebts, setPlayerDebts] = useState<Set<string>>(new Set());
   const [activeCommitments, setActiveCommitments] = useState<Set<string>>(new Set());
   
+  // Step navigation: 'convocatoria' (paso 1) or 'titulares' (paso 2)
+  const [actionStep, setActionStep] = useState<'convocatoria' | 'titulares'>('convocatoria');
+
   // State for selected players and starters
   const [selection, setSelection] = useState<Record<string, { selected: boolean, starting: boolean }>>({});
   const [notes, setNotes] = useState('');
@@ -92,13 +94,13 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
   const toggleSelected = (playerId: string) => {
     setSelection(prev => {
-      const current = prev[playerId];
-      // If we unselect, it cannot be starting
+      const current = prev[playerId] || { selected: false, starting: false };
+      // If we unselect, it cannot be starting either
       return {
         ...prev,
         [playerId]: { 
           selected: !current.selected, 
-          starting: !current.selected ? false : false // If it was selected and starting, unselecting removes both
+          starting: false 
         }
       };
     });
@@ -106,7 +108,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
   const toggleStarting = (playerId: string) => {
     setSelection(prev => {
-      const current = prev[playerId];
+      const current = prev[playerId] || { selected: false, starting: false };
       if (!current.selected) return prev; // Cannot be starting if not selected
       
       return {
@@ -120,14 +122,6 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const summonedCount = Object.values(selection).filter(s => s.selected).length;
 
   const handleSave = async () => {
-    // Validation: Exactly 11 starters for Football (DISABLED as per new requirement)
-    /*
-    if (startersCount !== 11) {
-      alert('Debes seleccionar exactamente 11 jugadores como titulares.');
-      return;
-    }
-    */
-
     setIsSaving(true);
     try {
       const playersToSave: Partial<MatchSquadPlayer>[] = Object.entries(selection)
@@ -135,7 +129,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         .map(([playerId, data]) => ({
           player_id: playerId,
           is_starting: data.starting,
-          minutes_played: data.starting ? 90 : 0 // Default starting to full match, can be updated later
+          minutes_played: data.starting ? 90 : 0 // Default starting to full match
         }));
 
       await saveMatchSquad(
@@ -166,62 +160,56 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const sortedUpToDate = [...playersUpToDate].sort((a, b) => a.name.localeCompare(b.name));
   const sortedWithDebts = [...playersWithDebts].sort((a, b) => a.name.localeCompare(b.name));
 
-  const renderPlayerCard = (player: Member) => {
+  // Convocados array for Step 2
+  const summonedPlayers = players.filter(p => selection[p.id]?.selected);
+  const startingLineup = summonedPlayers.filter(p => selection[p.id]?.starting).sort((a, b) => a.name.localeCompare(b.name));
+  const substitutesLineup = summonedPlayers.filter(p => !selection[p.id]?.starting).sort((a, b) => a.name.localeCompare(b.name));
+
+  const renderPlayerSelectCard = (player: Member) => {
     const selData = selection[player.id] || { selected: false, starting: false };
     const hasDebt = playerDebts.has(player.id) && !activeCommitments.has(player.id);
     return (
       <div 
         key={player.id}
-        className={`p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between gap-4 group cursor-pointer ${
+        className={`p-5 rounded-[2rem] border-2 transition-all flex items-center justify-between gap-4 group cursor-pointer ${
           selData.selected 
-            ? (selData.starting ? 'border-primary-600 bg-primary-600/5 shadow-xl shadow-primary-900/5' : 'border-[var(--surface-border)] bg-surface-ground') 
-            : 'border-[var(--surface-border)] bg-surface-card grayscale hover:grayscale-0 opacity-40 hover:opacity-100 hover:scale-[1.01]'
+            ? 'border-primary-600 bg-primary-600/5 shadow-md shadow-primary-900/5' 
+            : 'border-[var(--surface-border)] bg-surface-card hover:border-[var(--surface-border-hover)]'
         }`}
         onClick={() => toggleSelected(player.id)}
       >
-        <div className="flex items-center gap-6 flex-1">
+        <div className="flex items-center gap-4 flex-1">
           <div className="relative">
             <img 
+              referrerPolicy="no-referrer"
               src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
               alt={player.name}
-              className={`w-14 h-14 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-lg' : 'border-[var(--surface-border)] opacity-30 group-hover:opacity-100'}`}
+              className={`w-12 h-12 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-md' : 'border-[var(--surface-border)] opacity-60'}`}
             />
             {selData.selected && (
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-surface-card shadow-lg">
-                <Check size={12} className="text-white" strokeWidth={4} />
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-surface-card shadow-lg animate-fade-in">
+                <Check size={10} className="text-white" strokeWidth={4} />
               </div>
             )}
           </div>
           <div>
-            <div className="flex items-center gap-3">
-               <p className={`text-sm font-black uppercase italic tracking-tighter ${selData.selected ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>{player.name}</p>
+            <div className="flex items-center gap-2">
+               <p className={`text-xs font-black uppercase italic tracking-tighter ${selData.selected ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>{player.name}</p>
                {hasDebt && (
-                 <div className="bg-orange-500/10 text-orange-500 p-1.5 rounded-lg animate-pulse border border-orange-500/20" title="Jugador con deuda pendiente / Compromiso activo acuerda plan de pagos">
-                   <DollarSign size={10} strokeWidth={4} />
+                 <div className="bg-orange-500/10 text-orange-500 p-1 rounded-lg border border-orange-500/20" title="Jugador con deuda pendiente / Compromiso activo acuerda plan de pagos">
+                   <DollarSign size={8} strokeWidth={4} />
                  </div>
                )}
             </div>
-            <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2 opacity-60">
-            {player.dni ? `Documento: ${player.dni}` : 'IDENTIDAD NO REGISTRADA'} 
-            {selData.selected ? (selData.starting ? ' • ESTRATEGIA: TITULAR' : ' • ESTRATEGIA: BANCO') : ' • ESTADO: DISPONIBLE'}
+            <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 opacity-75">
+              {player.dni ? `Documento: ${player.dni}` : 'IDENTIDAD NO REGISTRADA'}
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <button 
-            type="button"
-            onClick={() => toggleStarting(player.id)}
-            disabled={!selData.selected}
-            className={`p-4 rounded-2xl border-2 transition-all ${
-              selData.starting 
-                ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-600/30' 
-                : (selData.selected ? 'bg-surface-card border-[var(--surface-border)] text-[var(--text-muted)] hover:text-primary-500 hover:border-primary-500 shadow-sm' : 'bg-surface-ground border-[var(--surface-border)] text-[var(--text-muted)]/20 cursor-not-allowed opacity-20')
-            }`}
-            title={selData.starting ? 'Remover Titular' : 'Marcar como Titular'}
-          >
-            <Star size={20} fill={selData.starting ? 'currentColor' : 'none'} strokeWidth={selData.starting ? 1 : 2} />
-          </button>
+        <div className="pointer-events-none">
+          <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selData.selected ? 'bg-primary-600 border-primary-600 text-white' : 'border-[var(--surface-border)] text-transparent'}`}>
+            <Check size={12} strokeWidth={4} />
+          </div>
         </div>
       </div>
     );
@@ -232,223 +220,343 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative"
+        className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl relative"
       >
         {/* Header */}
-        <div className="p-8 border-b border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky top-0 z-10">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-primary-600/10 rounded-3xl flex items-center justify-center border border-primary-600/20 shadow-inner">
-              <Users className="text-primary-600" size={32} />
+        <div className="p-6 md:p-8 border-b border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky top-0 z-10 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-primary-600/10 rounded-2xl flex items-center justify-center border border-primary-600/20 shadow-inner">
+              <Users className="text-primary-600" size={24} />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-[var(--text-main)] uppercase italic tracking-tighter">Planilla de Convocados</h2>
-              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
+              <h2 className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none">Planilla de Convocados</h2>
+              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
                 {match.hometeam} vs {match.awayteam} • {new Date(match.date).toLocaleDateString()}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-4 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-surface-hover rounded-2xl transition-all">
-            <X size={24} />
+          <button onClick={onClose} className="p-3 text-[var(--text-muted)] hover:text-red-500 hover:bg-surface-hover rounded-xl transition-all">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+        {/* Wizard progress steps indicator */}
+        <div className="px-8 py-3 bg-surface-ground border-b border-[var(--surface-border)] flex items-center justify-center gap-5 shrink-0">
+          <button
+            onClick={() => setActionStep('convocatoria')}
+            className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${actionStep === 'convocatoria' ? 'text-primary-600' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+          >
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${actionStep === 'convocatoria' ? 'bg-primary-600 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>1</div>
+            <span>1. Modificar Convocados</span>
+          </button>
+          
+          <div className="h-0.5 w-12 bg-[var(--surface-border)]" />
+          
+          <button
+            disabled={summonedCount === 0}
+            onClick={() => setActionStep('titulares')}
+            className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors disabled:opacity-40 ${actionStep === 'titulares' ? 'text-primary-600' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+          >
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${actionStep === 'titulares' ? 'bg-primary-600 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>2</div>
+            <span>2. Definir Alineación</span>
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <Loader2 className="animate-spin text-primary-600" size={40} />
-              <p className="text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest opacity-40 italic">Iniciando protocolo de convocatoria...</p>
+              <Loader2 className="animate-spin text-primary-600" size={36} />
+              <p className="text-[var(--text-muted)] font-black uppercase text-[10px] tracking-widest opacity-40 italic">Cargando plantel...</p>
             </div>
-          ) : (
-            <>
-              {/* Counters & Instructions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
-                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
+          ) : actionStep === 'convocatoria' ? (
+            /* ================= STEP 1: SELECT SQUAD PLAYERS ================= */
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+                <div className="bg-surface-ground rounded-2xl p-4 border border-[var(--surface-border)] flex items-center justify-between">
                   <div>
-                    <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Titulares Requididos</p>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-3xl font-black italic ${startersCount === 11 ? 'text-emerald-500' : 'text-primary-500'}`}>
-                        {startersCount} <span className="text-[var(--text-muted)] opacity-30">/ 11</span>
-                      </span>
-                      {startersCount === 11 && <Check className="text-emerald-500" size={24} />}
-                    </div>
-                  </div>
-                  <div className={`p-4 rounded-2xl shadow-xl transition-all ${startersCount === 11 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-primary-600/10 text-primary-600 border border-primary-600/20'}`}>
-                    <Star size={28} fill={startersCount === 11 ? 'currentColor' : 'none'} />
-                  </div>
-                </div>
-
-                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
-                  <div>
-                    <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Efectivos Convocados</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-black italic text-[var(--text-main)]">
-                        {summonedCount} <span className="text-[var(--text-muted)] opacity-30 text-sm">TOTAL</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-secondary-600/10 text-secondary-500 rounded-2xl border border-secondary-500/20 shadow-xl">
-                    <Users size={28} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Alert */}
-              {startersCount !== 11 && (
-                <div className="bg-blue-500/5 border-2 border-blue-500/20 rounded-3xl p-6 flex items-center gap-6">
-                  <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
-                    <Info size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-black text-blue-500 uppercase tracking-[0.2em] italic mb-1">Alineación en proceso</p>
-                    <p className="text-[10px] text-blue-500/70 font-bold leading-relaxed uppercase tracking-widest italic">
-                      Has seleccionado {startersCount} titular(es). Puedes confirmar la convocatoria ahora y definir los titulares más tarde si lo deseas.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Horarios de Convocatoria */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-2">
-                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
-                  <div>
-                    <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 block italic opacity-60">Hora de Inicio del Partido</span>
-                    <span className="text-2xl font-black italic text-[var(--text-main)] uppercase">
-                      {match.time ? `${match.time.slice(0, 5)} HS` : 'SIN REGISTRAR'}
+                    <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Efectivos Convocados</p>
+                    <span className="text-xl font-black italic text-[var(--text-main)]">
+                      {summonedCount} / <span className="opacity-40">{players.length}</span>
                     </span>
                   </div>
-                  <div className="p-4 bg-slate-500/10 text-[var(--text-muted)] rounded-2xl border border-[var(--surface-border)] shadow-md">
-                    <Info size={24} />
+                  <div className="p-3 bg-primary-600/10 text-primary-600 rounded-xl">
+                    <Users size={18} />
                   </div>
                 </div>
 
-                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm group">
-                  <div className="flex-1 mr-4">
-                    <label htmlFor="citation-time-field" className="text-[9px] font-black text-primary-500 uppercase tracking-widest mb-1 block italic">
-                      Hora de Citación
-                    </label>
-                    <input
-                      id="citation-time-field"
-                      type="time"
-                      value={appointmentTime}
-                      onChange={(e) => setAppointmentTime(e.target.value)}
-                      className="w-full bg-surface-card border-2 border-[var(--surface-border)] hover:border-primary-500/50 focus:border-primary-600 rounded-2xl px-5 py-3 text-sm font-black uppercase text-[var(--text-main)] outline-none transition-all mt-1"
-                    />
+                <div className="bg-surface-ground rounded-2xl p-4 border border-[var(--surface-border)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Titulares actuales</p>
+                    <span className={`text-xl font-black italic ${startersCount === 11 ? 'text-emerald-500' : 'text-[var(--text-main)]'}`}>
+                      {startersCount} <span className="text-xs font-normal text-[var(--text-muted)]">titulares</span>
+                    </span>
                   </div>
-                  <div className="p-4 bg-primary-600/10 text-primary-600 rounded-2xl border border-primary-600/20 shadow-xl self-end">
-                    <Users size={24} />
+                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                    <Star size={18} fill={startersCount > 0 ? 'currentColor' : 'none'} />
                   </div>
-                </div>
-
-                <div className="bg-surface-ground rounded-3xl p-8 border border-[var(--surface-border)] flex items-center justify-between shadow-sm group">
-                  <div className="flex-1 mr-4">
-                    <label htmlFor="location-field" className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1 block italic">
-                      Ubicación del Partido
-                    </label>
-                    <input
-                      id="location-field"
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Dirección o enlace de mapa"
-                      className="w-full bg-surface-card border-2 border-[var(--surface-border)] hover:border-emerald-500/50 focus:border-emerald-600 rounded-2xl px-5 py-3 text-xs font-bold text-[var(--text-main)] outline-none transition-all mt-1"
-                    />
-                  </div>
-                  {location ? (
-                    <a
-                      href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-4 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-2xl border border-emerald-500/20 shadow-xl self-end flex items-center gap-1.5 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
-                      title="Abrir ubicación en Google Maps"
-                    >
-                      <MapPin size={24} />
-                      <span className="text-[9px] font-black tracking-widest leading-none">IR</span>
-                    </a>
-                  ) : (
-                    <div className="p-4 bg-emerald-600/10 text-emerald-500 rounded-2xl border border-emerald-500/20 shadow-xl self-end">
-                      <MapPin size={24} />
-                    </div>
-                  )}
                 </div>
               </div>
 
               {/* Listado de Jugadores por Estado de Pago */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Primera sección: Jugadores con pagos al día */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 border-b border-[var(--surface-border)] pb-3">
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-                    <h3 className="text-xs font-black uppercase text-emerald-500 tracking-[0.2em] italic">Jugadores al día ({sortedUpToDate.length})</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2">
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <h3 className="text-[10px] font-black uppercase text-emerald-500 tracking-widest italic">Jugadores al día ({sortedUpToDate.length})</h3>
                   </div>
                   {sortedUpToDate.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {sortedUpToDate.map(renderPlayerCard)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {sortedUpToDate.map(renderPlayerSelectCard)}
                     </div>
                   ) : (
-                    <div className="p-6 bg-surface-ground rounded-2xl border border-dashed border-[var(--surface-border)] text-center text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider italic">
+                    <div className="p-4 bg-surface-ground rounded-xl border border-dashed border-[var(--surface-border)] text-center text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider italic">
                       No hay jugadores sin deudas pendientes.
                     </div>
                   )}
                 </div>
 
                 {/* Segunda sección: Jugadores que deben */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 border-b border-[var(--surface-border)] pb-3">
-                    <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    <h3 className="text-xs font-black uppercase text-red-500 tracking-[0.2em] italic">Jugadores con saldos pendientes ({sortedWithDebts.length})</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2">
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <h3 className="text-[10px] font-black uppercase text-red-500 tracking-widest italic">Jugadores con saldos pendientes ({sortedWithDebts.length})</h3>
                   </div>
                   {sortedWithDebts.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {sortedWithDebts.map(renderPlayerCard)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {sortedWithDebts.map(renderPlayerSelectCard)}
                     </div>
                   ) : (
-                    <div className="p-6 bg-emerald-500/5 text-emerald-500 rounded-2xl border border-dashed border-emerald-500/20 text-center text-xs font-bold uppercase tracking-wider italic">
+                    <div className="p-4 bg-emerald-500/5 text-emerald-500 rounded-xl border border-dashed border-emerald-500/20 text-center text-[10px] font-bold uppercase tracking-wider italic">
                       ¡Todos los jugadores están al día con sus pagos! 🎉
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Notes Section */}
-              <div className="space-y-4 pt-4">
-                <label className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-[0.2em] ml-6 italic opacity-60">Apuntes Tácticos & Observaciones</label>
-                <textarea 
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Instrucciones específicas, lesionados a seguir, o variaciones tácticas para este encuentro..."
-                  className="w-full bg-surface-ground border-2 border-[var(--surface-border)] rounded-[2.5rem] p-8 text-[var(--text-main)] font-bold text-sm outline-none focus:border-primary-600 transition-all min-h-[140px] resize-none shadow-inner placeholder:italic placeholder:opacity-20"
-                />
+            </div>
+          ) : (
+            /* ================= STEP 2: ASSIGN STARTERS / SUBSTITUTES ================= */
+            <div className="space-y-6">
+              <div className="bg-primary-500/5 border border-primary-500/20 rounded-2xl p-4 flex items-center gap-4">
+                <div className="p-2 bg-primary-500/10 rounded-xl text-primary-500 shrink-0">
+                  <Star size={20} fill="currentColor" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)] italic">Modo Pizarra Táctica: Selección de Alineación</h4>
+                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1 italic">
+                    Toca a cualquier jugador para cambiarlo instantáneamente entre <span className="text-emerald-500 font-black">Titulares</span> y <span className="text-amber-500 font-bold">Suplentes</span> de forma ágil e intuitiva.
+                  </p>
+                </div>
               </div>
-            </>
+
+              {/* Columns Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                {/* COLUMN LEFT: BANQUILLO / SUPLENTES */}
+                <div className="bg-surface-ground border border-[var(--surface-border)] rounded-[2rem] p-5 space-y-4 shadow-sm min-h-[350px]">
+                  <div className="flex justify-between items-center border-b border-[var(--surface-border)] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <h4 className="text-xs font-black uppercase italic tracking-wider text-[var(--text-main)]">BANCO / SUPLENTES</h4>
+                    </div>
+                    <span className="px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-wider">{substitutesLineup.length} Jugadores</span>
+                  </div>
+
+                  {substitutesLineup.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {substitutesLineup.map(player => (
+                        <div
+                          key={player.id}
+                          onClick={() => toggleStarting(player.id)}
+                          className="p-4 bg-surface-card hover:bg-surface-hover border border-[var(--surface-border)] hover:border-emerald-500/30 rounded-2xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-1 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img 
+                              referrerPolicy="no-referrer"
+                              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
+                              alt={player.name}
+                              className="w-10 h-10 rounded-xl object-cover border border-[var(--surface-border)] opacity-80"
+                            />
+                            <div>
+                              <p className="text-xs font-black uppercase text-[var(--text-main)] leading-none mb-1">{player.name}</p>
+                              <span className="text-[8px] font-black text-[var(--text-muted)] tracking-widest uppercase">Tap para subir a Titular</span>
+                            </div>
+                          </div>
+                          <button className="p-2 rounded-lg bg-surface-ground text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors">
+                            <Star size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-xs font-semibold text-[var(--text-muted)] italic uppercase tracking-wider opacity-60">
+                      Banco vacío. No hay suplentes.
+                    </div>
+                  )}
+                </div>
+
+                {/* COLUMN RIGHT: TITULARES / ALINEACION */}
+                <div className="bg-primary-500/[0.02] border-2 border-primary-500/20 rounded-[2rem] p-5 space-y-4 shadow-md min-h-[350px]">
+                  <div className="flex justify-between items-center border-b border-primary-500/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <h4 className="text-xs font-black uppercase italic tracking-wider text-[var(--text-main)]">TITULARES (Alineación Inicial)</h4>
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-[9px] font-black uppercase tracking-wider">{startingLineup.length} TITULARES</span>
+                  </div>
+
+                  {startingLineup.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {startingLineup.map(player => (
+                        <div
+                          key={player.id}
+                          onClick={() => toggleStarting(player.id)}
+                          className="p-4 bg-surface-card hover:bg-surface-hover border-2 border-primary-600 rounded-2xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-[-4px] group shadow-inner"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img 
+                              referrerPolicy="no-referrer"
+                              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
+                              alt={player.name}
+                              className="w-10 h-10 rounded-xl object-cover border-2 border-primary-500"
+                            />
+                            <div>
+                              <p className="text-xs font-black uppercase text-primary-500 leading-none mb-1">{player.name}</p>
+                              <span className="text-[8px] font-black text-emerald-500 tracking-widest uppercase">Tap para bajar al Banco</span>
+                            </div>
+                          </div>
+                          <button className="p-2 rounded-lg bg-emerald-500 text-white shadow-md">
+                            <Star size={16} fill="white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-xs font-semibold text-[var(--text-muted)] italic uppercase tracking-wider opacity-60">
+                      Toca jugadores suplentes de la izquierda para colocarlos en la alineación titular.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Match and Tact Notes fields inside step 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[var(--surface-border)]">
+                {/* Notes Column */}
+                <div className="space-y-2">
+                  <label htmlFor="notes-field" className="text-[9px] font-black uppercase text-[var(--text-muted)] tracking-widest italic ml-2 block opacity-75">Apuntes Tácticos & Observaciones</label>
+                  <textarea 
+                    id="notes-field"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Instrucciones específicas, lesionados a seguir, o variaciones tácticas para este encuentro..."
+                    className="w-full bg-surface-ground border-2 border-[var(--surface-border)] rounded-2xl p-4 text-[var(--text-main)] font-semibold text-xs outline-none focus:border-primary-600 transition-all min-h-[140px] resize-none"
+                  />
+                </div>
+
+                {/* Details Column */}
+                <div className="space-y-4">
+                  <div className="bg-surface-ground rounded-2xl p-4 border border-[var(--surface-border)] flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label htmlFor="citation-time-field" className="text-[9px] font-black text-primary-500 uppercase tracking-widest block italic">
+                        Hora de Citación
+                      </label>
+                      <input
+                        id="citation-time-field"
+                        type="time"
+                        value={appointmentTime}
+                        onChange={(e) => setAppointmentTime(e.target.value)}
+                        className="w-full bg-surface-card border border-[var(--surface-border)] hover:border-primary-500/50 focus:border-primary-600 rounded-xl px-4 py-2 mt-1 text-xs font-black uppercase text-[var(--text-main)] outline-none transition-all"
+                      />
+                    </div>
+                    <div className="p-3 bg-primary-600/10 text-primary-600 rounded-xl">
+                      <Users size={20} />
+                    </div>
+                  </div>
+
+                  <div className="bg-surface-ground rounded-2xl p-4 border border-[var(--surface-border)] flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label htmlFor="location-field" className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block italic">
+                        Ubicación del Partido
+                      </label>
+                      <input
+                        id="location-field"
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Dirección o enlace de mapa"
+                        className="w-full bg-surface-card border border-[var(--surface-border)] hover:border-emerald-500/50 focus:border-emerald-600 rounded-xl px-4 py-2 mt-1 text-xs font-bold text-[var(--text-main)] outline-none transition-all"
+                      />
+                    </div>
+                    {location ? (
+                      <a
+                        href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-xl border border-emerald-500/20 shadow-md flex items-center gap-1.5 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
+                        title="Abrir ubicación en Google Maps"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MapPin size={18} />
+                      </a>
+                    ) : (
+                      <div className="p-3 bg-emerald-600/10 text-emerald-500 rounded-xl">
+                        <MapPin size={20} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-10 border-t border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky bottom-0 shadow-2xl">
-          <div className="hidden md:flex items-center gap-3 text-[var(--text-muted)] opacity-60">
-            <Info size={16} className="text-primary-500" />
-            <p className="text-[10px] font-black uppercase tracking-widest italic leading-tight">Los perfiles no seleccionados serán <br/>omitidos del acta arbitral.</p>
+        <div className="p-6 md:p-8 border-t border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky bottom-0 shrink-0">
+          <div className="hidden md:flex items-center gap-2 text-[var(--text-muted)] opacity-75">
+            <Info size={14} className="text-primary-500" />
+            <p className="text-[8px] font-black uppercase tracking-widest italic leading-tight">Al confirmarse, la plantilla podrá ser visualizada en los reportes de juego.</p>
           </div>
-          <div className="flex items-center gap-6 w-full md:w-auto">
-            <button onClick={onClose} className="px-10 py-5 text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all tracking-[0.2em]">Cerrar</button>
-            <button 
-              onClick={handleSave}
-              disabled={isSaving || summonedCount === 0}
-              className="flex-1 md:flex-none px-14 py-5 bg-primary-600 hover:bg-primary-700 disabled:opacity-30 disabled:hover:bg-primary-600 text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-2xl shadow-primary-900/40 italic active:scale-95"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="animate-spin" size={18} />
-                  <span>Sincronizando...</span>
-                </>
-              ) : (
-                <>
-                  <Save size={18} strokeWidth={3} />
-                  <span>Confirmar Convocatoria</span>
-                </>
-              )}
-            </button>
+          <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+            {actionStep === 'titulares' ? (
+              <button 
+                onClick={() => setActionStep('convocatoria')}
+                className="px-6 py-4 border border-[var(--surface-border)] hover:border-[var(--text-muted)] hover:bg-surface-hover rounded-xl text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2 transition-all"
+              >
+                <ChevronLeft size={14} />
+                <span>Volver</span>
+              </button>
+            ) : (
+              <button onClick={onClose} className="px-6 py-4 text-[9px] font-black uppercase text-[var(--text-muted)] hover:text-red-500 transition-all tracking-widest">Cerrar</button>
+            )}
+
+            {actionStep === 'convocatoria' ? (
+              <button 
+                disabled={summonedCount === 0}
+                onClick={() => setActionStep('titulares')}
+                className="px-8 py-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-30 disabled:hover:bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-md italic"
+              >
+                <span>Alineación táctica</span>
+                <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button 
+                onClick={handleSave}
+                disabled={isSaving || summonedCount === 0}
+                className="px-10 py-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-30 disabled:hover:bg-primary-600 text-white rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center justify-center gap-2 shadow-md italic"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="animate-spin" size={14} />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>Confirmar Convocatoria</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </motion.div>

@@ -107,10 +107,10 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       try {
         // Normalize discipline name for DB lookup
         const normalizedDisc = currentDisciplineName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const { data, error } = await db.attendance.getByDate(date, normalizedDisc);
+        const { data, error } = await db.attendance.getByDate(date, normalizedDisc, selectedDivision);
         if (error) throw error;
         
-        console.log(`Asistencia - Fetched for Date: ${date}, Disc: ${normalizedDisc}:`, data);
+        console.log(`Asistencia - Fetched for Date: ${date}, Disc: ${normalizedDisc}, Cat: ${selectedDivision}:`, data);
         
         const records: Record<string, { status: string; excuse_type: string; excuse_detail: string; }> = {};
         data?.forEach((record: any) => {
@@ -146,6 +146,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
             date: date,
             status: record.status || 'A',
             discipline: normalizedDisc,
+            category_id: selectedDivision || '',
             excuse_type: ['A', 'L'].includes(record.status) ? (record.excuse_type || 'No justificado') : null,
             excuse_detail: ['A', 'L'].includes(record.status) ? (record.excuse_detail || null) : null
           };

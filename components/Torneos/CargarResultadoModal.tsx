@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Plus, Trash2, Loader2, Clock, Award, Activity, RefreshCw } from 'lucide-react';
+import { X, Save, Plus, Trash2, Loader2, Clock, Award, Activity, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Match, Player, MatchEvent, MatchSquad } from '../../types';
 import { updateMatchResult } from '../../lib/torneos';
@@ -42,7 +42,7 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
     });
 
     if (!matchSquad || !matchSquad.players || matchSquad.players.length === 0) {
-      return onlyAthletes; 
+      return []; 
     }
     const squadPlayerIds = new Set(matchSquad.players.map(p => p.player_id));
     return onlyAthletes.filter(p => squadPlayerIds.has(p.id));
@@ -326,71 +326,88 @@ const CargarResultadoModal: React.FC<CargarResultadoModalProps> = ({
                    </h4>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {!isRivalEvent && (
-                    <div className="flex flex-col gap-2 md:gap-3">
-                      <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">Jugador</label>
-                      <select 
-                        value={newEvent.player_id}
-                        onChange={(e) => setNewEvent({...newEvent, player_id: e.target.value})}
-                        className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
-                      >
-                        <option value="">-- SELECCIONAR --</option>
-                        {squadPlayers.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                {!isRivalEvent && squadPlayers.length === 0 ? (
+                  <div className="py-6 text-center space-y-4">
+                    <AlertCircle className="mx-auto text-amber-500" size={40} />
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)] italic">Convocatoria Pendiente</h4>
+                      <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider leading-relaxed max-w-md mx-auto">
+                        No hay planilla de convocados cargada para este encuentro. Primero debes crear y guardar la convocatoria para poder registrar las incidencias tácticas del equipo.
+                      </p>
                     </div>
-                  )}
-
-                  <div className="flex flex-col gap-2 md:gap-3">
-                    <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">Incidencia</label>
-                    <select 
-                      value={newEvent.type}
-                      onChange={(e) => setNewEvent({...newEvent, type: e.target.value as any})}
-                      className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
-                    >
-                      <option value="">-- TIPO --</option>
-                      {disciplineConfig ? (
-                        disciplineConfig.event_types
-                          .filter(et => !et.scope || et.scope === 'BOTH' || (isRivalEvent ? et.scope === 'RIVAL' : et.scope === 'OWN'))
-                          .map(et => (
-                            <option key={et.id} value={et.name}>{et.name}</option>
-                          ))
-                      ) : (
-                        <>
-                          <option value="GOL">GOL</option>
-                          <option value="TARJETA AMARILLA">TARJETA AMARILLA</option>
-                          <option value="TARJETA ROJA">TARJETA ROJA</option>
-                        </>
-                      )}
-                    </select>
+                    <div className="flex justify-center pt-2">
+                      <button onClick={() => setShowEventForm(false)} className="px-6 py-2.5 bg-surface-card border border-[var(--surface-border)] hover:bg-surface-hover rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] transition-colors">Cancelar</button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                      {!isRivalEvent && (
+                        <div className="flex flex-col gap-2 md:gap-3">
+                          <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">Jugador</label>
+                          <select 
+                            value={newEvent.player_id}
+                            onChange={(e) => setNewEvent({...newEvent, player_id: e.target.value})}
+                            className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
+                          >
+                            <option value="">-- SELECCIONAR --</option>
+                            {squadPlayers.map(p => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
-                  {disciplineConfig?.additional_fields?.map(field => (
-                    <div key={field} className="flex flex-col gap-2 md:gap-3">
-                      <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">{field}</label>
-                      <input 
-                        type="text"
-                        placeholder={`Ej: ${field === 'minuto' ? "45" : "Dato"}`}
-                        value={newEvent.additional_data?.[field] || ''}
-                        onChange={(e) => setNewEvent({
-                          ...newEvent, 
-                          additional_data: {
-                            ...newEvent.additional_data,
-                            [field]: e.target.value
-                          }
-                        })}
-                        className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm outline-none focus:border-primary-600 shadow-inner"
-                      />
+                      <div className="flex flex-col gap-2 md:gap-3">
+                        <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">Incidencia</label>
+                        <select 
+                          value={newEvent.type}
+                          onChange={(e) => setNewEvent({...newEvent, type: e.target.value as any})}
+                          className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm uppercase tracking-widest outline-none focus:border-primary-600 shadow-inner"
+                        >
+                          <option value="">-- TIPO --</option>
+                          {disciplineConfig ? (
+                            disciplineConfig.event_types
+                              .filter(et => !et.scope || et.scope === 'BOTH' || (isRivalEvent ? et.scope === 'RIVAL' : et.scope === 'OWN'))
+                              .map(et => (
+                                <option key={et.id} value={et.name}>{et.name}</option>
+                              ))
+                          ) : (
+                            <>
+                              <option value="GOL">GOL</option>
+                              <option value="TARJETA AMARILLA">TARJETA AMARILLA</option>
+                              <option value="TARJETA ROJA">TARJETA ROJA</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      {disciplineConfig?.additional_fields?.map(field => (
+                        <div key={field} className="flex flex-col gap-2 md:gap-3">
+                          <label className="text-[9px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-3 md:ml-4 italic opacity-60">{field}</label>
+                          <input 
+                            type="text"
+                            placeholder={`Ej: ${field === 'minuto' ? "45" : "Dato"}`}
+                            value={newEvent.additional_data?.[field] || ''}
+                            onChange={(e) => setNewEvent({
+                              ...newEvent, 
+                              additional_data: {
+                                ...newEvent.additional_data,
+                                [field]: e.target.value
+                              }
+                            })}
+                            className="w-full px-5 md:px-6 py-4 md:py-5 bg-surface-card border-2 border-[var(--surface-border)] rounded-2xl md:rounded-3xl text-[var(--text-main)] font-black text-xs md:text-sm outline-none focus:border-primary-600 shadow-inner"
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                <div className="flex justify-end gap-3 md:gap-4 pt-4 md:pt-6">
-                  <button onClick={() => setShowEventForm(false)} className="px-6 py-3 text-[10px] md:text-[11px] font-black uppercase text-[var(--text-muted)] hover:text-white transition-colors tracking-widest italic opacity-60">Abortar</button>
-                  <button onClick={handleAddEvent} className="px-8 md:px-10 py-3 md:py-3.5 bg-emerald-600 text-white rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-900/30 italic">Registrar</button>
-                </div>
+                    <div className="flex justify-end gap-3 md:gap-4 pt-4 md:pt-6">
+                      <button onClick={() => setShowEventForm(false)} className="px-6 py-3 text-[10px] md:text-[11px] font-black uppercase text-[var(--text-muted)] hover:text-white transition-colors tracking-widest italic opacity-60">Abortar</button>
+                      <button onClick={handleAddEvent} className="px-8 md:px-10 py-3 md:py-3.5 bg-emerald-600 text-white rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-900/30 italic">Registrar</button>
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
 

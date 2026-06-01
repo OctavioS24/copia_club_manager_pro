@@ -545,21 +545,68 @@ tournaments: {
       .eq('id', id)
   },
   attendance: {
-    getByDate: (date: string, discipline: string) => {
-      return supabase
+    getByDate: (date: string, discipline: string, categoryId?: string) => {
+      let query = supabase
         .from('attendance')
         .select('*')
         .eq('date', date)
         .eq('discipline', discipline);
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+      return query;
     },
     
     upsert: (records: any[]) => supabase
       .from('attendance')
-      .upsert(records, { onConflict: 'player_id,date,discipline' }),
+      .upsert(records, { onConflict: 'player_id,date,discipline,category_id' }),
       
     delete: (id: string) => supabase
       .from('attendance')
       .delete()
       .eq('id', id)
+  },
+  medicalDocuments: {
+    getAll: () => supabase
+      .from('medical_documents')
+      .select('*')
+      .order('created_at', { ascending: false }),
+
+    getBySection: (section: string) => supabase
+      .from('medical_documents')
+      .select('*')
+      .eq('section', section)
+      .order('created_at', { ascending: false }),
+
+    insert: (doc: { title: string; section: string; attachments: { name: string; url: string }[]; uploaded_by: string }) => supabase
+      .from('medical_documents')
+      .insert([doc])
+      .select(),
+
+    delete: (id: string) => supabase
+      .from('medical_documents')
+      .delete()
+      .eq('id', id),
+
+    uploadDocument: async (file: File) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `documentation/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('medical_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('medical_attachments')
+        .getPublicUrl(filePath);
+
+      return {
+        name: file.name,
+        url: data.publicUrl
+      };
+    }
   }
 };
