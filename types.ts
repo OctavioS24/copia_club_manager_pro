@@ -72,6 +72,7 @@ export interface MemberAssignment {
   training_days_per_week?: string;
   gym_attendance?: boolean;
   gym_frequency?: string;
+  is_main?: boolean;
 }
 
 export interface DisciplinePosition {
@@ -129,6 +130,12 @@ export interface Member {
   has_preexisting_condition?: boolean;
   preexisting_condition_details?: string;
   medical_file_url?: string;
+  has_scholarship?: boolean;
+  scholarship_type_id?: string;
+  scholarship_details?: string;
+  scholarship_attachment_url?: string;
+  scholarship_start_date?: string;
+  scholarship_end_date?: string;
 }
 
 export interface MedicalHistoryItem {
@@ -362,4 +369,12 @@ export interface MatchEvent {
   is_rival?: boolean;
   squad_player_id?: string;
   additional_data?: Record<string, any>;
+}
+
+export interface ScholarshipType {
+  id: string;
+  name: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  created_at?: string;
 }

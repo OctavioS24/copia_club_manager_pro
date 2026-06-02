@@ -100,6 +100,12 @@ export const db = {
       has_preexisting_condition: member.has_preexisting_condition !== undefined ? member.has_preexisting_condition : (member.hasPreexistingCondition || false),
       preexisting_condition_details: member.preexisting_condition_details || member.preexistingConditionDetails || '',
       medical_file_url: member.medical_file_url || member.medicalFileUrl || '',
+      has_scholarship: member.has_scholarship !== undefined ? member.has_scholarship : (member.hasScholarship || false),
+      scholarship_type_id: member.scholarship_type_id !== null ? (member.scholarship_type_id || member.scholarshipTypeId || null) : null,
+      scholarship_details: member.scholarship_details || member.scholarshipDetails || '',
+      scholarship_attachment_url: member.scholarship_attachment_url || member.scholarshipAttachmentUrl || '',
+      scholarship_start_date: member.scholarship_start_date || member.scholarshipStartDate || null,
+      scholarship_end_date: member.scholarship_end_date || member.scholarshipEndDate || null,
       created_at: member.created_at
     };
 
@@ -607,6 +613,39 @@ tournaments: {
         name: file.name,
         url: data.publicUrl
       };
+    }
+  },
+  scholarshipTypes: {
+    getAll: () => supabase
+      .from('scholarship_types')
+      .select('*')
+      .order('name', { ascending: true }),
+    
+    upsert: (record: any) => supabase
+      .from('scholarship_types')
+      .upsert(record),
+    
+    delete: (id: string) => supabase
+      .from('scholarship_types')
+      .delete()
+      .eq('id', id),
+
+    uploadAttachment: async (file: File) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `scholarships/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('medical_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('medical_attachments')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
     }
   }
 };

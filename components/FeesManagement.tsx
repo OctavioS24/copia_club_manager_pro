@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MemberFee, Member } from '../types';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { MemberFee, Member, ScholarshipType } from '../types';
 import { 
   Search, DollarSign, Check, Plus, X, 
   Trash2, Save, CreditCard, Loader2, History, TrendingUp, 
@@ -22,6 +22,7 @@ const FeesManagement: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [config, setConfig] = useState<ClubConfig | null>(null);
   const [feeConfigs, setFeeConfigs] = useState<any[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState<string>('');
   const [filterGender, setFilterGender] = useState<string>('');
@@ -68,7 +69,18 @@ const FeesManagement: React.FC = () => {
     category_id: '',
     amount: 0,
     due_day: 10,
-    is_active: true
+    is_active: true,
+    apply_surcharge: false,
+    surcharge_percentage: 0
+  });
+
+  const [settingsSubTab, setSettingsSubTab] = useState<'rates' | 'scholarships'>('rates');
+  const [scholarships, setScholarships] = useState<ScholarshipType[]>([]);
+  const [showScholarshipModal, setShowScholarshipModal] = useState(false);
+  const [scholarshipFormData, setScholarshipFormData] = useState<Partial<ScholarshipType>>({
+    name: '',
+    type: 'percentage',
+    value: 0
   });
 
   const loadData = async () => {
@@ -86,6 +98,19 @@ const FeesManagement: React.FC = () => {
         db.feeConfigs.getAll(),
         supabase.from('payment_commitments').select('*').order('created_at', { ascending: false })
       ]);
+      
+      let scholarshipTypesData: ScholarshipType[] = [];
+      try {
+        const { data, error } = await db.scholarshipTypes.getAll();
+        if (error) {
+          console.warn("Table scholarship_types might not exist yet:", error.message);
+        } else {
+          scholarshipTypesData = data || [];
+        }
+      } catch (err) {
+        console.warn("Could not fetch scholarship types gracefully:", err);
+      }
+      setScholarships(scholarshipTypesData);
       
       if (feesError) console.error("Error loading fees:", feesError);
       if (memError) console.error("Error loading members:", memError);
@@ -207,13 +232,96 @@ const FeesManagement: React.FC = () => {
     }
   };
 
+  // Helper for finding a player's main payment category context
+  const getMainAssignment = useCallback((m: Member) => {
+    const playerAssignments = m.assignments?.filter(a => !a.role || a.role === 'PLAYER') || [];
+    let main = m.assignments?.find(a => a.is_main);
+    if (!main && playerAssignments.length === 1) {
+      main = playerAssignments[0];
+    }
+    return main;
+  }, []);
+
+  const getFeeConfigForFee = useCallback((f: any) => {
+    if (!f || !f.member) return null;
+    const member = f.member;
+    const assignment = getMainAssignment(member);
+    if (!assignment) return null;
+    
+    return feeConfigs.find(rc => 
+      rc.discipline === assignment.discipline && 
+      (rc.branch === member.gender || (rc as any).branch === member.gender) && 
+      rc.category_id === (assignment.category_id || assignment.category)
+    );
+  }, [feeConfigs, getMainAssignment]);
+
+  const isScholarshipActive = useCallback((member: Member, dateStr?: string) => {
+    if (!member || !member.has_scholarship || !member.scholarship_type_id) return false;
+    
+    const todayStr = dateStr || new Date().toISOString().split('T')[0];
+    
+    // Check start date
+    if (member.scholarship_start_date && member.scholarship_start_date > todayStr) {
+      return false;
+    }
+    
+    // Check end date
+    if (member.scholarship_end_date && member.scholarship_end_date < todayStr) {
+      return false;
+    }
+    
+    return true;
+  }, []);
+
+  const getDiscountedAmount = useCallback((baseAmount: number, member: Member, referenceDate?: string) => {
+    if (!member || !isScholarshipActive(member, referenceDate)) return baseAmount;
+    
+    const scholarship = scholarships.find(s => s.id === member.scholarship_type_id);
+    if (!scholarship) return baseAmount;
+    
+    if (scholarship.type === 'percentage') {
+      const discount = baseAmount * (scholarship.value / 100);
+      return Math.max(0, baseAmount - discount);
+    } else if (scholarship.type === 'fixed') {
+      return Math.max(0, baseAmount - scholarship.value);
+    }
+    
+    return baseAmount;
+  }, [scholarships, isScholarshipActive]);
+
+  const getFeeAmountWithSurcharge = useCallback((fee: any) => {
+    if (!fee) return 0;
+    
+    // Si la cuota ya está paga, devolvemos el monto que se pagó (histórico y guardado)
+    if (fee.status === 'Paid') {
+      return fee.amount || 0;
+    }
+    
+    // Obtener miembro asociado a la cuota
+    const member = fee.member || members.find(m => m.id === fee.member_id);
+    
+    // Aplicar descuento por beca si corresponde
+    const baseAmount = member ? getDiscountedAmount(fee.amount || 0, member, fee.due_date) : (fee.amount || 0);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (todayStr <= fee.due_date) {
+      return baseAmount;
+    }
+    const configObj = getFeeConfigForFee(fee);
+    if (configObj && configObj.apply_surcharge && configObj.surcharge_percentage > 0) {
+      const surcharge = baseAmount * (configObj.surcharge_percentage / 100);
+      return baseAmount + surcharge;
+    }
+    return baseAmount;
+  }, [members, getDiscountedAmount, getFeeConfigForFee]);
+
   const stats = useMemo(() => {
-    const total = fees.reduce((acc, f) => acc + (f.amount || 0), 0);
+    const total = fees.reduce((acc, f) => acc + getFeeAmountWithSurcharge(acc ? f : f), 0);
     const paid = fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + (f.amount || 0), 0);
     const pending = total - paid;
     const lateCount = fees.filter(f => f.status === 'Late' || (new Date(f.due_date) < new Date() && f.status !== 'Paid')).length;
     return { total, paid, pending, lateCount };
-  }, [fees]);
+  }, [fees, getFeeAmountWithSurcharge]);
 
   // Registry Mode: List of members with their status for the current period
   const registryData = useMemo(() => {
@@ -221,13 +329,19 @@ const FeesManagement: React.FC = () => {
 
     // Filtros de miembros
     if (filterDiscipline) {
-      list = list.filter(m => m.assignments?.some(a => a.discipline === filterDiscipline));
+      list = list.filter(m => {
+        const main = getMainAssignment(m);
+        return main ? main.discipline === filterDiscipline : false;
+      });
     }
     if (filterGender) {
       list = list.filter(m => m.gender === filterGender);
     }
     if (filterCategory) {
-      list = list.filter(m => m.assignments?.some(a => a.category_id === filterCategory || a.category === filterCategory));
+      list = list.filter(m => {
+        const main = getMainAssignment(m);
+        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
+      });
     }
     if (searchTerm.trim()) {
       const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
@@ -242,12 +356,21 @@ const FeesManagement: React.FC = () => {
       const fee = fees.find(f => f.member_id === m.id && f.period === selectedPeriod);
       return { member: m, fee };
     });
-  }, [members, fees, selectedPeriod, filterDiscipline, filterGender, filterCategory, searchTerm]);
+  }, [members, fees, selectedPeriod, filterDiscipline, filterGender, filterCategory, searchTerm, getMainAssignment]);
   
   const suggestFee = (member: Member) => {
-    // Tomar la primera asignación
-    const assignment = member.assignments?.[0];
-    if (!assignment) return { amount: 5000, due_day: 10 };
+    // Buscar la asignación principal
+    const playerAssignments = member.assignments?.filter(a => !a.role || a.role === 'PLAYER') || [];
+    let assignment = member.assignments?.find(a => a.is_main);
+    
+    // Si no tiene una principal marcada explícitamente, pero sólo tiene una asignación de jugador, la usamos
+    if (!assignment && playerAssignments.length === 1) {
+      assignment = playerAssignments[0];
+    }
+    
+    if (!assignment) {
+      return { amount: 0, due_day: 10, error: 'Sin categoría principal' };
+    }
 
     const rate = feeConfigs.find(rc => 
       rc.discipline === assignment.discipline && 
@@ -255,35 +378,122 @@ const FeesManagement: React.FC = () => {
       (rc.category_id === assignment.category_id || rc.category_id === assignment.category)
     );
 
+    const refDate = `${selectedPeriod}-10`;
+
     if (rate) {
-      return { amount: rate.amount, due_day: rate.due_day };
+      const discountedAmount = getDiscountedAmount(rate.amount, member, refDate);
+      return { amount: discountedAmount, due_day: rate.due_day };
     }
 
-    return { amount: 5000, due_day: 10 };
+    const discountedDefault = getDiscountedAmount(5000, member, refDate);
+    return { amount: discountedDefault, due_day: 10, error: 'Tarifa no configurada' };
   };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    console.log("Saving Fee Config:", configFormData);
+    console.log("Saving Fee Config:", configFormData, "Selected Class IDs:", selectedCategoryIds);
     try {
-      // Validaciones básicas
-      if (!configFormData.discipline || !configFormData.branch || !configFormData.category_id) {
-        throw new Error("Disciplina, Rama y Categoría son obligatorios.");
+      if (!configFormData.discipline || !configFormData.branch) {
+        throw new Error("Disciplina y Rama son obligatorios.");
+      }
+      if (selectedCategoryIds.length === 0) {
+        throw new Error("Debe seleccionar al menos una categoría.");
       }
 
-      const { error } = await db.feeConfigs.upsert(configFormData);
+      const configsToSave = selectedCategoryIds.map(catId => {
+        const isEditingOriginal = configFormData.id && catId === configFormData.category_id;
+        const payload: any = {
+          discipline: configFormData.discipline,
+          branch: configFormData.branch,
+          category_id: catId,
+          amount: Number(configFormData.amount),
+          due_day: Number(configFormData.due_day),
+          is_active: configFormData.is_active === undefined ? true : configFormData.is_active,
+          apply_surcharge: !!configFormData.apply_surcharge,
+          surcharge_percentage: Number(configFormData.surcharge_percentage || 0)
+        };
+        if (isEditingOriginal) {
+          payload.id = configFormData.id;
+        }
+        return payload;
+      });
+
+      const { error } = await db.feeConfigs.upsert(configsToSave);
       if (error) throw error;
       
       await loadData();
       setShowConfigModal(false);
-      setConfigFormData({ discipline: '', branch: '', category_id: '', amount: 0, due_day: 10, is_active: true });
-      alert("Configuración guardada correctamente");
+      setConfigFormData({ 
+        discipline: '', 
+        branch: '', 
+        category_id: '', 
+        amount: 0, 
+        due_day: 10, 
+        is_active: true,
+        apply_surcharge: false,
+        surcharge_percentage: 0
+      });
+      setSelectedCategoryIds([]);
+      alert("Configuración de tarifa guardada correctamente");
     } catch (error: any) {
       console.error("Error saving config:", error);
       alert("Error al guardar: " + (error.message || JSON.stringify(error)));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const saveScholarshipType = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scholarshipFormData.name) {
+      alert("El nombre de la beca es obligatorio.");
+      return;
+    }
+    if (scholarshipFormData.value === undefined || scholarshipFormData.value < 0) {
+      alert("El valor debe ser mayor o igual a cero.");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const payload = {
+        id: scholarshipFormData.id || undefined,
+        name: scholarshipFormData.name,
+        type: scholarshipFormData.type || 'percentage',
+        value: Number(scholarshipFormData.value || 0)
+      };
+      
+      const { error } = await db.scholarshipTypes.upsert(payload);
+      if (error) throw error;
+      
+      await loadData();
+      setShowScholarshipModal(false);
+      setScholarshipFormData({
+        name: '',
+        type: 'percentage',
+        value: 0
+      });
+      alert("Tipo de beca guardado correctamente");
+    } catch (error: any) {
+      console.error("Error saving scholarship type:", error);
+      alert("Error al guardar: " + (error.message || JSON.stringify(error)));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteScholarshipType = async (id: string) => {
+    if (confirm("¿Está seguro de que desea eliminar este tipo de beca?")) {
+      try {
+        const { error } = await db.scholarshipTypes.delete(id);
+        if (error) throw error;
+        await loadData();
+        alert("Tipo de beca eliminado");
+      } catch (error: any) {
+        console.error("Error deleting scholarship type:", error);
+        alert("Error al eliminar: " + (error.message || JSON.stringify(error)));
+      }
     }
   };
 
@@ -293,9 +503,11 @@ const FeesManagement: React.FC = () => {
 
     // Filtro por Disciplina (Solo si member existe)
     if (filterDiscipline) {
-      result = result.filter(f => 
-        f.member ? f.member.assignments?.some(a => a.discipline === filterDiscipline) : true
-      );
+      result = result.filter(f => {
+        if (!f.member) return true;
+        const main = getMainAssignment(f.member);
+        return main ? main.discipline === filterDiscipline : false;
+      });
     }
 
     // Filtro por Rama (Género)
@@ -305,9 +517,11 @@ const FeesManagement: React.FC = () => {
 
     // Filtro por Categoría
     if (filterCategory) {
-      result = result.filter(f => 
-        f.member ? f.member.assignments?.some(a => a.category_id === filterCategory || a.category === filterCategory) : true
-      );
+      result = result.filter(f => {
+        if (!f.member) return true;
+        const main = getMainAssignment(f.member);
+        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
+      });
     }
 
     // Filtro por Búsqueda (Nombre/DNI)
@@ -321,7 +535,7 @@ const FeesManagement: React.FC = () => {
     }
 
     return result.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-  }, [fees, searchTerm, filterDiscipline, filterGender, filterCategory]);
+  }, [fees, searchTerm, filterDiscipline, filterGender, filterCategory, getMainAssignment]);
 
   const categories = useMemo(() => {
     if (!config) return [];
@@ -332,11 +546,39 @@ const FeesManagement: React.FC = () => {
     return config.disciplines.flatMap(d => d.branches.flatMap(b => b.categories));
   }, [config, filterDiscipline]);
 
+  const categoryNamesMap = useMemo(() => {
+    if (!config) return {};
+    const map: Record<string, string> = {};
+    config.disciplines.forEach(d => {
+      d.branches.forEach(b => {
+        b.categories.forEach(c => {
+          map[c.id] = c.name;
+        });
+      });
+    });
+    return map;
+  }, [config]);
+
   const categoriesForModal = useMemo(() => {
-    if (!config || !configFormData.discipline) return [];
+    if (!config || !configFormData.discipline || !configFormData.branch) return [];
     const discipline = config.disciplines.find(d => d.name === configFormData.discipline);
-    return discipline?.branches.flatMap(b => b.categories) || [];
-  }, [config, configFormData.discipline]);
+    if (!discipline) return [];
+
+    const branchObj = discipline.branches.find(b => b.gender === configFormData.branch || (b as any).name === configFormData.branch);
+    const categoriesList = branchObj?.categories || [];
+
+    // Excluir categorías que ya tengan una configuración para esta disciplina + rama
+    // EXCEPTO si es la categoría en edición
+    return categoriesList.filter(cat => {
+      const alreadyConfigured = feeConfigs.some(fc => 
+        fc.discipline === configFormData.discipline &&
+        fc.branch === configFormData.branch &&
+        fc.category_id === cat.id &&
+        (!configFormData.id || fc.id !== configFormData.id)
+      );
+      return !alreadyConfigured;
+    });
+  }, [config, configFormData.discipline, configFormData.branch, feeConfigs, configFormData.id]);
 
   // BUSCADOR DE MIEMBROS (Dentro del Modal)
   const filteredMembersForSelect = useMemo(() => {
@@ -438,15 +680,41 @@ const FeesManagement: React.FC = () => {
             />
           </div>
           {viewMode === 'settings' ? (
-            <button 
-              onClick={() => {
-                setConfigFormData({ discipline: '', branch: '', category_id: '', amount: 0, due_day: 10, is_active: true });
-                setShowConfigModal(true);
-              }} 
-              className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
-            >
-              <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
-            </button>
+            settingsSubTab === 'scholarships' ? (
+              <button 
+                onClick={() => {
+                  setScholarshipFormData({
+                    name: '',
+                    type: 'percentage',
+                    value: 0
+                  });
+                  setShowScholarshipModal(true);
+                }} 
+                className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
+              >
+                <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Beca</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => {
+                  setConfigFormData({ 
+                    discipline: '', 
+                    branch: '', 
+                    category_id: '', 
+                    amount: 0, 
+                    due_day: 10, 
+                    is_active: true,
+                    apply_surcharge: false,
+                    surcharge_percentage: 0
+                  });
+                  setSelectedCategoryIds([]);
+                  setShowConfigModal(true);
+                }} 
+                className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
+              >
+                <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Tarifa</span>
+              </button>
+            )
           ) : viewMode === 'commitments' ? (
             <button 
               onClick={() => {
@@ -512,7 +780,7 @@ const FeesManagement: React.FC = () => {
                    if(confirm(`¿Generar cuotas pendientes para ${selectedPeriod}?`)) {
                      setIsSaving(true);
                      try {
-                       const missing = registryData.filter(d => !d.fee);
+                       const missing = registryData.filter(d => !d.fee && !suggestFee(d.member).error);
                        if (missing.length === 0) {
                           alert("No hay cuotas pendientes para generar este mes.");
                           return;
@@ -629,6 +897,22 @@ const FeesManagement: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-800/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden">
+        {viewMode === 'settings' && (
+          <div className="flex border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/30 p-4 gap-2">
+            <button
+              onClick={() => setSettingsSubTab('rates')}
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${settingsSubTab === 'rates' ? 'bg-primary-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+              Tarifas por Categoría
+            </button>
+            <button
+              onClick={() => setSettingsSubTab('scholarships')}
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${settingsSubTab === 'scholarships' ? 'bg-primary-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+              Tipos de Beca
+            </button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           {viewMode === 'history' ? (
             <table className="w-full text-left">
@@ -684,9 +968,26 @@ const FeesManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-slate-800 dark:text-white italic">${(fee.amount || 0).toLocaleString()}</span>
-                        {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
+                      <div className="flex flex-col gap-1 items-start">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-black text-slate-800 dark:text-white italic">
+                            ${getFeeAmountWithSurcharge(fee).toLocaleString()}
+                          </span>
+                          {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
+                        </div>
+                        {(() => {
+                          const baseAmount = fee.amount || 0;
+                          const effectiveAmount = getFeeAmountWithSurcharge(fee);
+                          if (effectiveAmount > baseAmount && baseAmount > 0) {
+                            const pct = Math.round(((effectiveAmount - baseAmount) / baseAmount) * 100);
+                            return (
+                              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase rounded border border-amber-500/10 tracking-wider">
+                                +{pct}% Recargo aplicado (Vencido)
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </td>
                     <td className="px-8 py-6 text-center">
@@ -761,7 +1062,21 @@ const FeesManagement: React.FC = () => {
                               ) : null;
                             })()}
                           </div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                            {(() => {
+                              const main = member.assignments?.find(a => a.is_main);
+                              return main ? (
+                                <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 text-[8px] font-black uppercase rounded-full">
+                                  {main.category} ({main.discipline})
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/10 text-[8px] font-black uppercase rounded-full">
+                                  Sin Cat. Principal
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -779,27 +1094,39 @@ const FeesManagement: React.FC = () => {
                       <div className="flex justify-end items-center gap-2">
                         {!fee || fee.status !== 'Paid' ? (
                           <>
-                            <button 
-                              onClick={() => {
-                                const suggestion = fee ? null : suggestFee(member);
-                                const dueDate = fee ? fee.due_date : (
-                                  suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
+                            {(() => {
+                              const sugErr = fee ? null : suggestFee(member).error;
+                              if (sugErr) {
+                                return (
+                                  <span className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl text-[8px] font-black uppercase tracking-widest border border-red-500/20" title={sugErr === 'Sin categoría principal' ? 'Configura la categoría principal en el módulo Miembros' : 'No hay tarifa de cuota configurada para este miembro'}>
+                                    ⚠️ {sugErr}
+                                  </span>
                                 );
+                              }
+                              return (
+                                <button 
+                                  onClick={() => {
+                                    const suggestion = fee ? null : suggestFee(member);
+                                    const dueDate = fee ? fee.due_date : (
+                                      suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
+                                    );
 
-                                setFormData({
-                                  ...formData,
-                                  ...(fee || {}),
-                                  member_id: member.id,
-                                  period: selectedPeriod,
-                                  amount: fee?.amount || suggestion?.amount || 5000,
-                                  due_date: dueDate
-                                });
-                                setShowModal(true);
-                              }}
-                              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
-                            >
-                              <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
-                            </button>
+                                    setFormData({
+                                      ...formData,
+                                      ...(fee || {}),
+                                      member_id: member.id,
+                                      period: selectedPeriod,
+                                      amount: fee ? getFeeAmountWithSurcharge(fee) : (suggestion?.amount || 5000),
+                                      due_date: dueDate
+                                    });
+                                    setShowModal(true);
+                                  }}
+                                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
+                                >
+                                  <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
+                                </button>
+                              );
+                            })()}
                             <button 
                               onClick={() => {
                                 setSelectedPlayerIdForCommitment(member.id);
@@ -923,72 +1250,144 @@ const FeesManagement: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
-                  <th className="px-8 py-6">Disciplina</th>
-                  <th className="px-8 py-6">Rama</th>
-                  <th className="px-8 py-6">Categoría</th>
-                  <th className="px-8 py-6">Monto</th>
-                  <th className="px-8 py-6">Vencimiento</th>
-                  <th className="px-8 py-6 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {feeConfigs.length > 0 ? feeConfigs.map(configFee => (
-                  <tr key={configFee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                    <td className="px-8 py-6">
-                       <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest">{configFee.discipline}</span>
-                    </td>
-                    <td className="px-8 py-6">
-                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{configFee.branch}</span>
-                    </td>
-                    <td className="px-8 py-6">
-                       <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{configFee.category_id}</span>
-                    </td>
-                    <td className="px-8 py-6">
-                       <span className="text-lg font-black text-slate-800 dark:text-white italic">${configFee.amount.toLocaleString()}</span>
-                    </td>
-                    <td className="px-8 py-6">
-                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Día {configFee.due_day}</span>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                       <div className="flex justify-end gap-2">
-                         <button 
-                           onClick={() => {
-                             setConfigFormData(configFee);
-                             setShowConfigModal(true);
-                           }} 
-                           className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
-                         >
-                           <ArrowUpRight size={16} />
-                         </button>
-                         <button 
-                           onClick={async () => {
-                             if(confirm('¿Eliminar esta tarifa?')) {
-                               await db.feeConfigs.delete(configFee.id);
-                               loadData();
-                             }
-                           }} 
-                           className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
-                         >
-                           <Trash2 size={16} />
-                         </button>
-                       </div>
-                    </td>
+            settingsSubTab === 'scholarships' ? (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Nombre de la Beca</th>
+                    <th className="px-8 py-6">Tipo</th>
+                    <th className="px-8 py-6">Valor / Descuento</th>
+                    <th className="px-8 py-6 text-right">Acciones</th>
                   </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={6} className="px-8 py-20 text-center">
-                      <div className="flex flex-col items-center gap-4 opacity-30">
-                        <DollarSign size={48} className="text-slate-400" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay tarifas configuradas</p>
-                      </div>
-                    </td>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {scholarships.length > 0 ? scholarships.map(scholarship => (
+                    <tr key={scholarship.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest">{scholarship.name}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                          {scholarship.type === 'percentage' ? 'Porcentaje' : 'Monto Fijo'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-lg font-black text-slate-800 dark:text-white italic">
+                          {scholarship.type === 'percentage' ? `${scholarship.value}%` : `$${scholarship.value.toLocaleString()}`}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              setScholarshipFormData(scholarship);
+                              setShowScholarshipModal(true);
+                            }} 
+                            className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <ArrowUpRight size={16} />
+                          </button>
+                          <button 
+                            onClick={() => deleteScholarshipType(scholarship.id)} 
+                            className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-4 opacity-30">
+                          <DollarSign size={48} className="text-slate-400" />
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay becas configuradas</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Disciplina</th>
+                    <th className="px-8 py-6">Rama</th>
+                    <th className="px-8 py-6">Categoría</th>
+                    <th className="px-8 py-6">Monto</th>
+                    <th className="px-8 py-6">Vencimiento</th>
+                    <th className="px-8 py-6 text-right">Acciones</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {feeConfigs.length > 0 ? feeConfigs.map(configFee => (
+                    <tr key={configFee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                         <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest">{configFee.discipline}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{configFee.branch}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                         <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{categoryNamesMap[configFee.category_id] || configFee.category_id}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                         <span className="text-lg font-black text-slate-800 dark:text-white italic">${configFee.amount.toLocaleString()}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Día {configFee.due_day}</span>
+                          {configFee.apply_surcharge ? (
+                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-0.5">+{configFee.surcharge_percentage}% Recargo</span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest mt-0.5">Sin recargo</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                         <div className="flex justify-end gap-2">
+                           <button 
+                             onClick={() => {
+                               setConfigFormData({
+                                 ...configFee,
+                                 apply_surcharge: configFee.apply_surcharge || false,
+                                 surcharge_percentage: configFee.surcharge_percentage || 0
+                               });
+                               setSelectedCategoryIds([configFee.category_id]);
+                               setShowConfigModal(true);
+                             }} 
+                             className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                           >
+                             <ArrowUpRight size={16} />
+                           </button>
+                           <button 
+                             onClick={async () => {
+                               if(confirm('¿Eliminar esta tarifa?')) {
+                                 await db.feeConfigs.delete(configFee.id);
+                                 loadData();
+                               }
+                             }} 
+                             className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                         </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={6} className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-4 opacity-30">
+                          <DollarSign size={48} className="text-slate-400" />
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay tarifas configuradas</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )
           )}
         </div>
       </div>
@@ -1178,9 +1577,23 @@ const FeesManagement: React.FC = () => {
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${f.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
                            {f.status === 'Paid' ? <Check size={20} /> : <Clock size={20} />}
                         </div>
-                        <div>
+                        <div className="flex flex-col gap-1">
                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{f.period} - {f.payment_method}</p>
-                           <p className="text-lg font-black text-slate-800 dark:text-white italic">${f.amount.toLocaleString()}</p>
+                           <div className="flex items-center gap-2">
+                             <p className="text-lg font-black text-slate-800 dark:text-white italic">${getFeeAmountWithSurcharge(f).toLocaleString()}</p>
+                             {(() => {
+                               const baseAmt = f.amount || 0;
+                               const effAmt = getFeeAmountWithSurcharge(f);
+                               if (effAmt > baseAmt) {
+                                 return (
+                                   <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase rounded tracking-wider border border-amber-500/10">
+                                     +Recargo
+                                   </span>
+                                 );
+                               }
+                               return null;
+                             })()}
+                           </div>
                         </div>
                      </div>
                      <div className="text-right flex flex-col items-end gap-2">
@@ -1191,6 +1604,94 @@ const FeesManagement: React.FC = () => {
                 ))}
               </div>
            </div>
+        </div>
+      )}
+
+      {/* MODAL: Tipos de Beca */}
+      {showScholarshipModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg"><Plus size={20} /></div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">
+                    {scholarshipFormData.id ? 'Editar Tipo de Beca' : 'Crear Tipo de Beca'}
+                  </h3>
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest font-bold">Definición centralizada</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowScholarshipModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <form onSubmit={saveScholarshipType}>
+              <div className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Nombre de la Beca</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Ej: Beca Completa, Beca 50%, Rendimiento..."
+                      value={scholarshipFormData.name || ''}
+                      onChange={e => setScholarshipFormData({ ...scholarshipFormData, name: e.target.value })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">Tipo de Valor</label>
+                    <select
+                      value={scholarshipFormData.type || 'percentage'}
+                      onChange={e => setScholarshipFormData({ ...scholarshipFormData, type: e.target.value as 'percentage' | 'fixed' })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo ($)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">
+                      {scholarshipFormData.type === 'percentage' ? 'Porcentaje de Descuento (%)' : 'Monto de Descuento ($)'}
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      max={scholarshipFormData.type === 'percentage' ? "100" : undefined}
+                      value={scholarshipFormData.value || ''}
+                      onChange={e => setScholarshipFormData({ ...scholarshipFormData, value: Number(e.target.value) })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-slate-100 dark:border-white/5 flex gap-4 bg-slate-50/50 dark:bg-slate-800/20">
+                <button
+                  type="button"
+                  onClick={() => setShowScholarshipModal(false)}
+                  className="flex-1 px-8 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Guardar Beca
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -1221,7 +1722,10 @@ const FeesManagement: React.FC = () => {
                   <select
                     required
                     value={configFormData.discipline}
-                    onChange={e => setConfigFormData({ ...configFormData, discipline: e.target.value })}
+                    onChange={e => {
+                      setConfigFormData({ ...configFormData, discipline: e.target.value, branch: '' });
+                      setSelectedCategoryIds([]);
+                    }}
                     className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
                   >
                     <option value="">Seleccionar...</option>
@@ -1229,16 +1733,22 @@ const FeesManagement: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-6 animate-fade-in">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Rama</label>
                     <select
                       required
+                      disabled={!configFormData.discipline}
                       value={configFormData.branch}
-                      onChange={e => setConfigFormData({ ...configFormData, branch: e.target.value })}
-                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
+                      onChange={e => {
+                        setConfigFormData({ ...configFormData, branch: e.target.value });
+                        setSelectedCategoryIds([]);
+                      }}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      <option value="">Seleccionar...</option>
+                      <option value="">
+                        {!configFormData.discipline ? "Escribir disciplina..." : "Seleccionar..."}
+                      </option>
                       <option value="Masculino">Masculino</option>
                       <option value="Femenino">Femenino</option>
                       <option value="Mixto">Mixto</option>
@@ -1246,16 +1756,46 @@ const FeesManagement: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Categoría</label>
-                    <select
-                      required
-                      value={configFormData.category_id}
-                      onChange={e => setConfigFormData({ ...configFormData, category_id: e.target.value })}
-                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {categoriesForModal.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">Categorías</label>
+                    <div className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent dark:border-white/5 max-h-36 overflow-y-auto space-y-2 custom-scrollbar">
+                      {categoriesForModal.map(c => {
+                        const isChecked = selectedCategoryIds.includes(c.id);
+                        return (
+                          <label key={c.id} className="flex items-center gap-3 cursor-pointer p-0.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors select-none">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setSelectedCategoryIds([...selectedCategoryIds, c.id]);
+                                } else {
+                                  setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== c.id));
+                                }
+                              }}
+                              className="rounded border-slate-300 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                            />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                              {c.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {!configFormData.discipline && (
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic p-1">
+                          Selecciona disciplina primero
+                        </p>
+                      )}
+                      {configFormData.discipline && !configFormData.branch && (
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic p-1">
+                          Selecciona rama primero
+                        </p>
+                      )}
+                      {configFormData.discipline && configFormData.branch && categoriesForModal.length === 0 && (
+                        <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest italic p-1">
+                          Todas las categorías ya están configuradas
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1283,6 +1823,41 @@ const FeesManagement: React.FC = () => {
                       className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-transparent dark:border-white/5"
                     />
                   </div>
+                </div>
+
+                {/* Sección Recargo */}
+                <div className="mt-6 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-white/5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Aplicar Recargo por Pago Fuera de Término</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Suma un porcentaje si se paga luego de la fecha de vencimiento</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={configFormData.apply_surcharge || false}
+                        onChange={e => setConfigFormData({ ...configFormData, apply_surcharge: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {configFormData.apply_surcharge && (
+                    <div className="space-y-2 animate-fade-in">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Porcentaje de Recargo (%)</label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={configFormData.surcharge_percentage || ''}
+                        onChange={e => setConfigFormData({ ...configFormData, surcharge_percentage: Number(e.target.value) })}
+                        placeholder="Ej: 10"
+                        className="w-full px-6 py-4 bg-white dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-slate-200 dark:border-white/5"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

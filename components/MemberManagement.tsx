@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Member, AppRole, ClubConfig, MemberAssignment, DisciplinePosition } from '../types';
+import { Member, AppRole, ClubConfig, MemberAssignment, DisciplinePosition, ScholarshipType } from '../types';
 import { 
   UserPlus, Search, Trash2, X, Save, Camera, Loader2, PlusCircle, Heart, 
   Fingerprint, ShieldCheck, 
   Contact2, UserCircle, AlertCircle, Shirt, Settings, GraduationCap,
-  ExternalLink, FileText, Upload, Trash
+  ExternalLink, FileText, Upload, Trash, Award
 } from 'lucide-react';
 import { getPositionsByDiscipline } from '../lib/disciplinePositions';
 import { db } from '../lib/supabase';
@@ -17,7 +17,7 @@ interface MemberManagementProps {
   onDeleteMember: (id: string) => Promise<void>;
 }
 
-type ModalTab = 'identity' | 'health' | 'contacts' | 'schooling' | 'sports_data' | 'sports' | 'system';
+type ModalTab = 'identity' | 'health' | 'contacts' | 'schooling' | 'sports_data' | 'sports' | 'system' | 'scholarship';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -33,6 +33,22 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [scholarshipTypes, setScholarshipTypes] = useState<ScholarshipType[]>([]);
+  const [isUploadingScholarshipFile, setIsUploadingScholarshipFile] = useState(false);
+
+  useEffect(() => {
+    const fetchScholarships = async () => {
+      try {
+        const { data } = await db.scholarshipTypes.getAll();
+        if (data) {
+          setScholarshipTypes(data);
+        }
+      } catch (err) {
+        console.warn("Could not load scholarship types in MemberManagement:", err);
+      }
+    };
+    fetchScholarships();
+  }, [showModal]);
   const [availablePositions, setAvailablePositions] = useState<Record<string, DisciplinePosition[]>>({});
   const [loadingPositions, setLoadingPositions] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +116,13 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     contacts_list: [],
     has_preexisting_condition: false,
     preexisting_condition_details: '',
-    medical_file_url: ''
+    medical_file_url: '',
+    has_scholarship: false,
+    scholarship_type_id: '',
+    scholarship_details: '',
+    scholarship_attachment_url: '',
+    scholarship_start_date: '',
+    scholarship_end_date: ''
   });
 
   const [isUploadingMedicalFile, setIsUploadingMedicalFile] = useState(false);
@@ -185,7 +207,13 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       contacts_list: initialContacts,
       has_preexisting_condition: member.has_preexisting_condition || false,
       preexisting_condition_details: member.preexisting_condition_details || '',
-      medical_file_url: member.medical_file_url || ''
+      medical_file_url: member.medical_file_url || '',
+      has_scholarship: member.has_scholarship || false,
+      scholarship_type_id: member.scholarship_type_id || '',
+      scholarship_details: member.scholarship_details || '',
+      scholarship_attachment_url: member.scholarship_attachment_url || '',
+      scholarship_start_date: member.scholarship_start_date || '',
+      scholarship_end_date: member.scholarship_end_date || ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -219,7 +247,13 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       contacts_list: [],
       has_preexisting_condition: false,
       preexisting_condition_details: '',
-      medical_file_url: ''
+      medical_file_url: '',
+      has_scholarship: false,
+      scholarship_type_id: '',
+      scholarship_details: '',
+      scholarship_attachment_url: '',
+      scholarship_start_date: '',
+      scholarship_end_date: ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -252,6 +286,22 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     }
   };
 
+  const handleScholarshipFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingScholarshipFile(true);
+    try {
+      const publicUrl = await db.scholarshipTypes.uploadAttachment(file);
+      setFormData(prev => ({ ...prev, scholarship_attachment_url: publicUrl }));
+    } catch (err: any) {
+      console.error("Error al subir archivo de beca:", err);
+      alert("Error al subir el archivo. Por favor, reintente.");
+    } finally {
+       setIsUploadingScholarshipFile(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name || !formData.dni) return alert("Nombre y DNI son obligatorios");
     if (!formData.email && formData.systemrole !== 'Socio') {
@@ -271,6 +321,27 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     try {
       const dataToSave = { ...formData };
       
+      // Auto-assign is_main if there is only one PLAYER assignment and none is marked
+      const playerAssignments = (dataToSave.assignments || []).filter(a => a.role === 'PLAYER');
+      const hasMain = (dataToSave.assignments || []).some(a => a.is_main);
+      if (!hasMain && playerAssignments.length === 1) {
+        dataToSave.assignments = (dataToSave.assignments || []).map(a => 
+          a.role === 'PLAYER' ? { ...a, is_main: true } : a
+        );
+      } else if (hasMain) {
+        // Ensure only one remains is_main
+        let foundMain = false;
+        dataToSave.assignments = (dataToSave.assignments || []).map(a => {
+          if (a.is_main) {
+            if (foundMain) {
+              return { ...a, is_main: false };
+            }
+            foundMain = true;
+          }
+          return a;
+        });
+      }
+
       // Backward compatible mapping of tutor object with the first contact if available
       if (dataToSave.contacts_list && dataToSave.contacts_list.length > 0) {
         const firstContact = dataToSave.contacts_list[0];
@@ -431,6 +502,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     { id: 'contacts', label: 'Contactos', icon: Contact2 },
     { id: 'schooling', label: 'Escolaridad', icon: GraduationCap },
     { id: 'sports', label: 'Config. Deportiva', icon: Settings },
+    { id: 'scholarship', label: 'Beca', icon: Award },
     { id: 'system', label: 'Sistema', icon: ShieldCheck },
   ];
 
@@ -1198,6 +1270,26 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                     <option value="">-- Seleccionar Categoría --</option>
                                     {availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                   </select>
+                                  {as.role === 'PLAYER' && (
+                                    <label className="flex items-center gap-2 cursor-pointer mt-3 select-none">
+                                      <input 
+                                        type="checkbox"
+                                        checked={as.is_main || false}
+                                        onChange={e => {
+                                          const checked = e.target.checked;
+                                          const updatedAssignments = formData.assignments?.map((item, i) => ({
+                                            ...item,
+                                            is_main: i === idx ? checked : false
+                                          }));
+                                          setFormData(prev => ({ ...prev, assignments: updatedAssignments }));
+                                        }}
+                                        className="rounded border-[var(--surface-border)] text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                      />
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${as.is_main ? "text-primary-500 font-bold" : "text-[var(--text-muted)]"}`}>
+                                        Categoría Principal (Pagos)
+                                      </span>
+                                    </label>
+                                  )}
                                 </div>
 
                                 <div className="space-y-1">
@@ -1225,6 +1317,148 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           );
                         })}
                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'scholarship' && (
+                    <div className="space-y-10 animate-fade-in">
+                       <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                         <div className="w-1 h-4 bg-[var(--text-main)] rounded-full"></div> Gestión de Beca
+                       </h4>
+                       
+                       <div className="space-y-8 bg-surface-ground p-6 md:p-8 rounded-[2rem] border border-[var(--surface-border)]">
+                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                           <div>
+                             <h5 className="font-black text-sm uppercase text-[var(--text-main)]">¿Aplica Beca para este Miembro?</h5>
+                             <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
+                               Activa o desactiva la aplicación automática de descuento en sus cuotas
+                             </p>
+                           </div>
+                           <select 
+                             value={formData.has_scholarship ? 'Sí' : 'No'} 
+                             onChange={e => setFormData({...formData, has_scholarship: e.target.value === 'Sí'})} 
+                             className="w-full md:w-48 p-4 bg-surface-card rounded-xl font-bold text-sm outline-none border border-[var(--surface-border)] shadow-sm text-[var(--text-main)] cursor-pointer"
+                           >
+                             <option value="No">No aplica</option>
+                             <option value="Sí">Sí, aplica beca</option>
+                           </select>
+                         </div>
+
+                         {formData.has_scholarship && (
+                           <div className="space-y-8 pt-6 border-t border-[var(--surface-border)] animate-fade-in">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-2">
+                                 <label className={labelClasses}>Tipo de Beca</label>
+                                 <select 
+                                   value={formData.scholarship_type_id || ''} 
+                                   onChange={e => setFormData({...formData, scholarship_type_id: e.target.value})} 
+                                   className={selectClasses}
+                                   required={formData.has_scholarship}
+                                 >
+                                   <option value="">-- Seleccionar Tipo de Beca --</option>
+                                   {scholarshipTypes.map(st => (
+                                     <option key={st.id} value={st.id}>
+                                       {st.name} ({st.type === 'percentage' ? `${st.value}%` : `$${st.value.toLocaleString()}`})
+                                     </option>
+                                   ))}
+                                 </select>
+                                 {scholarshipTypes.length === 0 && (
+                                   <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-1">
+                                     No hay tipos de beca creados. Configúralos en Caja/Cuotas {'>'} Configuración.
+                                   </p>
+                                 )}
+                               </div>
+
+                               <div className="space-y-2">
+                                 <label className={labelClasses}>Detalle de la Beca</label>
+                                 <input 
+                                   type="text" 
+                                   value={formData.scholarship_details || ''} 
+                                   onChange={e => setFormData({...formData, scholarship_details: e.target.value})} 
+                                   className={inputClasses} 
+                                   placeholder="Ej: Aprobado por Comisión Directiva" 
+                                 />
+                               </div>
+
+                               <div className="space-y-2">
+                                 <label className={labelClasses}>Vigencia Desde</label>
+                                 <input 
+                                   type="date" 
+                                   value={formData.scholarship_start_date || ''} 
+                                   onChange={e => setFormData({...formData, scholarship_start_date: e.target.value})} 
+                                   className={inputClasses} 
+                                 />
+                               </div>
+
+                               <div className="space-y-2">
+                                 <label className={labelClasses}>Vigencia Hasta</label>
+                                 <input 
+                                   type="date" 
+                                   value={formData.scholarship_end_date || ''} 
+                                   onChange={e => setFormData({...formData, scholarship_end_date: e.target.value})} 
+                                   className={inputClasses} 
+                                 />
+                               </div>
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Documentación Adjunta (Ej: Solicitud firmada, Acta)</label>
+                               {formData.scholarship_attachment_url ? (
+                                 <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">
+                                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                     <FileText size={18} />
+                                     <span className="truncate max-w-[200px] md:max-w-xs block font-bold">Documento de Beca Adjunto</span>
+                                   </div>
+                                   <div className="flex gap-2">
+                                     <a 
+                                       href={formData.scholarship_attachment_url} 
+                                       target="_blank" 
+                                       rel="noreferrer noopener" 
+                                       className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider transition-colors inline-flex items-center"
+                                     >
+                                       <ExternalLink size={12} className="mr-1" />
+                                       Ver archivo
+                                     </a>
+                                     <button 
+                                       type="button"
+                                       onClick={() => setFormData({...formData, scholarship_attachment_url: ''})}
+                                       className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors cursor-pointer"
+                                       title="Eliminar adjunto"
+                                     >
+                                       <Trash size={14} />
+                                     </button>
+                                   </div>
+                                 </div>
+                               ) : (
+                                 <div className="flex items-center justify-center w-full">
+                                   <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[var(--surface-border)] rounded-2xl cursor-pointer hover:bg-surface-ground transition-all group">
+                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                       {isUploadingScholarshipFile ? (
+                                         <>
+                                           <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mb-2" />
+                                           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Subiendo archivo...</p>
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Upload className="w-5 h-5 mb-2 text-[var(--text-muted)] group-hover:text-emerald-500" />
+                                           <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] group-hover:text-[var(--text-main)]">Seleccionar Documentación / Acta (PDF, Imagen)</p>
+                                         </>
+                                       )}
+                                     </div>
+                                     <input 
+                                       type="file" 
+                                       onChange={handleScholarshipFileUpload} 
+                                       className="hidden" 
+                                       accept="image/*,application/pdf" 
+                                       disabled={isUploadingScholarshipFile}
+                                     />
+                                   </label>
+                                 </div>
+                               )}
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   )}
 
