@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MemberFee, Member, ScholarshipType } from '../types';
+import { MemberFee, Member, ScholarshipType, InscriptionConfig } from '../types';
 import { 
   Search, DollarSign, Check, Plus, X, 
   Trash2, Save, CreditCard, Loader2, History, TrendingUp, 
   ArrowUpRight, AlertTriangle, Clock, Receipt, 
-  Camera, ExternalLink, Image as ImageIcon,
-  ChevronDown, RefreshCw, Calendar
+  ExternalLink, Image as ImageIcon,
+  ChevronDown, RefreshCw, Calendar, FileText, Upload
 } from 'lucide-react';
 import { db, supabase } from '../lib/supabase';
 
@@ -17,6 +17,26 @@ const getInitials = (name: string) => {
   return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 };
 
+const formatPeriodToMonthYear = (pStr: string) => {
+  if (!pStr) return '---';
+  const parts = pStr.split('-');
+  if (parts.length !== 2) return pStr;
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+  const name = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 const FeesManagement: React.FC = () => {
   const [fees, setFees] = useState<MemberFee[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -24,14 +44,20 @@ const FeesManagement: React.FC = () => {
   const [feeConfigs, setFeeConfigs] = useState<any[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterDiscipline, setFilterDiscipline] = useState<string>('');
-  const [filterGender, setFilterGender] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Member | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  
+  // Custom enhanced state variables
+  const [showDebtorsOnly, setShowDebtorsOnly] = useState(false);
+  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
+  const [comment, setComment] = useState('');
+  
+  // Custom file input refs for specific attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Estados para compromisos de pago
   const [commitments, setCommitments] = useState<any[]>([]);
@@ -58,7 +84,8 @@ const FeesManagement: React.FC = () => {
     period: new Date().toISOString().slice(0, 7),
     payment_method: 'Efectivo',
     receipt_url: '',
-    reference: ''
+    reference: '',
+    concept: 'Cuota Mensual'
   });
 
   const [viewMode, setViewMode] = useState<'history' | 'registry' | 'settings' | 'commitments'>('history');
@@ -74,13 +101,28 @@ const FeesManagement: React.FC = () => {
     surcharge_percentage: 0
   });
 
-  const [settingsSubTab, setSettingsSubTab] = useState<'rates' | 'scholarships'>('rates');
+  const [settingsSubTab, setSettingsSubTab] = useState<'rates' | 'scholarships' | 'inscriptions'>('rates');
+  const [registrySubTab, setRegistrySubTab] = useState<'monthly' | 'inscriptions'>('monthly');
+  const [conceptFilter, setConceptFilter] = useState<'all' | 'monthly' | 'inscriptions'>('all');
   const [scholarships, setScholarships] = useState<ScholarshipType[]>([]);
   const [showScholarshipModal, setShowScholarshipModal] = useState(false);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [genPeriod, setGenPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [genCategoryIds, setGenCategoryIds] = useState<string[]>([]);
   const [scholarshipFormData, setScholarshipFormData] = useState<Partial<ScholarshipType>>({
     name: '',
     type: 'percentage',
     value: 0
+  });
+
+  const [inscriptions, setInscriptions] = useState<InscriptionConfig[]>([]);
+  const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+  const [inscriptionFormData, setInscriptionFormData] = useState<Partial<InscriptionConfig>>({
+    name: '',
+    amount: 0,
+    due_date: '',
+    category_ids: []
   });
 
   const loadData = async () => {
@@ -111,6 +153,19 @@ const FeesManagement: React.FC = () => {
         console.warn("Could not fetch scholarship types gracefully:", err);
       }
       setScholarships(scholarshipTypesData);
+
+      let inscriptionsData: InscriptionConfig[] = [];
+      try {
+        const { data, error } = await db.inscriptionConfigs.getAll();
+        if (error) {
+          console.warn("Table inscription_configs might not exist yet:", error.message);
+        } else {
+          inscriptionsData = data || [];
+        }
+      } catch (err) {
+        console.warn("Could not fetch inscription configs gracefully:", err);
+      }
+      setInscriptions(inscriptionsData);
       
       if (feesError) console.error("Error loading fees:", feesError);
       if (memError) console.error("Error loading members:", memError);
@@ -132,7 +187,15 @@ const FeesManagement: React.FC = () => {
         setFees(feesData);
       }
       
-      if (membersData) setMembers(membersData);
+      if (membersData) {
+        const filteredMembers = membersData.filter(m => {
+          const role = m.systemrole;
+          // Se incluye por defecto a Socios, o si no tienen rol institucional asignado asumimos Socio/Jugador.
+          // Se excluyen explícitamente los roles directivos, técnicos y médicos.
+          return role === 'Socio' || !role || (role !== 'Admin' && role !== 'Administrativo' && role !== 'Entrenador' && role !== 'Medico');
+        });
+        setMembers(filteredMembers);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -273,7 +336,11 @@ const FeesManagement: React.FC = () => {
     return true;
   }, []);
 
-  const getDiscountedAmount = useCallback((baseAmount: number, member: Member, referenceDate?: string) => {
+  const getDiscountedAmount = useCallback((baseAmount: number, member: Member, referenceDate?: string, concept?: string) => {
+    // La beca (descuento) solo aplica para Cuotas Mensuales ("Cuota Mensual" o vacío/indefinido)
+    const isMonthly = !concept || concept === 'Cuota Mensual';
+    if (!isMonthly) return baseAmount;
+
     if (!member || !isScholarshipActive(member, referenceDate)) return baseAmount;
     
     const scholarship = scholarships.find(s => s.id === member.scholarship_type_id);
@@ -300,8 +367,8 @@ const FeesManagement: React.FC = () => {
     // Obtener miembro asociado a la cuota
     const member = fee.member || members.find(m => m.id === fee.member_id);
     
-    // Aplicar descuento por beca si corresponde
-    const baseAmount = member ? getDiscountedAmount(fee.amount || 0, member, fee.due_date) : (fee.amount || 0);
+    // Aplicar descuento por beca si corresponde (comprobando concepto)
+    const baseAmount = member ? getDiscountedAmount(fee.amount || 0, member, fee.due_date, fee.concept) : (fee.amount || 0);
 
     const todayStr = new Date().toISOString().split('T')[0];
     if (todayStr <= fee.due_date) {
@@ -315,50 +382,7 @@ const FeesManagement: React.FC = () => {
     return baseAmount;
   }, [members, getDiscountedAmount, getFeeConfigForFee]);
 
-  const stats = useMemo(() => {
-    const total = fees.reduce((acc, f) => acc + getFeeAmountWithSurcharge(acc ? f : f), 0);
-    const paid = fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + (f.amount || 0), 0);
-    const pending = total - paid;
-    const lateCount = fees.filter(f => f.status === 'Late' || (new Date(f.due_date) < new Date() && f.status !== 'Paid')).length;
-    return { total, paid, pending, lateCount };
-  }, [fees, getFeeAmountWithSurcharge]);
-
-  // Registry Mode: List of members with their status for the current period
-  const registryData = useMemo(() => {
-    let list = members;
-
-    // Filtros de miembros
-    if (filterDiscipline) {
-      list = list.filter(m => {
-        const main = getMainAssignment(m);
-        return main ? main.discipline === filterDiscipline : false;
-      });
-    }
-    if (filterGender) {
-      list = list.filter(m => m.gender === filterGender);
-    }
-    if (filterCategory) {
-      list = list.filter(m => {
-        const main = getMainAssignment(m);
-        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
-      });
-    }
-    if (searchTerm.trim()) {
-      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-      list = list.filter(m => {
-        const name = m.name.toLowerCase();
-        const dni = m.dni.toLowerCase();
-        return tokens.every(token => name.includes(token) || dni.includes(token));
-      });
-    }
-
-    return list.map(m => {
-      const fee = fees.find(f => f.member_id === m.id && f.period === selectedPeriod);
-      return { member: m, fee };
-    });
-  }, [members, fees, selectedPeriod, filterDiscipline, filterGender, filterCategory, searchTerm, getMainAssignment]);
-  
-  const suggestFee = (member: Member) => {
+  const suggestFee = useCallback((member: Member) => {
     // Buscar la asignación principal
     const playerAssignments = member.assignments?.filter(a => !a.role || a.role === 'PLAYER') || [];
     let assignment = member.assignments?.find(a => a.is_main);
@@ -381,13 +405,234 @@ const FeesManagement: React.FC = () => {
     const refDate = `${selectedPeriod}-10`;
 
     if (rate) {
-      const discountedAmount = getDiscountedAmount(rate.amount, member, refDate);
+      const discountedAmount = getDiscountedAmount(rate.amount, member, refDate, 'Cuota Mensual');
       return { amount: discountedAmount, due_day: rate.due_day };
     }
 
-    const discountedDefault = getDiscountedAmount(5000, member, refDate);
+    const discountedDefault = getDiscountedAmount(5000, member, refDate, 'Cuota Mensual');
     return { amount: discountedDefault, due_day: 10, error: 'Tarifa no configurada' };
-  };
+  }, [feeConfigs, selectedPeriod, getDiscountedAmount]);
+
+  // BUSCADOR PRINCIPAL (Tabla) con Filtros
+  const filteredFees = useMemo(() => {
+    let result = fees;
+
+    // Filtro por Concepto
+    if (conceptFilter === 'monthly') {
+      result = result.filter(f => !f.concept || f.concept === 'Cuota Mensual');
+    } else if (conceptFilter === 'inscriptions') {
+      result = result.filter(f => f.concept && f.concept.startsWith('Inscripción'));
+    }
+
+    // Filtro por Categoría
+    if (filterCategory) {
+      result = result.filter(f => {
+        if (!f.member) return true;
+        const main = getMainAssignment(f.member);
+        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
+      });
+    }
+
+    // Filtro por Búsqueda (Nombre/DNI)
+    if (searchTerm.trim()) {
+      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      result = result.filter(f => {
+        const memberName = (f.member?.name || 'DESCONOCIDO').toLowerCase();
+        const memberDni = (f.member?.dni || '').toLowerCase();
+        return tokens.every(token => memberName.includes(token) || memberDni.includes(token));
+      });
+    }
+
+    // Filtro por Periodo
+    if (selectedPeriod) {
+      result = result.filter(f => {
+        if (!f.period) return true;
+        if (f.period === selectedPeriod) return true;
+        if (f.concept && f.concept.startsWith('Inscripción')) {
+          const year = selectedPeriod.split('-')[0];
+          return f.period.startsWith(year);
+        }
+        return false;
+      });
+    }
+
+    return result.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
+  }, [fees, searchTerm, filterCategory, conceptFilter, selectedPeriod, getMainAssignment]);
+
+  // Registry Mode: List of members with their status for the current period
+  const registryData = useMemo(() => {
+    let list = members;
+
+    if (filterCategory) {
+      list = list.filter(m => {
+        const main = getMainAssignment(m);
+        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
+      });
+    }
+    if (searchTerm.trim()) {
+      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      list = list.filter(m => {
+        const name = m.name.toLowerCase();
+        const dni = m.dni.toLowerCase();
+        return tokens.every(token => name.includes(token) || dni.includes(token));
+      });
+    }
+
+    const mapped = list.map(m => {
+      const fee = fees.find(f => f.member_id === m.id && f.period === selectedPeriod && (!f.concept || f.concept === 'Cuota Mensual'));
+      return { member: m, fee };
+    }).filter(item => {
+      const m = item.member;
+      const memberFees = fees.filter(f => f.member_id === m.id && f.status !== 'Anulado' && (!f.concept || f.concept === 'Cuota Mensual'));
+      const feePeriods = memberFees.map(f => f.period).filter(Boolean);
+      const earliestFeePeriod = feePeriods.length > 0 ? feePeriods.sort()[0] : null;
+      const memberCreatedPeriod = m.created_at ? m.created_at.slice(0, 7) : selectedPeriod;
+      const currentPeriodStr = new Date().toISOString().slice(0, 7);
+      const startingPeriod = earliestFeePeriod ? (earliestFeePeriod < memberCreatedPeriod ? earliestFeePeriod : memberCreatedPeriod) : currentPeriodStr;
+      
+      return selectedPeriod >= startingPeriod;
+    });
+
+    if (showDebtorsOnly) {
+      return mapped.filter(item => {
+        if (!item.fee) {
+          return !!getMainAssignment(item.member);
+        }
+        return item.fee.status !== 'Paid' && item.fee.status !== 'Anulado';
+      });
+    }
+
+    return mapped;
+  }, [members, fees, selectedPeriod, filterCategory, searchTerm, showDebtorsOnly, getMainAssignment]);
+
+  const registryInscriptionsData = useMemo(() => {
+    let list = members;
+
+    if (filterCategory) {
+      list = list.filter(m => {
+        const main = getMainAssignment(m);
+        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
+      });
+    }
+    if (searchTerm.trim()) {
+      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      list = list.filter(m => {
+        const name = m.name.toLowerCase();
+        const dni = m.dni.toLowerCase();
+        return tokens.every(token => name.includes(token) || dni.includes(token));
+      });
+    }
+
+    const rows: { member: Member; inscription: InscriptionConfig; fee?: MemberFee }[] = [];
+
+    list.forEach(m => {
+      const main = getMainAssignment(m);
+      if (!main) return;
+
+      const applicable = inscriptions.filter(ins => {
+        if (!ins.category_ids || ins.category_ids.length === 0) return true;
+        return ins.category_ids.includes(main.category_id) || ins.category_ids.includes(main.category);
+      });
+
+      applicable.forEach(ins => {
+        const matchingFee = fees.find(f => 
+          f.member_id === m.id && 
+          f.concept === `Inscripción: ${ins.name}`
+        );
+        rows.push({
+          member: m,
+          inscription: ins,
+          fee: matchingFee
+        });
+      });
+    });
+
+    return rows;
+  }, [members, inscriptions, fees, filterCategory, searchTerm, getMainAssignment]);
+
+  const contextStats = useMemo(() => {
+    if (viewMode === 'history') {
+      const activeFees = filteredFees.filter(f => f.status !== 'Anulado');
+      const paid = activeFees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + (f.amount || 0), 0);
+      const total = activeFees.reduce((acc, f) => acc + getFeeAmountWithSurcharge(f), 0);
+      const pending = Math.max(0, total - paid);
+      
+      const periods = Array.from(new Set(activeFees.filter(f => f.status === 'Paid').map(f => f.period)));
+      const averagePerMonth = periods.length > 0 ? paid / periods.length : paid;
+      
+      const lateUniqueMembers = new Set(
+        activeFees
+          .filter(f => f.status !== 'Paid' && (f.status === 'Late' || new Date(f.due_date) < new Date()))
+          .map(f => f.member_id)
+      ).size;
+  
+      return {
+        paid,
+        pending,
+        lateCount: lateUniqueMembers,
+        averagePerMonth,
+        total
+      };
+    } else if (viewMode === 'registry') {
+      if (registrySubTab === 'monthly') {
+        let total = 0;
+        let paid = 0;
+        let pending = 0;
+        let lateCount = 0;
+  
+        registryData.forEach(({ member, fee }) => {
+          if (fee && fee.status === 'Anulado') return; // Excluir anulados de las proyecciones
+          const baseAmount = fee ? fee.amount : suggestFee(member).amount;
+          const finalAmount = fee ? getFeeAmountWithSurcharge(fee) : baseAmount;
+          total += finalAmount;
+          if (fee && fee.status === 'Paid') {
+            paid += fee.amount || 0;
+          } else {
+            pending += finalAmount;
+            const dueDateStr = fee ? fee.due_date : `${selectedPeriod}-${suggestFee(member).due_day.toString().padStart(2, '0')}`;
+            if (new Date(dueDateStr) < new Date()) {
+              lateCount += 1;
+            }
+          }
+        });
+
+        return {
+          total,
+          paid,
+          pending,
+          lateCount,
+          averagePerMonth: 0
+        };
+      } else {
+        let total = 0;
+        let paid = 0;
+        let pending = 0;
+        let lateCount = 0;
+
+        registryInscriptionsData.forEach(({ inscription, fee }) => {
+          const finalAmount = fee ? getFeeAmountWithSurcharge(fee) : inscription.amount;
+          total += finalAmount;
+          if (fee && fee.status === 'Paid') {
+            paid += fee.amount || 0;
+          } else {
+            pending += finalAmount;
+            if (new Date(inscription.due_date) < new Date()) {
+              lateCount += 1;
+            }
+          }
+        });
+
+        return {
+          total,
+          paid,
+          pending,
+          lateCount,
+          averagePerMonth: 0
+        };
+      }
+    }
+    return { paid: 0, pending: 0, lateCount: 0, averagePerMonth: 0, total: 0 };
+  }, [viewMode, registrySubTab, filteredFees, registryData, registryInscriptionsData, selectedPeriod, suggestFee, getFeeAmountWithSurcharge]);
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -497,54 +742,76 @@ const FeesManagement: React.FC = () => {
     }
   };
 
-  // BUSCADOR PRINCIPAL (Tabla) con Filtros
-  const filteredFees = useMemo(() => {
-    let result = fees;
-
-    // Filtro por Disciplina (Solo si member existe)
-    if (filterDiscipline) {
-      result = result.filter(f => {
-        if (!f.member) return true;
-        const main = getMainAssignment(f.member);
-        return main ? main.discipline === filterDiscipline : false;
+  const saveInscriptionConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inscriptionFormData.name) {
+      alert("El nombre del tipo de inscripción es obligatorio.");
+      return;
+    }
+    if (inscriptionFormData.amount === undefined || inscriptionFormData.amount < 0) {
+      alert("El monto debe ser mayor o igual a cero.");
+      return;
+    }
+    if (!inscriptionFormData.due_date) {
+      alert("La fecha de vencimiento es obligatoria.");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const payload = {
+        id: inscriptionFormData.id || undefined,
+        name: inscriptionFormData.name,
+        amount: Number(inscriptionFormData.amount || 0),
+        due_date: inscriptionFormData.due_date,
+        category_ids: inscriptionFormData.category_ids || []
+      };
+      
+      const { error } = await db.inscriptionConfigs.upsert(payload);
+      if (error) throw error;
+      
+      await loadData();
+      setShowInscriptionModal(false);
+      setInscriptionFormData({
+        name: '',
+        amount: 0,
+        due_date: '',
+        category_ids: []
       });
+      alert("Tipo de inscripción guardado correctamente");
+    } catch (error: any) {
+      console.error("Error saving inscription config:", error);
+      alert("Error al guardar: " + (error.message || JSON.stringify(error)));
+    } finally {
+      setIsSaving(false);
     }
+  };
 
-    // Filtro por Rama (Género)
-    if (filterGender) {
-      result = result.filter(f => f.member ? f.member.gender === filterGender : true);
+  const deleteInscriptionConfig = async (id: string) => {
+    if (confirm("¿Está seguro de que desea eliminar este tipo de inscripción?")) {
+      try {
+        const { error } = await db.inscriptionConfigs.delete(id);
+        if (error) throw error;
+        await loadData();
+        alert("Tipo de inscripción eliminado");
+      } catch (error: any) {
+        console.error("Error deleting inscription config:", error);
+        alert("Error al eliminar: " + (error.message || JSON.stringify(error)));
+      }
     }
-
-    // Filtro por Categoría
-    if (filterCategory) {
-      result = result.filter(f => {
-        if (!f.member) return true;
-        const main = getMainAssignment(f.member);
-        return main ? (main.category_id === filterCategory || main.category === filterCategory) : false;
-      });
-    }
-
-    // Filtro por Búsqueda (Nombre/DNI)
-    if (searchTerm.trim()) {
-      const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-      result = result.filter(f => {
-        const memberName = (f.member?.name || 'DESCONOCIDO').toLowerCase();
-        const memberDni = (f.member?.dni || '').toLowerCase();
-        return tokens.every(token => memberName.includes(token) || memberDni.includes(token));
-      });
-    }
-
-    return result.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-  }, [fees, searchTerm, filterDiscipline, filterGender, filterCategory, getMainAssignment]);
+  };
 
   const categories = useMemo(() => {
     if (!config) return [];
-    if (filterDiscipline) {
-      const discipline = config.disciplines.find(d => d.name === filterDiscipline);
-      return discipline?.branches.flatMap(b => b.categories) || [];
-    }
     return config.disciplines.flatMap(d => d.branches.flatMap(b => b.categories));
-  }, [config, filterDiscipline]);
+  }, [config]);
+
+  // Seleccionar la primera categoría por defecto si está vacía
+  useEffect(() => {
+    if (categories.length > 0 && !filterCategory) {
+      setFilterCategory(categories[0].id || categories[0].name);
+    }
+  }, [categories, filterCategory]);
 
   const categoryNamesMap = useMemo(() => {
     if (!config) return {};
@@ -595,38 +862,371 @@ const FeesManagement: React.FC = () => {
     members.find(m => m.id === formData.member_id), 
   [members, formData.member_id]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getNetRealAmountForPeriodObj = useCallback((p: string, member: Member, fee?: MemberFee) => {
+    if (!member) return 0;
+
+    if (fee) {
+      if (fee.status === 'Paid') {
+        return fee.amount || 0;
+      }
+      // If Pending or Late, we calculate the dynamic discounted amount + surcharge
+      const baseAmount = fee.amount || 0; // The stored base amount
+      // Apply scholarship/discount based on the due date of this fee
+      const discountedAmount = getDiscountedAmount(baseAmount, member, fee.due_date, fee.concept);
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (todayStr <= fee.due_date) {
+        return discountedAmount;
+      }
+      
+      // Look up configObj
+      const tempFee = { ...fee, member };
+      const configObj = getFeeConfigForFee(tempFee);
+      if (configObj && configObj.apply_surcharge && configObj.surcharge_percentage > 0) {
+        const surcharge = discountedAmount * (configObj.surcharge_percentage / 100);
+        return discountedAmount + surcharge;
+      }
+      return discountedAmount;
+    } else {
+      // Suggestion: find configuration rate
+      const main = getMainAssignment(member);
+      if (!main) return 5000;
+
+      const rate = feeConfigs.find(rc => 
+        rc.discipline === main.discipline && 
+        rc.branch === member.gender && 
+        rc.category_id === (main.category_id || main.category)
+      );
+
+      const baseAmount = rate ? rate.amount : 5000;
+      const dueDay = rate ? rate.due_day : 10;
+      const dueDate = `${p}-${dueDay.toString().padStart(2, '0')}`;
+      
+      const discountedAmount = getDiscountedAmount(baseAmount, member, dueDate, 'Cuota Mensual');
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (todayStr <= dueDate) {
+        return discountedAmount;
+      }
+      
+      // Look up configObj
+      const tempFee = { member_id: member.id, member, due_date: dueDate };
+      const configObj = getFeeConfigForFee(tempFee);
+      if (configObj && configObj.apply_surcharge && configObj.surcharge_percentage > 0) {
+        const surcharge = discountedAmount * (configObj.surcharge_percentage / 100);
+        return discountedAmount + surcharge;
+      }
+      return discountedAmount;
+    }
+  }, [getDiscountedAmount, getFeeConfigForFee, getMainAssignment, feeConfigs]);
+
+  const getNetRealAmountForPeriod = useCallback((p: string, fee?: MemberFee) => {
+    if (!selectedMemberInModal) return 0;
+    return getNetRealAmountForPeriodObj(p, selectedMemberInModal, fee);
+  }, [selectedMemberInModal, getNetRealAmountForPeriodObj]);
+
+  const getFeeBreakdown = useCallback((fee: any) => {
+    const member = fee.member || members.find(m => m.id === fee.member_id);
+    if (!member) {
+      return { base: fee.amount || 0, discount: 0, scholarshipName: '', surcharge: 0, surchargePercentage: 0, total: fee.amount || 0, isDirect: true };
+    }
+    
+    // Find original rate if possible (to derive the original base amount)
+    const assignment = getMainAssignment(member);
+    let originalBase = fee.amount || 0;
+    if (assignment) {
+      const rate = feeConfigs.find(rc => 
+        rc.discipline === assignment.discipline && 
+        rc.branch === member.gender && 
+        rc.category_id === (assignment.category_id || assignment.category)
+      );
+      if (rate) {
+        originalBase = rate.amount;
+      }
+    }
+    
+    // Non-monthly/custom concepts have no scholarship/surcharge by default (unless specified)
+    const isMonthly = !fee.concept || fee.concept === 'Cuota Mensual';
+    if (!isMonthly) {
+      return { base: fee.amount || 0, discount: 0, scholarshipName: '', surcharge: 0, surchargePercentage: 0, total: fee.amount || 0, isDirect: true };
+    }
+
+    // Scholarship calculation
+    let discount = 0;
+    const scholarshipActive = isScholarshipActive(member, fee.due_date);
+    let scholarshipName = '';
+    if (scholarshipActive && member.scholarship_type_id) {
+      const scholarship = scholarships.find(s => s.id === member.scholarship_type_id);
+      if (scholarship) {
+        scholarshipName = scholarship.name;
+        if (scholarship.type === 'percentage') {
+          discount = originalBase * (scholarship.value / 100);
+        } else if (scholarship.type === 'fixed') {
+          discount = Math.min(originalBase, scholarship.value);
+        }
+      }
+    }
+    
+    const baseWithDiscount = Math.max(0, originalBase - discount);
+    
+    // Surcharge calculation
+    let surcharge = 0;
+    let surchargePercentage = 0;
+    
+    // Determine if surcharge should apply:
+    // If PAID, check if paid_date was after due_date. If PENDING, check if today is after due_date.
+    const refDate = fee.payment_date || new Date().toISOString().split('T')[0];
+    const isLate = refDate > fee.due_date;
+    
+    if (isLate) {
+      const configObj = getFeeConfigForFee(fee);
+      if (configObj && configObj.apply_surcharge && configObj.surcharge_percentage > 0) {
+        surchargePercentage = configObj.surcharge_percentage;
+        surcharge = baseWithDiscount * (surchargePercentage / 100);
+      }
+    }
+    
+    const computedTotal = baseWithDiscount + surcharge;
+    
+    return {
+      base: originalBase,
+      discount,
+      scholarshipName,
+      surcharge,
+      surchargePercentage,
+      total: fee.status === 'Paid' ? (fee.amount || computedTotal) : computedTotal,
+      isDirect: false
+    };
+  }, [members, scholarships, feeConfigs, getFeeConfigForFee, getMainAssignment, isScholarshipActive]);
+
+  const outstandingPeriods = useMemo(() => {
+    if (!selectedMemberInModal) return [];
+
+    const list: { period: string; label: string; fee?: MemberFee; type: 'due' | 'current' | 'future' }[] = [];
+    const now = new Date();
+    const currentPeriodStr = now.toISOString().slice(0, 7); // 'YYYY-MM'
+    
+    // Find dynamic starting period for member
+    const memberFees = fees.filter(f => f.member_id === selectedMemberInModal.id && f.status !== 'Anulado');
+    const feePeriods = memberFees.map(f => f.period).filter(Boolean);
+    const earliestFeePeriod = feePeriods.length > 0 ? feePeriods.sort()[0] : null;
+    const memberCreatedPeriod = selectedMemberInModal.created_at ? selectedMemberInModal.created_at.slice(0, 7) : currentPeriodStr;
+    const startingPeriod = earliestFeePeriod || memberCreatedPeriod;
+
+    // Check if there is any unpaid (no Fee, or Fee is not Paid/Anulado) period <= currentPeriodStr
+    let hasUnpaidCurrentOrPast = false;
+    const startYear = parseInt(startingPeriod.slice(0, 4));
+    const startMonth = parseInt(startingPeriod.slice(5, 7)) - 1;
+    const currYear = parseInt(currentPeriodStr.slice(0, 4));
+    const currMonth = parseInt(currentPeriodStr.slice(5, 7)) - 1;
+
+    const diffMonths = (currYear - startYear) * 12 + (currMonth - startMonth);
+    for (let i = 0; i <= diffMonths; i++) {
+      const d = new Date(startYear, startMonth + i, 1);
+      const p = d.toISOString().slice(0, 7);
+      const existingFee = fees.find(f => 
+        f.member_id === selectedMemberInModal.id && 
+        f.period === p && 
+        (!f.concept || f.concept === 'Cuota Mensual')
+      );
+      const isPaidOrVoided = existingFee && (existingFee.status === 'Paid' || existingFee.status === 'Anulado');
+      if (!isPaidOrVoided) {
+        hasUnpaidCurrentOrPast = true;
+        break;
+      }
+    }
+
+    // Generar últimos 12 meses y próximos 3 meses
+    for (let i = -12; i <= 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const p = d.toISOString().slice(0, 7); // 'YYYY-MM'
+      
+      if (p < startingPeriod) continue;
+
+      // Si el usuario tiene deudas pendientes del mes actual o pasados, ocultar meses futuros
+      if (hasUnpaidCurrentOrPast && p > currentPeriodStr) {
+        continue;
+      }
+
+      const existingFee = fees.find(f => 
+        f.member_id === selectedMemberInModal.id && 
+        f.period === p && 
+        (!f.concept || f.concept === 'Cuota Mensual')
+      );
+      
+      let type: 'due' | 'current' | 'future' = 'due';
+      if (p === currentPeriodStr) {
+        type = 'current';
+      } else if (p > currentPeriodStr) {
+        type = 'future';
+      }
+      
+      const monthName = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      
+      const feeStatus = existingFee?.status;
+      const isVoided = existingFee?.status === 'Anulado';
+      
+      if (!existingFee || (feeStatus !== 'Paid' && !isVoided)) {
+        list.push({
+          period: p,
+          label: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+          fee: existingFee,
+          type
+        });
+      }
+    }
+    return list;
+  }, [selectedMemberInModal, fees]);
+
+  const selectedPeriodsDetail = useMemo(() => {
+    if (!selectedMemberInModal) return [];
+    const validPeriods = selectedPeriods.filter(p => outstandingPeriods.some(op => op.period === p));
+    return validPeriods.map(p => {
+      const existingFee = fees.find(f => 
+        f.member_id === selectedMemberInModal.id && 
+        f.period === p && 
+        (!f.concept || f.concept === 'Cuota Mensual')
+      );
+      const amount = getNetRealAmountForPeriod(p, existingFee);
+      return { period: p, amount, fee: existingFee };
+    });
+  }, [selectedPeriods, selectedMemberInModal, fees, outstandingPeriods, getNetRealAmountForPeriod]);
+
+  const totalAmountForSelectedPeriods = useMemo(() => {
+    return selectedPeriodsDetail.reduce((acc, curr) => acc + curr.amount, 0);
+  }, [selectedPeriodsDetail]);
+
+  // Sincronizar periodos seleccionados cuando cambia el miembro o se abre el modal
+  useEffect(() => {
+    if (showModal) {
+      if (formData.member_id && formData.concept === 'Cuota Mensual' && formData.period) {
+        if (!selectedPeriods.includes(formData.period)) {
+          setSelectedPeriods([formData.period]);
+        }
+      } else {
+        setSelectedPeriods([]);
+      }
+      setComment(formData.comment || '');
+      setSelectedFile(null);
+    } else {
+      setSelectedPeriods([]);
+      setComment('');
+      setSelectedFile(null);
+    }
+  }, [showModal, formData.member_id, formData.concept]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsSaving(true);
-      try {
-        const url = await db.fees.uploadReceipt(file);
-        setFormData(prev => ({ ...prev, receipt_url: url }));
-      } catch (error) {
-        console.error("Error al subir comprobante:", error);
-        alert("Error al subir el archivo");
-      } finally {
-        setIsSaving(false);
-      }
+      setSelectedFile(file);
     }
   };
 
   const handleSave = async () => {
-    if (!formData.member_id) return alert("Selecciona un miembro");
+    if (!formData.member_id) return alert("Selecciona un miembro / socio");
+
+    if (formData.concept === 'Cuota Mensual') {
+      const parentMember = members.find(m => m.id === formData.member_id);
+      if (!parentMember) {
+        alert("⚠️ Selecciona un socio válido.");
+        return;
+      }
+      const main = getMainAssignment(parentMember);
+      if (!main) {
+        alert("⚠️ No se puede registrar una cuota mensual para un socio sin categoría principal asignada.");
+        return;
+      }
+      if (selectedPeriods.length === 0) {
+        alert("⚠️ Selecciona al menos un periodo / mes para registrar el pago.");
+        return;
+      }
+    }
+
+    // VALIDACIÓN DE REFERENCIA O TRANSF DUPLICADA
+    const trimmedReference = formData.reference?.trim();
+    if (trimmedReference) {
+      // Normalizamos el número de transferencia quitando espacios, guiones, comas, etc. y pasándolo a mayúsculas
+      const cleanRef = trimmedReference.replace(/[\s-,.]+/g, '').toUpperCase();
+      const isDuplicate = fees.some(f => 
+        f.status !== 'Anulado' && 
+        f.member_id !== formData.member_id &&
+        f.reference && 
+        f.reference.trim().replace(/[\s-,.]+/g, '').toUpperCase() === cleanRef &&
+        f.id !== formData.id
+      );
+      if (isDuplicate) {
+        alert(`⚠️ Número de transferencia duplicado: La referencia "${trimmedReference}" ya se encuentra registrada en otro pago activo. Por favor verifique el comprobante.`);
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
-      const finalStatus = formData.receipt_url || formData.payment_date ? 'Paid' : (formData.status || 'Pending');
-      const payload = { 
-        ...formData, 
-        status: finalStatus,
-        payment_date: finalStatus === 'Paid' ? (formData.payment_date || new Date().toISOString().split('T')[0]) : null
-      };
-      
-      const { error } = await db.fees.upsert(payload);
-      if (error) throw error;
+      let uploadedUrl = formData.receipt_url || '';
+      if (selectedFile) {
+        try {
+          uploadedUrl = await db.fees.uploadReceipt(selectedFile);
+        } catch (uploadErr) {
+          console.error("Error al subir comprobante:", uploadErr);
+          alert("Error al subir el archivo comprobante. Verifique la configuración de Supabase.");
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const finalStatus = uploadedUrl || formData.payment_date ? 'Paid' : (formData.status || 'Pending');
+      const paymentDate = finalStatus === 'Paid' ? (formData.payment_date || new Date().toISOString().split('T')[0]) : null;
+
+      if (formData.concept === 'Cuota Mensual' && selectedPeriods.length > 0) {
+        // REGISTRO DE MÚLTIPLES MESES SELECCIONADOS
+        const dbPayloads = selectedPeriods.map(p => {
+          const detail = selectedPeriodsDetail.find(x => x.period === p);
+          const existing = detail?.fee;
+          const memberObj = members.find(m => m.id === formData.member_id)!;
+          const suggestion = suggestFee(memberObj);
+          const dueDate = existing ? existing.due_date : `${p}-${suggestion.due_day.toString().padStart(2, '0')}`;
+          
+          // Guardar el importe neto real pagado con becas y recargos aplicados
+          const finalAmount = finalStatus === 'Paid' ? (detail?.amount || (existing ? existing.amount : (suggestion.amount || 5000))) : (existing ? existing.amount : (suggestion.amount || 5000));
+
+          return {
+            id: existing?.id || generateUUID(),
+            member_id: formData.member_id,
+            period: p,
+            amount: finalAmount,
+            due_date: dueDate,
+            status: finalStatus,
+            payment_method: formData.payment_method || 'Efectivo',
+            receipt_url: uploadedUrl || '',
+            reference: formData.reference || '',
+            comment: comment || '',
+            concept: 'Cuota Mensual',
+            payment_date: paymentDate
+          };
+        });
+
+        const { error } = await db.fees.upsertMany(dbPayloads);
+        if (error) throw error;
+      } else {
+        // REGISTRO INDIVIDUAL (Inscripciones, matrículas, manuales)
+        const cleanPayload = { ...formData };
+        delete cleanPayload.member;
+        delete cleanPayload.player;
+        const payload = { 
+          ...cleanPayload, 
+          id: formData.id || generateUUID(),
+          status: finalStatus,
+          payment_date: paymentDate,
+          receipt_url: uploadedUrl || '',
+          comment: comment || ''
+        };
+        const { error } = await db.fees.upsert(payload);
+        if (error) throw error;
+      }
       
       await loadData();
       setShowModal(false);
+      setSelectedFile(null);
       setFormData({ 
         status: 'Pending', 
         amount: 5000, 
@@ -634,30 +1234,172 @@ const FeesManagement: React.FC = () => {
         period: new Date().toISOString().slice(0, 7), 
         payment_method: 'Efectivo', 
         receipt_url: '', 
-        reference: '' 
+        reference: '',
+        concept: 'Cuota Mensual'
       });
+      setSelectedPeriods([]);
+      setComment('');
       setMemberSearchQuery('');
     } catch (e: any) {
       console.error("Error saving fee:", e);
-      alert(`Error al guardar: ${e.message || 'Error desconocido'}`);
+      if (e.code === 'PGRST204' || (e.message && (e.message.includes('concept') || e.message.includes('column')))) {
+        setShowMigrationModal(true);
+      } else {
+        alert(`Error al registrar cobro: ${e.message || 'Error desconocido'}`);
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
   const markAsPaid = async (fee: MemberFee) => {
-    const updated = { ...fee, status: 'Paid' as const, payment_date: new Date().toISOString().split('T')[0], payment_method: fee.payment_method || 'Efectivo' };
+    const updated = { 
+      ...fee, 
+      status: 'Paid' as const, 
+      payment_date: new Date().toISOString().split('T')[0], 
+      payment_method: fee.payment_method || 'Efectivo',
+      amount: getFeeAmountWithSurcharge(fee)
+    };
     delete updated.member;
     await db.fees.upsert(updated);
     await loadData();
   };
 
-  const getStatusBadge = (status: string, dueDate: string) => {
-    const isOverdue = new Date(dueDate) < new Date() && status !== 'Paid';
-    if (status === 'Paid') return <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase rounded-full border border-emerald-500/20">Pagado</span>;
-    if (isOverdue) return <span className="px-3 py-1 bg-red-500/10 text-red-600 text-[8px] font-black uppercase rounded-full border border-red-500/20 animate-pulse">Vencido</span>;
-    return <span className="px-3 py-1 bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase rounded-full border border-amber-500/20">Pendiente</span>;
+  const handleVoidFee = async (fee: MemberFee) => {
+    const reason = prompt('Por favor ingrese el motivo de la anulación (Obligatorio/Mandatorio):');
+    if (!reason || !reason.trim()) {
+      alert('⚠️ Para anular un cobro debe ingresar un motivo válido.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updated = { 
+        ...fee, 
+        status: 'Anulado' as const, 
+        void_reason: reason,
+        is_voided: true,
+        comment: fee.comment ? `${fee.comment} (Anulado: ${reason})` : `Anulado: ${reason}`
+      };
+      delete updated.member;
+      
+      const { error } = await db.fees.upsert(updated);
+      if (error) throw error;
+
+      await loadData();
+      alert('🎉 El cobro fue anulado exitosamente.');
+    } catch (e: any) {
+      console.error("Error voiding fee:", e);
+      alert("Error al anular cobro: " + (e.message || "Error desconocido"));
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const getStatusBadge = (status: string, dueDate: string) => {
+    const isOverdue = new Date(dueDate) < new Date() && status !== 'Paid' && status !== 'Anulado';
+    if (status === 'Anulado') {
+      return (
+        <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-black uppercase rounded-full border border-red-500/10 tracking-wider">
+          Anulado
+        </span>
+      );
+    }
+    if (status === 'Paid') {
+      const todayStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const isAnticipated = dueDate && dueDate.slice(0, 7) > todayStr;
+      return (
+        <span className={`px-3 py-1 ${isAnticipated ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/10 dark:bg-indigo-550/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/10'} text-[10px] font-black uppercase rounded-full border tracking-wider`}>
+          {isAnticipated ? 'Pagado (anticipado)' : 'Pagado'}
+        </span>
+      );
+    }
+    if (status === 'Partial') {
+      return (
+        <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/10 tracking-wider">
+          Parcial
+        </span>
+      );
+    }
+    if (isOverdue || status === 'Late') {
+      return (
+        <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-black uppercase rounded-full border border-red-500/10 tracking-wider animate-pulse">
+          Vencido
+        </span>
+      );
+    }
+    return (
+      <span className="px-3 py-1 bg-slate-500/10 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase rounded-full border border-slate-500/10 tracking-wider">
+        Pendiente
+      </span>
+    );
+  };
+
+  const handleBulkGenerateFees = async () => {
+    setIsSaving(true);
+    try {
+      const missing = members.filter(member => {
+        const main = getMainAssignment(member);
+        if (!main) return false;
+        const catVal = main.category_id || main.category;
+        if (!genCategoryIds.includes(catVal)) return false;
+        
+        const hasFee = fees.some(f => f.member_id === member.id && f.period === genPeriod && (!f.concept || f.concept === 'Cuota Mensual'));
+        return !hasFee && !suggestFee(member).error;
+      });
+
+      if (missing.length === 0) {
+        alert("No hay cuotas pendientes para generar con la selección actual.");
+        setIsSaving(false);
+        return;
+      }
+
+      const newFees = missing.map(member => {
+        const suggestion = suggestFee(member);
+        return {
+          id: generateUUID(),
+          member_id: member.id,
+          period: genPeriod,
+          amount: suggestion.amount,
+          due_date: `${genPeriod}-${suggestion.due_day.toString().padStart(2, '0')}`,
+          status: 'Pending',
+          payment_method: 'Efectivo',
+          concept: 'Cuota Mensual',
+          created_at: new Date().toISOString()
+        };
+      });
+
+      const { error } = await db.fees.upsertMany(newFees);
+      if (error) throw error;
+
+      await loadData();
+      setShowGenerateModal(false);
+      alert(`🎉 ¡Generación Masiva Exitosa!\n\nSe han generado ${newFees.length} cuotas para el periodo ${genPeriod} de forma correcta.`);
+    } catch (error: any) {
+      console.error("Error al generar cuotas masivas:", error);
+      if (error.code === 'PGRST204' || (error.message && (error.message.includes('concept') || error.message.includes('column')))) {
+        setShowMigrationModal(true);
+        setShowGenerateModal(false);
+      } else {
+        alert("Error al generar cuotas: " + (error.message || "Error desconocido"));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const missingGenerateCount = useMemo(() => {
+    if (!showGenerateModal) return 0;
+    return members.filter(member => {
+      const main = getMainAssignment(member);
+      if (!main) return false;
+      const catVal = main.category_id || main.category;
+      if (!genCategoryIds.includes(catVal)) return false;
+      
+      const hasFee = fees.some(f => f.member_id === member.id && f.period === genPeriod && (!f.concept || f.concept === 'Cuota Mensual'));
+      return !hasFee && !suggestFee(member).error;
+    }).length;
+  }, [showGenerateModal, genPeriod, genCategoryIds, members, fees, getMainAssignment, suggestFee]);
 
   return (
     <div className="p-4 md:p-10 max-w-7xl mx-auto animate-fade-in pb-40">
@@ -670,15 +1412,6 @@ const FeesManagement: React.FC = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-80 group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="BUSCAR..." 
-              className="w-full pl-14 pr-4 py-4 md:py-5 bg-white dark:bg-slate-800/80 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-white/5 outline-none font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl focus:border-primary-600/50 transition-all placeholder:text-slate-300"
-            />
-          </div>
           {viewMode === 'settings' ? (
             settingsSubTab === 'scholarships' ? (
               <button 
@@ -693,6 +1426,21 @@ const FeesManagement: React.FC = () => {
                 className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
               >
                 <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Beca</span>
+              </button>
+            ) : settingsSubTab === 'inscriptions' ? (
+              <button 
+                onClick={() => {
+                  setInscriptionFormData({
+                    name: '',
+                    amount: 0,
+                    due_date: '',
+                    category_ids: []
+                  });
+                  setShowInscriptionModal(true);
+                }} 
+                className="bg-emerald-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto"
+              >
+                <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Inscripción</span>
               </button>
             ) : (
               <button 
@@ -727,174 +1475,255 @@ const FeesManagement: React.FC = () => {
             >
               <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nuevo Compromiso</span>
             </button>
-          ) : (
-            <button onClick={() => setShowModal(true)} className="bg-primary-600 text-white px-8 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-xl shadow-primary-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center justify-center gap-3 w-full sm:w-auto">
-              <Plus size={18} strokeWidth={3} /> <span className="text-[10px] font-black uppercase tracking-widest">Nueva Cuota</span>
-            </button>
-          )}
+          ) : null}
         </div>
       </header>
 
-      {/* Filtros Avanzados */}
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 overflow-x-auto no-scrollbar">
-          <button 
-            onClick={() => setViewMode('history')}
-            className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'history' ? 'bg-primary-500 text-primary-contrast shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Historial
-          </button>
-          <button 
-            onClick={() => setViewMode('registry')}
-            className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Registro Mensual
-          </button>
-          <button 
-            onClick={() => setViewMode('commitments')}
-            className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'commitments' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Compromisos
-          </button>
-          <button 
-            onClick={() => setViewMode('settings')}
-            className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'settings' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Configuración
-          </button>
-        </div>
+      {/* Navegación de Paneles */}
+      <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 overflow-x-auto no-scrollbar mb-8">
+        <button 
+          onClick={() => { setViewMode('history'); setConceptFilter('all'); }}
+          className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'history' ? 'bg-primary-500 text-primary-contrast shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Historial
+        </button>
+        <button 
+          onClick={() => { setViewMode('registry'); setRegistrySubTab('monthly'); }}
+          className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'registry' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Registro Mensual
+        </button>
+        <button 
+          onClick={() => setViewMode('commitments')}
+          className={`flex-1 min-w-[120px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'commitments' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Compromisos
+        </button>
+        <button 
+          onClick={() => setViewMode('settings')}
+          className={`flex-1 min-w-[100px] px-4 md:px-6 py-2.5 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'settings' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Configuración
+        </button>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {viewMode !== 'settings' && viewMode === 'registry' && (
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-               <div className="relative flex-1 md:flex-none">
-                  <input 
-                    type="month" 
-                    value={selectedPeriod} 
-                    onChange={e => setSelectedPeriod(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-                  />
-               </div>
-               <button 
-                 onClick={async () => {
-                   if(confirm(`¿Generar cuotas pendientes para ${selectedPeriod}?`)) {
-                     setIsSaving(true);
-                     try {
-                       const missing = registryData.filter(d => !d.fee && !suggestFee(d.member).error);
-                       if (missing.length === 0) {
-                          alert("No hay cuotas pendientes para generar este mes.");
-                          return;
-                       }
-                       
-                       const newFees = missing.map(m => {
-                          const suggestion = suggestFee(m.member);
-                          return {
-                             member_id: m.member.id,
-                             period: selectedPeriod,
-                             amount: suggestion.amount,
-                             due_date: `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}`,
-                             status: 'Pending',
-                             payment_method: 'Efectivo',
-                             created_at: new Date().toISOString()
-                          };
-                       });
-                       
-                       const { error } = await db.fees.upsertMany(newFees);
-                       if (error) throw error;
-                       
-                       await loadData();
-                       alert(`${newFees.length} cuotas generadas correctamente.`);
-                     } catch (error: any) {
-                       console.error("Error al generar cuotas:", error);
-                       alert("Error al generar: " + (error.message || "Error desconocido"));
-                     } finally {
-                       setIsSaving(false);
-                     }
-                   }
-                 }}
-                 disabled={isSaving}
-                 className="flex-1 md:flex-none p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest"
-               >
-                 <RefreshCw size={14} className={isSaving ? 'animate-spin' : ''} /> <span className="inline md:hidden lg:inline">Generar Cuotas</span>
-               </button>
+      {/* Panel Unificado de Filtros */}
+      {viewMode !== 'settings' && (
+        <div className="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm mb-8 flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end animate-fade-in">
+            
+            {/* Filtro 1: Buscador */}
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 ml-1">Socio / DNI</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar socio o DNI..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900/50 pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-bold text-xs uppercase tracking-wider leading-none h-[46px]"
+                />
+                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
             </div>
-          )}
 
-          {viewMode !== 'settings' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-2 w-full md:w-auto">
-              <div className="relative w-full lg:min-w-[160px]">
-                <select 
-                  value={filterDiscipline} 
-                  onChange={e => { setFilterDiscipline(e.target.value); setFilterCategory(''); }}
-                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
-                >
-                  <option value="">DISCIPLINAS</option>
-                  {config?.disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            {/* Filtro 2: Concepto */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 ml-1">Concepto</label>
+              <select
+                value={viewMode === 'registry' ? (registrySubTab === 'monthly' ? 'monthly' : 'inscriptions') : conceptFilter}
+                onChange={e => {
+                  const val = e.target.value as any;
+                  if (viewMode === 'registry') {
+                    if (val === 'all') {
+                      setConceptFilter('all');
+                      setRegistrySubTab('monthly');
+                    } else if (val === 'monthly') {
+                      setConceptFilter('monthly');
+                      setRegistrySubTab('monthly');
+                    } else {
+                      setConceptFilter('inscriptions');
+                      setRegistrySubTab('inscriptions');
+                    }
+                  } else {
+                    setConceptFilter(val);
+                  }
+                }}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-bold text-xs uppercase tracking-wider appearance-none cursor-pointer border-l-4 border-l-primary-500 h-[46px]"
+              >
+                {viewMode === 'history' && <option value="all">TODOS LOS CONCEPTOS</option>}
+                <option value="monthly">CUOTAS MENSUALES</option>
+                <option value="inscriptions">INSCRIPCIONES / MATRÍCULAS</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-[24px] text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            {/* Filtro 3: Categoría */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 ml-1">Categoría</label>
+              <select
+                value={filterCategory}
+                onChange={e => setFilterCategory(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-bold text-xs uppercase tracking-wider appearance-none cursor-pointer border-l-4 border-l-primary-500 h-[46px]"
+              >
+                <option value="">TODAS LAS CATEGORÍAS</option>
+                {Array.from(new Set(categories.map(c => c.name))).map(catName => {
+                  const cat = categories.find(c => c.name === catName);
+                  return <option key={cat?.id || catName} value={cat?.id || catName}>{catName}</option>;
+                })}
+              </select>
+              <ChevronDown className="absolute right-4 top-[24px] text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            {/* Filtro 4: Período / Mes */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 ml-1">Periodo / Mes</label>
+              <input
+                type="month"
+                value={selectedPeriod}
+                onChange={e => setSelectedPeriod(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-bold text-xs uppercase tracking-wider cursor-pointer border-l-4 border-l-primary-500 h-[46px]"
+              />
+            </div>
+
+          </div>
+
+          {/* Botones de Acción Masiva */}
+          {viewMode === 'registry' && (
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-2 pt-4 border-t border-slate-100 dark:border-white/5">
+              <div className="flex items-center gap-6">
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                  Viendo: <span className="text-primary-600 font-black">{registrySubTab === 'monthly' ? 'PLANILLA MENSUAL' : 'FICHA DE INSCRIPCIONES'}</span> ({selectedPeriod})
+                </p>
+                
+                {registrySubTab === 'monthly' && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 px-4 py-1.5 rounded-full text-[10px] text-rose-500 font-bold uppercase tracking-wider transition-colors">
+                    <input 
+                      type="checkbox"
+                      checked={showDebtorsOnly}
+                      onChange={e => setShowDebtorsOnly(e.target.checked)}
+                      className="accent-rose-500 cursor-pointer"
+                    />
+                    <span>Solo Deudores</span>
+                  </label>
+                )}
               </div>
-
-              <div className="relative w-full lg:min-w-[160px]">
-                <select 
-                  value={filterGender} 
-                  onChange={e => setFilterGender(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+              
+              {registrySubTab === 'monthly' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGenPeriod(selectedPeriod);
+                    setGenCategoryIds(Array.from(new Set(categories.map(c => c.id || c.name))));
+                    setShowGenerateModal(true);
+                  }}
+                  className="px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl border border-emerald-500/10 hover:border-transparent font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow"
                 >
-                  <option value="">RAMAS</option>
-                  <option value="Masculino">MASCULINO</option>
-                  <option value="Femenino">FEMENINO</option>
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-              </div>
-
-              <div className="relative w-full lg:min-w-[200px]">
-                <select 
-                  value={filterCategory} 
-                  onChange={e => setFilterCategory(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800/80 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-black text-[9px] uppercase tracking-widest appearance-none transition-all cursor-pointer"
+                  <RefreshCw size={14} /> <span>Generar cuotas del mes</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm('¿Generar deudas de inscripción pendientes de forma masiva?')) {
+                      setIsSaving(true);
+                      try {
+                        const missingIns = registryInscriptionsData.filter(r => !r.fee);
+                        if (missingIns.length === 0) {
+                          alert("No hay inscripciones pendientes por generar.");
+                          return;
+                        }
+                        
+                        const newFees = missingIns.map(r => ({
+                          id: generateUUID(),
+                          member_id: r.member.id,
+                          period: r.inscription.due_date.slice(0, 4) + ' (Anual)',
+                          amount: r.inscription.amount,
+                          due_date: r.inscription.due_date,
+                          status: 'Pending',
+                          concept: `Inscripción: ${r.inscription.name}`,
+                          payment_method: 'Efectivo',
+                          created_at: new Date().toISOString()
+                        }));
+                        
+                        const { error } = await db.fees.upsertMany(newFees);
+                        if (error) throw error;
+                        
+                        await loadData();
+                        alert(`${newFees.length} deudas de inscripción generadas correctamente.`);
+                      } catch (error: any) {
+                        console.error("Error al generar inscripciones:", error);
+                        if (error.code === 'PGRST204' || (error.message && (error.message.includes('concept') || error.message.includes('column')))) {
+                          setShowMigrationModal(true);
+                        } else {
+                          alert("Error al generar: " + (error.message || "Error desconocido"));
+                        }
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }
+                  }}
+                  className="px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl border border-emerald-500/10 hover:border-transparent font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow"
                 >
-                  <option value="">CATEGORÍAS</option>
-                  {Array.from(new Set(categories.map(c => c.name))).map(catName => {
-                    const cat = categories.find(c => c.name === catName);
-                    return <option key={cat?.id} value={cat?.id}>{catName}</option>;
-                  })}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-              </div>
-
-              {(filterDiscipline || filterGender || filterCategory || searchTerm) && (
-                <button 
-                  onClick={() => { setFilterDiscipline(''); setFilterGender(''); setFilterCategory(''); setSearchTerm(''); }}
-                  className="w-full sm:w-auto p-3 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest"
-                >
-                  <X size={14} /> <span className="inline md:hidden lg:inline">Limpiar</span>
+                  <RefreshCw size={14} /> <span>Generar Inscripciones Masivas</span>
                 </button>
               )}
             </div>
           )}
         </div>
-      </div>
-      
-      {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {[
-          { label: 'Total Recaudado', value: `$${stats.paid.toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Pendiente Cobro', value: `$${stats.pending.toLocaleString()}`, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-          { label: 'Socios Morosos', value: stats.lateCount, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10' },
-          { label: 'Proyección Mes', value: `$${stats.total.toLocaleString()}`, icon: Receipt, color: 'text-primary-600', bg: 'bg-primary-600/10' },
-        ].map((kpi, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl ${kpi.bg} ${kpi.color} group-hover:scale-110 transition-transform`}>
-                <kpi.icon size={20} />
+      )}
+
+      {/* Sección KPI */}
+      {viewMode !== 'settings' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 animate-fade-in">
+          {[
+            { 
+              label: viewMode === 'history' ? 'Total Recaudado (Histórico)' : (registrySubTab === 'monthly' ? 'Total Cobrado (Cuotas)' : 'Total Cobrado (Inscripciones)'), 
+              value: `$${contextStats.paid.toLocaleString()}`, 
+              desc: viewMode === 'history' ? 'Consolidado acumulado' : `Recaudado en ${selectedPeriod}`,
+              icon: TrendingUp, 
+              color: 'text-emerald-500', 
+              bg: 'bg-emerald-500/10' 
+            },
+            { 
+              label: viewMode === 'history' ? 'Pendiente Cobro (Histórico)' : 'Pendiente de Cobro', 
+              value: `$${contextStats.pending.toLocaleString()}`, 
+              desc: viewMode === 'history' ? 'Monto restante' : 'Pendiente de cobro total',
+              icon: Clock, 
+              color: 'text-amber-500', 
+              bg: 'bg-amber-500/10' 
+            },
+            { 
+              label: viewMode === 'history' ? 'Socios Morosos (Histórico)' : 'Morosos del Periodo', 
+              value: contextStats.lateCount, 
+              desc: 'Socios con deuda vencida',
+              icon: AlertTriangle, 
+              color: 'text-red-500', 
+              bg: 'bg-red-500/10' 
+            },
+            { 
+              label: viewMode === 'history' ? 'Promedio por Mes' : (registrySubTab === 'monthly' ? 'Proyección Mensual' : 'Facturación Total'), 
+              value: viewMode === 'history' ? `$${Math.round(contextStats.averagePerMonth).toLocaleString()}` : `$${contextStats.total.toLocaleString()}`, 
+              desc: viewMode === 'history' ? 'Recaudación promedio' : 'Ingresos estimados totales',
+              icon: Receipt, 
+              color: 'text-primary-600', 
+              bg: 'bg-primary-600/10' 
+            },
+          ].map((kpi, i) => (
+            <div key={i} className="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-xl ${kpi.bg} ${kpi.color} group-hover:scale-110 transition-transform`}>
+                  <kpi.icon size={20} />
+                </div>
+                <ArrowUpRight size={14} className="text-slate-300" />
               </div>
-              <ArrowUpRight size={14} className="text-slate-300" />
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{kpi.label}</p>
+              <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{kpi.value}</h4>
+              <p className="text-[9px] text-slate-400 mt-1 font-medium">{kpi.desc}</p>
             </div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{kpi.label}</p>
-            <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{kpi.value}</h4>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-800/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden">
         {viewMode === 'settings' && (
@@ -911,247 +1740,427 @@ const FeesManagement: React.FC = () => {
             >
               Tipos de Beca
             </button>
+            <button
+              onClick={() => setSettingsSubTab('inscriptions')}
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${settingsSubTab === 'inscriptions' ? 'bg-primary-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+              Inscripciones
+            </button>
           </div>
         )}
         <div className="overflow-x-auto">
           {viewMode === 'history' ? (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
-                  <th className="px-8 py-6">Socio / Miembro</th>
-                  <th className="px-8 py-6">Periodo</th>
-                  <th className="px-8 py-6">Monto</th>
-                  <th className="px-8 py-6 text-center">Estado</th>
-                  <th className="px-8 py-6 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {filteredFees.map(fee => (
-                  <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
-                          {fee.member?.photourl ? (
-                            <img src={fee.member.photourl} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-black text-primary-600 italic tracking-tighter">
-                              {getInitials(fee.member?.name || 'DESCONOCIDO')}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center flex-wrap gap-2">
-                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
-                            {(() => {
-                              const activeCommitment = commitments.find(c => c.member_id === fee.member_id && !c.fulfilled);
-                              return activeCommitment ? (
-                                <button 
-                                  type="button" 
-                                  onClick={(e) => { e.stopPropagation(); setSelectedCommitment(activeCommitment); }}
-                                  className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider transition-all"
-                                  title="Ver Compromiso de Pago"
-                                >
-                                  <Calendar size={8} />
-                                  <span>Compromiso</span>
-                                </button>
-                              ) : null;
-                            })()}
-                          </div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {fee.member?.dni || '---'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">{fee.period}</span>
-                        <span className="text-[8px] text-slate-400 font-bold uppercase">{fee.payment_method || 'Sin definir'}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col gap-1 items-start">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-black text-slate-800 dark:text-white italic">
-                            ${getFeeAmountWithSurcharge(fee).toLocaleString()}
-                          </span>
-                          {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
-                        </div>
-                        {(() => {
-                          const baseAmount = fee.amount || 0;
-                          const effectiveAmount = getFeeAmountWithSurcharge(fee);
-                          if (effectiveAmount > baseAmount && baseAmount > 0) {
-                            const pct = Math.round(((effectiveAmount - baseAmount) / baseAmount) * 100);
-                            return (
-                              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase rounded border border-amber-500/10 tracking-wider">
-                                +{pct}% Recargo aplicado (Vencido)
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      {getStatusBadge(fee.status, fee.due_date)}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex justify-end gap-2">
-                        {fee.status !== 'Paid' && (
-                          <>
-                            <button onClick={() => markAsPaid(fee)} className="p-2.5 bg-emerald-500 text-white rounded-xl hover:scale-110 transition-all shadow-lg shadow-emerald-500/20" title="Marcar como Pagado"><Check size={16} strokeWidth={3} /></button>
-                            <button 
-                              onClick={() => {
-                                setSelectedPlayerIdForCommitment(fee.member_id);
-                                setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
-                                setCommitmentDetail('');
-                                setShowCommitmentModal(true);
-                              }}
-                              className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-xl border border-amber-500/10 hover:border-transparent transition-all shadow-sm"
-                              title="Registrar Compromiso"
-                            >
-                              <Calendar size={16} />
-                            </button>
-                          </>
-                        )}
-                        <button onClick={() => setSelectedMemberHistory(fee.member || null)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm" title="Historial"><History size={16} /></button>
-                        <button onClick={async () => { if(confirm('¿Eliminar registro?')) { await db.fees.delete(fee.id); loadData(); } }} className="p-2.5 text-slate-300 hover:text-red-500 transition-colors" title="Eliminar"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
+            !filterCategory || !selectedPeriod ? (
+              <div className="p-16 text-center bg-slate-50 dark:bg-slate-800/10 text-slate-400 rounded-[2rem] border border-dashed border-slate-200 dark:border-white/5 my-8">
+                <p className="text-sm font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                  🔍 Por favor seleccione los filtros para buscar
+                </p>
+                <p className="text-xs font-bold uppercase mt-2 text-slate-400/80 leading-relaxed">
+                  Debe especificar una categoría y un periodo para visualizar el historial.
+                </p>
+              </div>
+            ) : filteredFees.length === 0 ? (
+              <div className="p-16 text-center bg-slate-50 dark:bg-slate-800/10 text-slate-400 rounded-[2rem] border border-slate-200 dark:border-white/5 my-8">
+                <p className="text-sm font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                  📭 Sin registros encontrados
+                </p>
+                <p className="text-xs font-bold uppercase mt-2 text-slate-400/80 leading-relaxed">
+                  No hay pagos o deudas registradas para los filtros aplicados.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Socio / Miembro</th>
+                    <th className="px-8 py-6">Periodo</th>
+                    <th className="px-8 py-6">Monto</th>
+                    <th className="px-8 py-6 text-center">Estado</th>
+                    <th className="px-8 py-6 text-right">Comprobantes / Historial</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : viewMode === 'registry' ? (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
-                  <th className="px-8 py-6">Miembro</th>
-                  <th className="px-8 py-6">Vencimiento</th>
-                  <th className="px-8 py-6 text-center">Estado para {selectedPeriod}</th>
-                  <th className="px-8 py-6 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {registryData.map(({ member, fee }) => (
-                  <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
-                          {member.photourl ? (
-                            <img src={member.photourl} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-black text-primary-600 italic tracking-tighter">
-                              {getInitials(member.name)}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center flex-wrap gap-2">
-                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
-                            {(() => {
-                              const activeCommitment = commitments.find(c => c.member_id === member.id && !c.fulfilled);
-                              return activeCommitment ? (
-                                <button 
-                                  type="button" 
-                                  onClick={(e) => { e.stopPropagation(); setSelectedCommitment(activeCommitment); }}
-                                  className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider transition-all"
-                                  title="Ver Compromiso de Pago"
-                                >
-                                  <Calendar size={8} />
-                                  <span>Compromiso</span>
-                                </button>
-                              ) : null;
-                            })()}
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {filteredFees.map(fee => (
+                    <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                            {fee.member?.photourl ? (
+                              <img src={fee.member.photourl} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                                {getInitials(fee.member?.name || 'DESCONOCIDO')}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
-                            {(() => {
-                              const main = member.assignments?.find(a => a.is_main);
-                              return main ? (
-                                <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 text-[8px] font-black uppercase rounded-full">
-                                  {main.category} ({main.discipline})
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/10 text-[8px] font-black uppercase rounded-full">
-                                  Sin Cat. Principal
+                          <div>
+                            <div className="flex items-center flex-wrap gap-2">
+                              <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{fee.member?.name || 'DESCONOCIDO'}</p>
+                              {(() => {
+                                const activeCommitment = commitments.find(c => c.member_id === fee.member_id && !c.fulfilled);
+                                return activeCommitment ? (
+                                  <span 
+                                    className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider"
+                                    title="Compromiso Activo"
+                                  >
+                                    <Calendar size={8} />
+                                    <span>Compromiso</span>
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">DNI: {fee.member?.dni || '---'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">
+                            {formatPeriodToMonthYear(fee.period)}
+                          </span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">{fee.payment_method || 'Sin definir'}</span>
+                          {(() => {
+                            if (!fee.receipt_url) return null;
+                            const shared = fees.filter(f => f.member_id === fee.member_id && f.receipt_url === fee.receipt_url && f.status !== 'Anulado');
+                            if (shared.length > 1) {
+                              const listPeriods = shared.map(s => s.period.slice(5)).sort().join(', ');
+                              return (
+                                <span className="inline-block mt-1 self-start px-2 py-0.5 bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 text-[7px] font-black uppercase rounded tracking-wider leading-none" title={`Pago grupal que incluye periodos: ${shared.map(sf => sf.period).join(', ')}`}>
+                                  📦 Pago Grupal ({listPeriods})
                                 </span>
                               );
-                            })()}
-                          </div>
+                            }
+                            return null;
+                          })()}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                        {fee ? fee.due_date : 'PENDIENTE GENERAR'}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      {fee ? getStatusBadge(fee.status, fee.due_date) : (
-                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-400 text-[8px] font-black uppercase rounded-full border border-slate-200 dark:border-white/5">Sin Registro</span>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex justify-end items-center gap-2">
-                        {!fee || fee.status !== 'Paid' ? (
-                          <>
-                            {(() => {
-                              const sugErr = fee ? null : suggestFee(member).error;
-                              if (sugErr) {
-                                return (
-                                  <span className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl text-[8px] font-black uppercase tracking-widest border border-red-500/20" title={sugErr === 'Sin categoría principal' ? 'Configura la categoría principal en el módulo Miembros' : 'No hay tarifa de cuota configurada para este miembro'}>
-                                    ⚠️ {sugErr}
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black text-slate-800 dark:text-white italic">
+                              ${getFeeAmountWithSurcharge(fee).toLocaleString()}
+                            </span>
+                            {fee.receipt_url && <ImageIcon size={12} className="text-primary-600 animate-bounce" />}
+                          </div>
+                          {(() => {
+                            const bd = getFeeBreakdown(fee);
+                            if (bd.isDirect) return null;
+                            if (bd.discount > 0 || bd.surcharge > 0) {
+                              return (
+                                <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 mt-1 space-y-0.5" id={`fee-breakdown-${fee.id}`}>
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    <span>Base: ${bd.base.toLocaleString()}</span>
+                                    {bd.discount > 0 && <span className="text-emerald-500 font-extrabold" title={bd.scholarshipName}>-Beca: ${bd.discount.toLocaleString()}</span>}
+                                    {bd.surcharge > 0 && <span className="text-amber-500 font-extrabold">+{bd.surchargePercentage}% Recargo: ${bd.surcharge.toLocaleString()}</span>}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        {getStatusBadge(fee.status, fee.due_date)}
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end items-center gap-3">
+                          {fee.receipt_url ? (
+                            <a 
+                              href={fee.receipt_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-600/20 cursor-pointer"
+                              title="Ver Comprobante"
+                            >
+                              <FileText size={14} /> Ver Comprobante
+                            </a>
+                          ) : (
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider italic">
+                              Sin comprobante
+                            </span>
+                          )}
+                          <button 
+                            onClick={() => setSelectedMemberHistory(fee.member || null)} 
+                            className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm cursor-pointer" 
+                            title="Ver Historial Completo"
+                          >
+                            <History size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : viewMode === 'registry' ? (
+            registrySubTab === 'monthly' ? (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Miembro</th>
+                    <th className="px-8 py-6">Vencimiento</th>
+                    <th className="px-8 py-6 text-center">Estado para {selectedPeriod}</th>
+                    <th className="px-8 py-6 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {registryData.map(({ member, fee }) => (
+                    <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                            {member.photourl ? (
+                              <img src={member.photourl} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                                {getInitials(member.name)}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center flex-wrap gap-2">
+                              <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
+                              {(() => {
+                                const activeCommitment = commitments.find(c => c.member_id === member.id && !c.fulfilled);
+                                return activeCommitment ? (
+                                  <button 
+                                    type="button" 
+                                    onClick={(e) => { e.stopPropagation(); setSelectedCommitment(activeCommitment); }}
+                                    className="flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-wider transition-all"
+                                    title="Ver Compromiso de Pago"
+                                  >
+                                    <Calendar size={8} />
+                                    <span>Compromiso</span>
+                                  </button>
+                                ) : null;
+                              })()}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                              {(() => {
+                                const main = member.assignments?.find(a => a.is_main);
+                                return main ? (
+                                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 text-[8px] font-black uppercase rounded-full">
+                                    {main.category} ({main.discipline})
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/10 text-[8px] font-black uppercase rounded-full">
+                                    Sin Cat. Principal
                                   </span>
                                 );
-                              }
-                              return (
-                                <button 
-                                  onClick={() => {
-                                    const suggestion = fee ? null : suggestFee(member);
-                                    const dueDate = fee ? fee.due_date : (
-                                      suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
-                                    );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        {(() => {
+                          const suggestion = suggestFee(member);
+                          return fee ? (
+                            <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+                              {fee.due_date}
+                            </span>
+                          ) : !suggestion.error ? (
+                            <span className="font-mono text-xs text-slate-400 italic font-medium" title="Fecha sugerida según configuración de categoría">
+                              {selectedPeriod}-{suggestion.due_day.toString().padStart(2, '0')} <span className="text-[10px] tracking-tight font-sans font-black uppercase">(Sug.)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                              Sin Configurar
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        {fee ? getStatusBadge(fee.status, fee.due_date) : (
+                          <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/10 tracking-widest">
+                            No Generado
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end items-center gap-2">
+                          {!fee || fee.status !== 'Paid' ? (
+                            <>
+                              {(() => {
+                                const sigErr = fee ? null : suggestFee(member).error;
+                                if (sigErr) {
+                                  return (
+                                    <span className="px-2.5 py-1 bg-red-500/5 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/10" title={sigErr === 'Sin categoría principal' ? 'Configura la categoría principal en el módulo Miembros' : 'No hay tarifa de cuota configurada para este miembro'}>
+                                      ⚠️ {sigErr}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center gap-1.5">
+                                    <button 
+                                      onClick={() => {
+                                        const suggestion = fee ? null : suggestFee(member);
+                                        const dueDate = fee ? fee.due_date : (
+                                          suggestion ? `${selectedPeriod}-${suggestion.due_day.toString().padStart(2, '0')}` : new Date().toISOString().split('T')[0]
+                                        );
 
-                                    setFormData({
-                                      ...formData,
-                                      ...(fee || {}),
-                                      member_id: member.id,
-                                      period: selectedPeriod,
-                                      amount: fee ? getFeeAmountWithSurcharge(fee) : (suggestion?.amount || 5000),
-                                      due_date: dueDate
-                                    });
-                                    setShowModal(true);
-                                  }}
-                                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
-                                >
-                                  <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Registrar'}
-                                </button>
-                              );
-                            })()}
+                                        setFormData({
+                                          ...formData,
+                                          ...(fee || {}),
+                                          member_id: member.id,
+                                          period: selectedPeriod,
+                                          amount: fee ? getFeeAmountWithSurcharge(fee) : (suggestion?.amount || 5000),
+                                          due_date: dueDate,
+                                          concept: 'Cuota Mensual'
+                                        });
+                                        setShowModal(true);
+                                      }}
+                                      className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+                                    >
+                                      <Check size={14} strokeWidth={3} /> Registrar Pago
+                                    </button>
+                                    {fee && (
+                                      <button 
+                                        onClick={() => markAsPaid(fee)} 
+                                        className="p-2.5 bg-emerald-550/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl border border-emerald-500/10 hover:border-transparent transition-all shadow-sm cursor-pointer" 
+                                        title="Marcar como Pagado rápido"
+                                      >
+                                        <Check size={14} strokeWidth={3} />
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              <button 
+                                onClick={() => {
+                                  setSelectedPlayerIdForCommitment(member.id);
+                                  setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
+                                  setCommitmentDetail('');
+                                  setShowCommitmentModal(true);
+                                }}
+                                className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-xl border border-amber-500/10 hover:border-transparent transition-all shadow-sm cursor-pointer"
+                                title="Registrar Compromiso de Pago"
+                              >
+                                <Calendar size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500 tracking-widest pr-4 italic">
+                              <Check size={14} strokeWidth={3} /> Pago Registrado
+                            </div>
+                          )}
+                          {fee && fee.status !== 'Anulado' && (
+                            <button 
+                              onClick={() => handleVoidFee(fee)} 
+                              className="p-2.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/10 hover:border-transparent rounded-xl transition-all shadow-sm text-[9px] font-black uppercase tracking-wider cursor-pointer"
+                              title="Anular Pago / Cobro"
+                            >
+                              Anular
+                            </button>
+                          )}
+                          <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm cursor-pointer" title="Ver Historial"><History size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Miembro</th>
+                    <th className="px-8 py-6">Inscripción Aplicable</th>
+                    <th className="px-8 py-6">Monto</th>
+                    <th className="px-8 py-6">Vencimiento</th>
+                    <th className="px-8 py-6 text-center">Estado de Cobro</th>
+                    <th className="px-8 py-6 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {registryInscriptionsData.map(({ member, inscription, fee }) => (
+                    <tr key={`${member.id}-${inscription.id}`} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 overflow-hidden shrink-0 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                            {member.photourl ? (
+                              <img src={member.photourl} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-black text-primary-600 italic tracking-tighter">
+                                {getInitials(member.name)}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800 dark:text-white uppercase italic tracking-tight">{member.name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DNI: {member.dni}</p>
+                              {(() => {
+                                const main = member.assignments?.find(a => a.is_main);
+                                return main ? (
+                                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10 text-[8px] font-black uppercase rounded-full">
+                                    {main.category} ({main.discipline})
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest-wider">
+                          {inscription.name}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-slate-800 dark:text-slate-100 font-extrabold text-sm italic">
+                        ${inscription.amount.toLocaleString()}
+                      </td>
+                      <td className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                        {inscription.due_date}
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        {fee ? getStatusBadge(fee.status, fee.due_date) : (
+                          <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-400 text-[8px] font-black uppercase rounded-full border border-slate-200 dark:border-white/5">Sin Registro</span>
+                        )}
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end items-center gap-2">
+                          {!fee || fee.status !== 'Paid' ? (
                             <button 
                               onClick={() => {
-                                setSelectedPlayerIdForCommitment(member.id);
-                                setCommitmentDate(new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]);
-                                setCommitmentDetail('');
-                                setShowCommitmentModal(true);
+                                setFormData({
+                                  ...formData,
+                                  ...(fee || {}),
+                                  member_id: member.id,
+                                  period: inscription.due_date.slice(0, 4) + ' (Anual)',
+                                  amount: fee ? getFeeAmountWithSurcharge(fee) : inscription.amount,
+                                  due_date: inscription.due_date,
+                                  concept: `Inscripción: ${inscription.name}`
+                                });
+                                setShowModal(true);
                               }}
-                              className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-xl border border-amber-500/10 hover:border-transparent transition-all shadow-sm"
-                              title="Registrar Compromiso de Pago"
+                              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-600/20"
                             >
-                              <Calendar size={16} />
+                              <Plus size={14} strokeWidth={3} /> {fee ? 'Actualizar' : 'Cobrar'}
                             </button>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500 tracking-widest pr-4 italic">
-                            <Check size={14} strokeWidth={3} /> Pago Confirmado
-                          </div>
-                        )}
-                        <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm" title="Historial"><History size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          ) : (
+                            <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500 tracking-widest pr-4 italic">
+                              <Check size={14} strokeWidth={3} /> Pago Cobrado
+                            </div>
+                          )}
+                          <button onClick={() => setSelectedMemberHistory(member)} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm" title="Historial"><History size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {registryInscriptionsData.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-8 py-16 text-center text-slate-400 font-bold uppercase text-xs tracking-widest bg-slate-50/50 dark:bg-slate-900/10">
+                        No hay inscripciones aplicables a los jugadores filtados.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )
           ) : viewMode === 'commitments' ? (
             <table className="w-full text-left">
               <thead>
@@ -1302,6 +2311,74 @@ const FeesManagement: React.FC = () => {
                         <div className="flex flex-col items-center gap-4 opacity-30">
                           <DollarSign size={48} className="text-slate-400" />
                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay becas configuradas</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            ) : settingsSubTab === 'inscriptions' ? (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                    <th className="px-8 py-6">Tipo / Nombre</th>
+                    <th className="px-8 py-6">Monto</th>
+                    <th className="px-8 py-6">Vencimiento</th>
+                    <th className="px-8 py-6">Categorías Asociadas</th>
+                    <th className="px-8 py-6 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {inscriptions.length > 0 ? inscriptions.map(ins => (
+                    <tr key={ins.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                      <td className="px-8 py-6">
+                        <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest">{ins.name}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-lg font-black text-slate-800 dark:text-white italic">${ins.amount.toLocaleString()}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{ins.due_date}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {ins.category_ids && ins.category_ids.length > 0 ? ins.category_ids.map(catId => (
+                            <span key={catId} className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[8px] font-black uppercase tracking-wider rounded-md border border-primary-200 dark:border-primary-800/50">
+                              {categoryNamesMap[catId] || catId}
+                            </span>
+                          )) : (
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 text-[8px] font-extrabold uppercase tracking-wider rounded-md">
+                              Todas las categorías
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              setInscriptionFormData(ins);
+                              setShowInscriptionModal(true);
+                            }} 
+                            className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <ArrowUpRight size={16} />
+                          </button>
+                          <button 
+                            onClick={() => deleteInscriptionConfig(ins.id)} 
+                            className="p-2.5 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-4 opacity-30">
+                          <CreditCard size={48} className="text-slate-400" />
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No hay inscripciones configuradas</p>
                         </div>
                       </td>
                     </tr>
@@ -1470,6 +2547,18 @@ const FeesManagement: React.FC = () => {
                              <div>
                                 <p className="text-sm font-black text-primary-600 uppercase italic leading-none">{selectedMemberInModal.name}</p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">DNI: {selectedMemberInModal.dni}</p>
+                                {(() => {
+                                  const main = getMainAssignment(selectedMemberInModal);
+                                  return main ? (
+                                    <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider mt-1.5 bg-emerald-500/10 px-2.5 py-0.5 rounded shadow-sm inline-block">
+                                      Categoría Principal: {main.discipline} - {main.category}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[9px] font-black uppercase text-rose-500 dark:text-rose-450 tracking-wider mt-1.5 bg-rose-500/10 px-2.5 py-0.5 rounded shadow-sm inline-block">
+                                      ⚠️ Sin Categoría Principal
+                                    </p>
+                                  );
+                                })()}
                              </div>
                           </div>
                           <button 
@@ -1482,68 +2571,271 @@ const FeesManagement: React.FC = () => {
                      )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Importe ($)</label>
-                       <input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-xl dark:text-white outline-none border border-transparent dark:border-white/5 shadow-inner" />
-                    </div>
-                    <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Periodo</label>
-                       <input type="month" value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5" />
-                    </div>
-                  </div>
-
+                  {/* SELECTOR DE CONCEPTO DE COBRO */}
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Método de Pago</label>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Concepto de Cobro</label>
                      <div className="relative">
-                       <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                       <select value={formData.payment_method} onChange={e => setFormData({...formData, payment_method: e.target.value})} className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none">
-                         {['Efectivo', 'Transferencia Bancaria', 'Tarjeta Débito', 'Tarjeta Crédito', 'QR / Billetera Digital', 'Débito Automático', 'Otro'].map(m => <option key={m} value={m}>{m}</option>)}
+                       <FileText className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                       <select 
+                         value={formData.concept || 'Cuota Mensual'} 
+                         onChange={e => {
+                           const val = e.target.value;
+                           if (val === 'Cuota Mensual') {
+                             setFormData({
+                               ...formData,
+                               concept: 'Cuota Mensual',
+                               amount: 5000,
+                               period: new Date().toISOString().slice(0, 7)
+                             });
+                           } else {
+                             const selectedInsc = inscriptions.find(ins => `Inscripción: ${ins.name}` === val);
+                             if (selectedInsc) {
+                               setFormData({
+                                 ...formData,
+                                 concept: val,
+                                 amount: selectedInsc.amount,
+                                 due_date: selectedInsc.due_date,
+                                 period: selectedInsc.due_date.slice(0, 4) + ' (Anual)'
+                               });
+                             }
+                           }
+                         }} 
+                         className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none"
+                       >
+                         <option value="Cuota Mensual">Cuota Mensual</option>
+                         <optgroup label="Inscripciones Anuales / Matrículas">
+                           {inscriptions.map(ins => (
+                             <option key={ins.id} value={`Inscripción: ${ins.name}`}>{ins.name}</option>
+                           ))}
+                         </optgroup>
                        </select>
                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
                      </div>
                   </div>
-                </div>
 
-                <div className="space-y-8">
-                  <div className="space-y-3">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Adjuntar Comprobante</label>
-                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,application/pdf" />
-                     <div 
+                  {formData.concept !== 'Cuota Mensual' ? (
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Importe ($)</label>
+                         <input type="number" value={formData.amount ?? ''} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-xl dark:text-white outline-none border border-transparent dark:border-white/5 shadow-inner" />
+                      </div>
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Periodo</label>
+                         <input type="text" value={formData.period || ''} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5" />
+                      </div>
+                    </div>
+                  ) : (
+                    /* SELECCIÓN FLEXIBLE DE MÚLTIPLES MESES */
+                    selectedMemberInModal ? (
+                      !getMainAssignment(selectedMemberInModal) ? (
+                        <div className="p-8 text-center bg-rose-500/5 dark:bg-rose-500/10 text-rose-500 rounded-3xl border border-rose-500/20 shadow-sm">
+                          <p className="text-xs font-black uppercase tracking-widest leading-relaxed">
+                            ⚠️ Sin Categoría Principal
+                          </p>
+                          <p className="text-[10px] font-bold uppercase mt-2 text-slate-500 dark:text-slate-400/90 leading-relaxed">
+                            Este socio no cuenta con una categoría principal asignada para pagos. Defina una categoría principal en el perfil del miembro para continuar con la generación de este pago.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-white/5">
+                          <div className="flex justify-between items-center border-b border-slate-150/50 dark:border-white/5 pb-3">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Historial de Periodos Disponibles</h4>
+                            <span className="text-[8px] font-bold text-primary-500 uppercase tracking-widest bg-primary-500/10 px-2 py-1 rounded">Pago Multi-Mes</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 max-h-[170px] overflow-y-auto pr-2 custom-scrollbar">
+                            {outstandingPeriods.map(({ period: p, label, fee, type }) => {
+                              const isChecked = selectedPeriods.includes(p);
+
+                              let typeColorClasses = '';
+                              let typeLabel = '';
+                              if (isChecked) {
+                                if (type === 'due') {
+                                  typeColorClasses = 'bg-rose-500/10 border-rose-500 text-rose-600 font-extrabold shadow-sm dark:bg-rose-500/20';
+                                } else if (type === 'current') {
+                                  typeColorClasses = 'bg-amber-500/10 border-amber-500 text-amber-600 font-extrabold shadow-sm dark:bg-amber-500/20';
+                                } else {
+                                  typeColorClasses = 'bg-emerald-500/10 border-emerald-500 text-emerald-600 font-extrabold shadow-sm dark:bg-emerald-500/20';
+                                }
+                              } else {
+                                if (type === 'due') {
+                                  typeColorClasses = 'bg-white dark:bg-slate-900 border-rose-200/50 dark:border-rose-950/20 text-rose-600 dark:text-rose-450 hover:border-rose-400';
+                                } else if (type === 'current') {
+                                  typeColorClasses = 'bg-white dark:bg-slate-900 border-amber-300/50 dark:border-amber-950/20 text-amber-600 dark:text-amber-450 hover:border-amber-500';
+                                } else {
+                                  typeColorClasses = 'bg-white dark:bg-slate-900 border-emerald-200/50 dark:border-emerald-950/20 text-emerald-600 dark:text-emerald-450 hover:border-emerald-400';
+                                }
+                              }
+
+                              if (type === 'due') typeLabel = 'Pendiente / Atrasado';
+                              else if (type === 'current') typeLabel = 'Mes Actual';
+                              else if (type === 'future') typeLabel = 'Adelantado';
+
+                              return (
+                                <label 
+                                  key={p}
+                                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${typeColorClasses}`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        if (isChecked) {
+                                          setSelectedPeriods(selectedPeriods.filter(x => x !== p));
+                                        } else {
+                                          setSelectedPeriods([...selectedPeriods, p]);
+                                        }
+                                      }}
+                                      className="accent-primary-600 rounded"
+                                    />
+                                    <div className="text-left">
+                                      <p className="text-[10px] font-black uppercase tracking-tight">{label}</p>
+                                      <p className="text-[7px] font-extrabold uppercase mt-0.5 tracking-wider opacity-85">
+                                        {typeLabel}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-black">
+                                    ${getNetRealAmountForPeriod(p, fee).toLocaleString()}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                            {outstandingPeriods.length === 0 && (
+                              <div className="col-span-2 p-6 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest italic bg-white dark:bg-slate-900 rounded-2xl border border-slate-100">
+                                🎉 Sin deudas pendientes para este socio
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex justify-between items-center bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <div>
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Cant. Meses</p>
+                              <p className="text-[10px] font-black text-primary-500 uppercase mt-1">{selectedPeriods.length} Seleccionado(s)</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Monto Neto</p>
+                              <p className="text-base font-black text-emerald-500 italic leading-none mt-1">${totalAmountForSelectedPeriods.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div className="p-8 text-center text-[10px] font-black tracking-widest uppercase text-slate-400 italic bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                        ⚠️ Selecciona un socio para cargar sus periodos disponibles
+                      </div>
+                    )
+                  )}
+ 
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Método de Pago</label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <select value={formData.payment_method || 'Efectivo'} onChange={e => setFormData({...formData, payment_method: e.target.value})} className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none">
+                          {['Efectivo', 'Transferencia Bancaria', 'Tarjeta Débito', 'Tarjeta Crédito', 'QR / Billetera Digital', 'Débito Automático', 'Otro'].map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
+                      </div>
+                   </div>
+                 </div>
+ 
+                 <div className="space-y-8">
+                   {/* OPCIONES DE CARGA Y SELECCIÓN DE COMPROBANTES */}
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Adjuntar Comprobante de Pago</label>
+                      
+                      {/* Input Único de Subida */}
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileSelect} 
+                        className="hidden" 
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" 
+                      />
+ 
+                      <div 
                         onClick={() => fileInputRef.current?.click()}
-                        className={`w-full h-40 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-all cursor-pointer overflow-hidden ${formData.receipt_url ? 'bg-primary-600/5 border-primary-600' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-white/5 hover:border-primary-600'}`}
-                     >
-                        {formData.receipt_url ? (
-                           <div className="flex flex-col items-center gap-2">
-                              {formData.receipt_url.includes('images') || formData.receipt_url.startsWith('data:image') ? (
-                                <img src={formData.receipt_url} className="w-20 h-20 object-cover rounded-xl shadow-lg" />
-                              ) : (
-                                <Receipt size={40} className="text-primary-600" />
-                              )}
-                              <span className="text-[9px] font-black uppercase text-primary-600">Cargado con éxito</span>
-                           </div>
-                        ) : (
-                           <>
-                              <Camera size={32} className="text-slate-300" />
-                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Subir Imagen / PDF</span>
-                           </>
-                        )}
-                     </div>
-                  </div>
+                        className="group flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-slate-800/20 text-slate-500 hover:text-primary-600 hover:border-primary-500 hover:bg-slate-100/30 dark:hover:bg-slate-800/40 transition-all gap-2 cursor-pointer text-center"
+                      >
+                        <Upload className="text-slate-400 group-hover:text-primary-500 group-hover:scale-110 transition-transform" size={24} />
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-widest block font-bold text-slate-750 dark:text-slate-200">Seleccionar o Arrastrar Archivo</span>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">Imágenes (*.jpg, *.png) y Documentos (*.pdf, *.doc, *.xlsx, etc.)</span>
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Vencimiento</label>
-                       <input type="date" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
-                    </div>
-                    <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Ref. Operación</label>
-                       <input value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value})} placeholder="NRO TRANSF" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
-                    </div>
-                  </div>
-                </div>
+                      {/* Previsualización del archivo seleccionado LOCALMENTE antes de guardar */}
+                      {selectedFile && (
+                        <div className="flex items-center gap-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl mt-1 animate-fade-in shadow-inner">
+                          {selectedFile.type.startsWith('image/') ? (
+                            <img src={URL.createObjectURL(selectedFile)} className="w-10 h-10 object-cover rounded-lg border border-blue-500/10" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-600"><FileText size={18} /></div>
+                          )}
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-[9px] font-black uppercase text-blue-500 tracking-wider">Archivo por registrar</p>
+                            <p className="text-[11px] font-bold text-slate-800 dark:text-white truncate mt-0.5">{selectedFile.name}</p>
+                            <p className="text-[8px] text-slate-400 mt-0.5">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setSelectedFile(null)} 
+                            className="p-1 text-slate-300 hover:text-red-500"
+                            title="Quitar archivo"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
+ 
+                      {/* Previsualización del archivo cargado */}
+                      {formData.receipt_url && (
+                        <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl mt-1 animate-fade-in shadow-inner">
+                          {formData.receipt_url.includes('images') || formData.receipt_url.startsWith('data:image') || formData.receipt_url.includes('receipts') || formData.receipt_url.includes('comprobantes') || /\.(jpg|jpeg|png|webp|gif|svg)/i.test(formData.receipt_url) ? (
+                            <img src={formData.receipt_url} className="w-10 h-10 object-cover rounded-lg border border-emerald-500/10" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-600"><FileText size={18} /></div>
+                          )}
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-[9px] font-black uppercase text-emerald-600">Comprobante guardado</p>
+                            <p className="text-[8px] text-slate-400 truncate mt-0.5">{formData.receipt_url}</p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setFormData(prev => ({ ...prev, receipt_url: '' }))} 
+                            className="p-1 text-slate-300 hover:text-red-500"
+                            title="Eliminar archivo"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
+                   </div>
+ 
+                   <div className="grid grid-cols-2 gap-6">
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Vencimiento</label>
+                        <input type="date" value={formData.due_date || ''} onChange={e => setFormData({...formData, due_date: e.target.value})} className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
+                     </div>
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Ref. Operación</label>
+                        <input value={formData.reference || ''} onChange={e => setFormData({...formData, reference: e.target.value})} placeholder="NRO TRANSF" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
+                     </div>
+                   </div>
+ 
+                   {/* COMENTARIO / OBSERVACIÓN */}
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Comentarios / Observaciones</label>
+                      <textarea
+                        value={comment}
+                        onChange={e => setComment(e.target.value)}
+                        placeholder="Agregar notas del pago, detalles adicionales..."
+                        className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5 h-24 resize-none"
+                      />
+                   </div>
               </div>
             </div>
+          </div>
 
             <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-white/5 flex flex-col md:flex-row justify-end gap-4">
                <button onClick={() => setShowModal(false)} className="px-10 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400">Cancelar</button>
@@ -1579,15 +2871,17 @@ const FeesManagement: React.FC = () => {
                         </div>
                         <div className="flex flex-col gap-1">
                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{f.period} - {f.payment_method}</p>
-                           <div className="flex items-center gap-2">
+                           <div className="flex flex-wrap items-center gap-2">
                              <p className="text-lg font-black text-slate-800 dark:text-white italic">${getFeeAmountWithSurcharge(f).toLocaleString()}</p>
                              {(() => {
-                               const baseAmt = f.amount || 0;
-                               const effAmt = getFeeAmountWithSurcharge(f);
-                               if (effAmt > baseAmt) {
+                               const bd = getFeeBreakdown(f);
+                               if (bd.isDirect) return null;
+                               if (bd.discount > 0 || bd.surcharge > 0) {
                                  return (
-                                   <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase rounded tracking-wider border border-amber-500/10">
-                                     +Recargo
+                                   <span className="flex flex-wrap items-center gap-2 text-[9px] font-bold text-slate-400 dark:text-slate-500" id={`history-breakdown-${f.id}`}>
+                                     <span>(Base: ${bd.base.toLocaleString()})</span>
+                                     {bd.discount > 0 && <span className="text-emerald-500 font-extrabold">-Beca: ${bd.discount.toLocaleString()}</span>}
+                                     {bd.surcharge > 0 && <span className="text-amber-500 font-extrabold">+{bd.surchargePercentage}% Recargo: ${bd.surcharge.toLocaleString()}</span>}
                                    </span>
                                  );
                                }
@@ -1688,6 +2982,119 @@ const FeesManagement: React.FC = () => {
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   Guardar Beca
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Tipos de Inscripción */}
+      {showInscriptionModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col my-8">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg"><Plus size={20} /></div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">
+                    {inscriptionFormData.id ? 'Editar Inscripción' : 'Crear Inscripción'}
+                  </h3>
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest font-bold">Configuración de Inscripciones</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowInscriptionModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <form onSubmit={saveInscriptionConfig}>
+              <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Nombre del Tipo de Inscripción</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Ej: Inscripción General, Matrícula 2026, Fútbol Infantil..."
+                      value={inscriptionFormData.name || ''}
+                      onChange={e => setInscriptionFormData({ ...inscriptionFormData, name: e.target.value })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">Monto de Inscripción ($)</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      value={inscriptionFormData.amount || ''}
+                      onChange={e => setInscriptionFormData({ ...inscriptionFormData, amount: Number(e.target.value) })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-lg dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">Fecha Límite/Vencimiento</label>
+                    <input
+                      required
+                      type="date"
+                      value={inscriptionFormData.due_date || ''}
+                      onChange={e => setInscriptionFormData({ ...inscriptionFormData, due_date: e.target.value })}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 block">Asociar a Categorías (Opcional)</label>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mb-2 ml-3">Si no seleccionas ninguna, se considerará aplicable a todas las categorías.</p>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-white/5 max-h-48 overflow-y-auto space-y-2">
+                      {config?.disciplines.flatMap(d => d.branches.flatMap(b => b.categories)).map(cat => {
+                        const isChecked = inscriptionFormData.category_ids?.includes(cat.id);
+                        return (
+                          <label key={cat.id} className="flex items-center gap-3 p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                const currentIds = inscriptionFormData.category_ids || [];
+                                const nextIds = isChecked
+                                  ? currentIds.filter(id => id !== cat.id)
+                                  : [...currentIds, cat.id];
+                                setInscriptionFormData({ ...inscriptionFormData, category_ids: nextIds });
+                              }}
+                              className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300"
+                            />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                              {cat.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-slate-100 dark:border-white/5 flex gap-4 bg-slate-50/50 dark:bg-slate-800/20">
+                <button
+                  type="button"
+                  onClick={() => setShowInscriptionModal(false)}
+                  className="flex-1 px-8 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Guardar Inscripción
                 </button>
               </div>
             </form>
@@ -2120,6 +3527,236 @@ const FeesManagement: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* MODAL DE GENERACIÓN MASIVA DE CUOTAS */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-600/20">
+                  <RefreshCw size={20} className={isSaving ? 'animate-spin' : ''} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Generación Masiva de Cuotas</h3>
+                  <p className="text-[9px] font-black text-primary-500 uppercase tracking-widest font-bold">Generar cuotas mensuales en un paso</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowGenerateModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all cursor-pointer"
+                disabled={isSaving}
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="p-8 space-y-6 overflow-y-auto max-h-[60vh]">
+              {/* Selector de Periodo */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 ml-1">Periodo / Mes a Generar</label>
+                <input
+                  type="month"
+                  value={genPeriod}
+                  onChange={e => setGenPeriod(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800/30 px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 outline-none font-bold text-sm tracking-wider text-slate-800 dark:text-slate-100 h-[52px]"
+                  disabled={isSaving}
+                />
+              </div>
+
+              {/* Checkboxes de Categorías */}
+              <div>
+                <div className="flex justify-between items-center mb-2 ml-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Seleccionar Categorías</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setGenCategoryIds(Array.from(new Set(categories.map(c => c.id || c.name))))}
+                      className="text-[9px] font-black text-primary-600 uppercase tracking-wider hover:underline"
+                      disabled={isSaving}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGenCategoryIds([])}
+                      className="text-[9px] font-black text-slate-400 uppercase tracking-wider hover:underline"
+                      disabled={isSaving}
+                    >
+                      Ninguna
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 max-h-[180px] overflow-y-auto p-1 bg-slate-50 dark:bg-slate-800/10 rounded-2xl border border-slate-150 dark:border-white/5">
+                  {categories.map(cat => {
+                    const identifier = cat.id || cat.name;
+                    const isChecked = genCategoryIds.includes(identifier);
+                    return (
+                      <label 
+                        key={identifier}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                          isChecked 
+                            ? 'bg-primary-500/5 border-primary-500/20 text-primary-700 dark:text-primary-400 font-bold' 
+                            : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setGenCategoryIds([...genCategoryIds, identifier]);
+                            } else {
+                              setGenCategoryIds(genCategoryIds.filter(id => id !== identifier));
+                            }
+                          }}
+                          className="accent-primary-500 rounded"
+                          disabled={isSaving}
+                        />
+                        <span className="text-xs font-black uppercase tracking-tight truncate">{cat.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Feedback Dinámico en Caja de Advertencia */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 flex gap-4 items-start">
+                <div className="p-2 bg-primary-500/10 text-primary-500 rounded-lg shrink-0">
+                  <Receipt size={16} />
+                </div>
+                <div>
+                  <h5 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Estimación de Generación</h5>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Siguiendo los criterios seleccionados, <strong className="text-primary-600 dark:text-primary-400">{missingGenerateCount} cuotas</strong> serán creadas para el periodo <strong>{genPeriod}</strong>.
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-2 font-bold leading-tight">
+                    * El cálculo solo incluye miembros activos que no cuenten con una cuota mensual creada de este concepto para dicho periodo.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-white/5 flex gap-3 justify-end bg-slate-50/50 dark:bg-slate-800/40">
+              <button
+                type="button"
+                onClick={handleBulkGenerateFees}
+                disabled={isSaving || missingGenerateCount === 0}
+                className={`flex-1 sm:flex-none px-8 py-4 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  isSaving || missingGenerateCount === 0
+                    ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed shadow-none text-slate-400 border border-slate-250 dark:border-white/5'
+                    : 'bg-primary-600 hover:bg-primary-500 hover:scale-105 active:scale-95 shadow-primary-600/20'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={14} /> Creando Cuotas...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} strokeWidth={3} /> Confirmar Generación
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowGenerateModal(false)}
+                disabled={isSaving}
+                className="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200 cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMigrationModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-[#0f121a] w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col">
+            <header className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Actualización de BD Requerida</h3>
+                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest font-bold">Columna 'concept' Faltante</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowMigrationModal(false)}
+                className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-neutral-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                Para poder registrar y diferenciar los pagos de <strong>Cuotas Mensuales</strong> de las <strong>Inscripciones / Matrículas Anuales</strong>, es necesario aplicar una actualización a la estructura de la base de datos en Supabase.
+              </p>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Instrucciones de Aplicación</p>
+                <ol className="list-decimal list-inside space-y-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <li>Ingresa a tu panel de <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline inline-flex items-center gap-1">Supabase Dashboard <ExternalLink size={10} /></a>.</li>
+                  <li>Dirígete a la sección <strong>SQL Editor</strong> en el menú lateral izquierdo.</li>
+                  <li>Crea una nueva consulta (New Query), pega el código SQL de abajo y haz clic en <strong>Run</strong>.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Código SQL de Migración</p>
+                  <button
+                    onClick={() => {
+                      const sql = `-- MIGRACIÓN DE BD V12: INCORPORACIÓN DE CONCEPTO EN SEGREGACIÓN DE COBROS\nALTER TABLE public.fees ADD COLUMN IF NOT EXISTS concept TEXT DEFAULT 'Cuota Mensual';\nUPDATE public.fees SET concept = 'Cuota Mensual' WHERE concept IS NULL;\nCREATE INDEX IF NOT EXISTS idx_fees_concept ON public.fees (concept);`;
+                      navigator.clipboard.writeText(sql);
+                      alert('¡Código SQL copiado al portapapeles!');
+                    }}
+                    className="text-[9px] font-black uppercase text-primary-600 hover:underline tracking-wider"
+                  >
+                    Copiar Código SQL
+                  </button>
+                </div>
+                <pre className="p-5 bg-slate-900 text-slate-100 rounded-2xl text-xs font-mono overflow-x-auto whitespace-pre border border-slate-800">
+{`-- V12: INCORPORACIÓN DE CONCEPTO
+ALTER TABLE public.fees 
+ADD COLUMN IF NOT EXISTS concept TEXT DEFAULT 'Cuota Mensual';
+
+UPDATE public.fees 
+SET concept = 'Cuota Mensual' 
+WHERE concept IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_fees_concept ON public.fees (concept);`}
+                </pre>
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  const sql = `-- MIGRACIÓN DE BD V12: INCORPORACIÓN DE CONCEPTO EN SEGREGACIÓN DE COBROS\nALTER TABLE public.fees ADD COLUMN IF NOT EXISTS concept TEXT DEFAULT 'Cuota Mensual';\nUPDATE public.fees SET concept = 'Cuota Mensual' WHERE concept IS NULL;\nCREATE INDEX IF NOT EXISTS idx_fees_concept ON public.fees (concept);`;
+                  navigator.clipboard.writeText(sql);
+                  alert('¡Código SQL copiado! Pégalo en el SQL Editor de Supabase y haz clic en Run.');
+                  setShowMigrationModal(false);
+                }}
+                className="px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              >
+                Copiar SQL y Cerrar
+              </button>
+              <button 
+                onClick={() => setShowMigrationModal(false)}
+                className="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

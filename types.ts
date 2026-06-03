@@ -235,12 +235,16 @@ export interface MemberFee {
   member?: Member;
   amount: number;
   period: string;
-  status: 'Paid' | 'Pending' | 'Late';
+  status: 'Paid' | 'Pending' | 'Late' | 'Anulado';
   due_date: string;
   payment_date?: string | null;
   payment_method?: string;
   receipt_url?: string;
   reference?: string;
+  concept?: string;
+  comment?: string;
+  void_reason?: string;
+  is_voided?: boolean;
 }
 
 export type TournamentType = 'Professional' | 'Internal';
@@ -378,3 +382,13 @@ export interface ScholarshipType {
   value: number;
   created_at?: string;
 }
+
+export interface InscriptionConfig {
+  id: string;
+  name: string;
+  amount: number;
+  due_date: string;
+  category_ids?: string[]; // IDs de categorías asociadas (opcional)
+  created_at?: string;
+}
+

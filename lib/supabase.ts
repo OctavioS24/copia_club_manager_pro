@@ -511,16 +511,16 @@ tournaments: {
     uploadReceipt: async (file: File) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `receipts/${fileName}`;
+      const filePath = `comprobantes/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('fees_attachments')
+        .from('pagos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from('fees_attachments')
+        .from('pagos')
         .getPublicUrl(filePath);
 
       return data.publicUrl;
@@ -633,19 +633,34 @@ tournaments: {
     uploadAttachment: async (file: File) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `scholarships/${fileName}`;
+      const filePath = `becas/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('medical_attachments')
+        .from('pagos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from('medical_attachments')
+        .from('pagos')
         .getPublicUrl(filePath);
 
       return data.publicUrl;
     }
+  },
+  inscriptionConfigs: {
+    getAll: () => supabase
+      .from('inscription_configs')
+      .select('*')
+      .order('name', { ascending: true }),
+    
+    upsert: (record: any) => supabase
+      .from('inscription_configs')
+      .upsert(record),
+    
+    delete: (id: string) => supabase
+      .from('inscription_configs')
+      .delete()
+      .eq('id', id)
   }
 };
