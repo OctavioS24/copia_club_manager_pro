@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Member } from '../types';
 import { 
   Activity, AlertTriangle, CheckCircle, Calendar, 
-  Edit2, Loader2, Clock, RefreshCw, Eye
+  Edit2, Loader2, Clock, RefreshCw, Eye, ArrowUpRight
 } from 'lucide-react';
 import { db } from '../lib/supabase';
+import { getInitials } from '../lib/playerUtils';
 import MedicalEditModal from './CentralMedica/MedicalEditModal';
 
 interface MedicalDashboardProps {
@@ -190,45 +191,53 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-8 md:mb-10">
-         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
-            <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Bajas Médicas</span>
-              <p className="text-xl md:text-5xl font-black text-red-600 italic mt-0.5 md:mt-1">{injuredPlayersCount.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-10 animate-fade-in">
+         <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 rounded-xl bg-red-600/10 text-red-500 group-hover:scale-110 transition-transform">
+                <Activity size={20} />
+              </div>
+              <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
             </div>
-            <div className="w-8 h-8 md:w-14 md:h-14 bg-red-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
-              <Activity size={14} md:size={28} />
-            </div>
+            <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Bajas Médicas</p>
+            <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{injuredPlayersCount.length}</h4>
+            <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Jugadores inactivos</p>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
-            <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Atletas Listos</span>
-              <p className="text-xl md:text-5xl font-black text-emerald-600 italic mt-0.5 md:mt-1">{readyPlayersCount.length}</p>
+         <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 rounded-xl bg-emerald-600/10 text-emerald-500 group-hover:scale-110 transition-transform">
+                <CheckCircle size={20} />
+              </div>
+              <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
             </div>
-            <div className="w-8 h-8 md:w-14 md:h-14 bg-emerald-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-              <CheckCircle size={14} md:size={28} />
-            </div>
+            <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Atletas Listos</p>
+            <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{readyPlayersCount.length}</h4>
+            <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Apto físico al día</p>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
-            <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">No Aptos</span>
-              <p className="text-xl md:text-5xl font-black text-orange-600 italic mt-0.5 md:mt-1">{notFitPlayersCount.length}</p>
+         <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 rounded-xl bg-orange-600/10 text-orange-500 group-hover:scale-110 transition-transform">
+                <AlertTriangle size={20} />
+              </div>
+              <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
             </div>
-            <div className="w-8 h-8 md:w-14 md:h-14 bg-orange-600/10 rounded-lg md:rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={14} md:size={28} />
-            </div>
+            <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">No Aptos</p>
+            <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{notFitPlayersCount.length}</h4>
+            <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Pendiente de estudio</p>
          </div>
 
-         <div className="bg-surface-card border border-[var(--surface-border)] p-3 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm flex items-center justify-between group">
-            <div>
-              <span className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-tight">Vencidos</span>
-              <p className="text-xl md:text-5xl font-black text-indigo-500 italic mt-0.5 md:mt-1">{expiredPlayersCount.length}</p>
+         <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                <Clock size={20} />
+              </div>
+              <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
             </div>
-            <div className="w-8 h-8 md:w-14 md:h-14 bg-indigo-500/10 rounded-lg md:rounded-2xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-              <Clock size={14} md:size={28} />
-            </div>
+            <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Vencidos</p>
+            <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{expiredPlayersCount.length}</h4>
+            <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Ficha vencida</p>
          </div>
       </div>
 
@@ -242,8 +251,14 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
               className="p-5 flex items-center justify-between group active:bg-surface-hover transition-colors"
             >
               <div className="flex items-center gap-5 min-w-0">
-                <div className="w-14 h-14 rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 relative border border-[var(--surface-border)]">
-                  <img src={player.photourl || 'https://via.placeholder.com/64'} className="w-full h-full object-cover" />
+                <div className="w-14 h-14 rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 relative border border-[var(--surface-border)] flex items-center justify-center">
+                  {player.photourl ? (
+                    <img src={player.photourl} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-black text-primary-600 dark:text-primary-400 italic">
+                      {getInitials(player.name)}
+                    </span>
+                  )}
                   {isExpired(player) && (
                     <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center">
                       <Clock size={14} className="text-white" />
@@ -313,8 +328,14 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
                 <tr key={player.id} className="hover:bg-surface-hover transition-colors group">
                   <td className="px-3 md:px-8 py-4 md:py-6">
                      <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 leading-none group-hover:scale-105 transition-transform border border-[var(--surface-border)]">
-                          <img src={player.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" />
+                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-surface-ground overflow-hidden shadow-inner shrink-0 leading-none group-hover:scale-105 transition-transform border border-[var(--surface-border)] flex items-center justify-center">
+                          {player.photourl ? (
+                            <img src={player.photourl} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm md:text-lg font-black text-primary-600 dark:text-primary-400 italic">
+                              {getInitials(player.name)}
+                            </span>
+                          )}
                        </div>
                        <div>
                           <span className="font-black text-[var(--text-main)] uppercase text-sm tracking-tighter block line-clamp-1 italic group-hover:text-primary-600 transition-colors">{player.name}</span>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { db } from '../lib/supabase.ts';
+import { getInitialsSvg } from '../lib/playerUtils';
 
 interface PlayerCardProps {
   player: Player;
@@ -172,7 +173,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player: initialPlayer, onClose,
             
             <div className="hidden md:flex p-8 flex-col items-center border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="w-32 h-32 rounded-[2rem] bg-slate-200 dark:bg-slate-800 border-2 border-primary-600/20 overflow-hidden shadow-lg relative group mb-5">
-                <img src={player.photourl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop'} className="w-full h-full object-cover" />
+                <img src={player.photourl || getInitialsSvg(player.name)} className="w-full h-full object-cover" />
                 <div className="absolute top-0 right-0 bg-primary-600 text-white w-10 h-10 rounded-bl-2xl flex items-center justify-center font-black italic shadow-lg">
                   {player.overallrating}
                 </div>

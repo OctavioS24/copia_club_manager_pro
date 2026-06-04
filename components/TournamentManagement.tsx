@@ -11,6 +11,7 @@ import {
   RefreshCcw, AlertTriangle
 } from 'lucide-react';
 import { db } from '../lib/supabase';
+import { getInitialsSvg } from '../lib/playerUtils';
 import CrearTorneo from './Torneos/CrearTorneo';
 import { 
   getRivals, replicateFixtures, 
@@ -1076,7 +1077,7 @@ const TournamentManagement: React.FC<TournamentManagementProps> = ({
                                   onClick={() => toggleMemberInTeam(m.id)} 
                                   className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${isInActive ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : isInAnyTeam ? 'opacity-30 grayscale' : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-primary-600/30'}`}
                                  >
-                                    <img src={m.photourl} className="w-10 h-10 rounded-xl object-cover" />
+                                    <img src={m.photourl || getInitialsSvg(m.name)} className="w-10 h-10 rounded-xl object-cover" />
                                     <div className="flex-1">
                                        <p className="text-[10px] font-black uppercase truncate">{m.name}</p>
                                        <p className="text-[8px] font-bold opacity-60">DNI: {m.dni}</p>

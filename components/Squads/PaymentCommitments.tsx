@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase, db } from '../../lib/supabase';
 import { useCategory } from '../../context/useCategory';
 import { Member } from '../../types';
+import { getInitialsSvg } from '../../lib/playerUtils';
 import { 
   Loader2, 
   Plus, 
@@ -385,7 +386,7 @@ const PaymentCommitments: React.FC = () => {
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <img
-                            src={item.member?.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${item.member?.name || 'S'}`}
+                            src={item.member?.photourl || getInitialsSvg(item.member?.name || 'S')}
                             alt={item.member?.name}
                             className="w-10 h-10 rounded-xl object-cover border border-[var(--surface-border)]"
                           />

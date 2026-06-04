@@ -48,9 +48,15 @@ const TopNav: React.FC<TopNavProps> = ({
         <div className="flex items-center gap-2 md:gap-6 min-w-0">
           <div 
             onClick={() => handleSetView('squads_reset')}
-            className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-primary-500 flex items-center justify-center cursor-pointer shadow-lg shadow-primary-500/20 hover:scale-105 transition-transform shrink-0"
+            className="cursor-pointer hover:scale-105 transition-transform shrink-0 flex items-center justify-center"
           >
-            {config.logo_url ? <img src={config.logo_url} className="w-full h-full object-contain p-1 md:p-2" /> : <Shield size={18} className="text-primary-contrast" />}
+            {config.logo_url ? (
+              <img src={config.logo_url} className="w-9 h-9 md:w-14 md:h-14 object-contain" />
+            ) : (
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                <Shield size={18} className="text-primary-contrast" />
+              </div>
+            )}
           </div>
           <div className="hidden xs:block min-w-0">
             <h1 className="font-black text-[9px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.3em] dark:text-white leading-none truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">{config.name || 'MI CLUB'}</h1>
@@ -180,8 +186,14 @@ const TopNav: React.FC<TopNavProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4 pt-6 border-t border-[var(--surface-border)]">
-                  <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
-                    {config.logo_url ? <img src={config.logo_url} className="w-full h-full object-contain p-2" /> : <Shield size={18} className="text-primary-contrast" />}
+                  <div className="shrink-0 flex items-center justify-center">
+                    {config.logo_url ? (
+                      <img src={config.logo_url} className="w-10 h-10 object-contain" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                        <Shield size={18} className="text-primary-contrast" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h3 className="font-black text-[10px] uppercase tracking-widest dark:text-white leading-none">{config.name || 'MI CLUB'}</h3>

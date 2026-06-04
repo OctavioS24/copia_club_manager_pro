@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
   TrendingDown, ShieldAlert, Target,
-  Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw, HeartPulse, Heart, X
+  Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw, HeartPulse, Heart, X,
+  ArrowUpRight
 } from 'lucide-react';
 import { ClubConfig, Match, Member, MatchEvent } from '../types';
 import { db, supabase } from '../lib/supabase';
@@ -345,139 +346,143 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PUNTOS_ACUMULADOS')) && (
-              <div className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-primary-500/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-primary-500/5 rounded-bl-full"></div>
-                <div className="flex justify-between items-start relative z-10">
-                  <div>
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 md:mb-3">Puntos Acumulados</p>
-                    <h3 className="text-2xl md:text-5xl font-black text-[var(--text-main)] italic tracking-tighter">{points} <span className="text-[10px] md:text-xs not-italic text-[var(--text-muted)] ml-1">PTS</span></h3>
+              <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 rounded-xl bg-primary-500/10 text-primary-500 group-hover:scale-110 transition-transform">
+                    <Trophy size={20} />
                   </div>
-                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-primary-500/10 text-primary-500 group-hover:scale-110 transition-transform shadow-lg shadow-primary-500/5">
-                    <Trophy size={18} md:size={24} />
-                  </div>
+                  <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
                 </div>
+                <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Puntos Acumulados</p>
+                <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">
+                  {points} <span className="text-xs font-semibold text-[#888888] dark:text-[#BBBBBB] ml-1">PTS</span>
+                </h4>
+                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Consolidado en fixture</p>
               </div>
             )}
 
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('RACHA_ACTUAL')) && (
-              <div className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-emerald-600/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-emerald-600/5 rounded-bl-full"></div>
-                <div className="flex justify-between items-start relative z-10">
-                  <div className="flex-1">
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 md:mb-3">Racha Actual</p>
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="flex gap-1">
-                        {visualStreak.length > 0 ? visualStreak.map((s, i) => (
-                          <div key={i} className={`w-6 h-6 md:w-8 md:h-8 rounded-md md:rounded-lg ${s.color} flex items-center justify-center text-white text-[8px] md:text-[10px] font-black shadow-lg shadow-black/10`}>
-                            {s.result}
-                          </div>
-                        )) : (
-                          <span className="text-[10px] font-black text-[var(--text-muted)] opacity-30 uppercase">Sin Datos</span>
-                        )}
-                      </div>
-                      {trend !== 'neutral' && (
-                        <div className={`p-1 md:p-2 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
-                          {trend === 'up' ? <TrendingUp size={14} md:size={18} /> : <TrendingDown size={14} md:size={18} />}
-                        </div>
-                      )}
-                    </div>
+              <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
+                    <Activity size={20} />
                   </div>
-                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-emerald-600/10 text-emerald-600 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-600/5">
-                    <Activity size={18} md:size={24} />
-                  </div>
+                  <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
                 </div>
+                <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Racha Actual</p>
+                <div className="flex items-center gap-2 md:gap-3 mt-1.5 h-8">
+                  <div className="flex gap-1">
+                    {visualStreak.length > 0 ? visualStreak.map((s, i) => (
+                      <div key={i} className={`w-6 h-6 rounded-md ${s.color} flex items-center justify-center text-white text-[8px] md:text-[10px] font-black shadow`}>
+                        {s.result}
+                      </div>
+                    )) : (
+                      <span className="text-[10px] font-bold text-[#888888] dark:text-[#BBBBBB] opacity-30 uppercase">Sin Datos</span>
+                    )}
+                  </div>
+                  {trend !== 'neutral' && (
+                    <div className={`p-1 rounded-full ${trend === 'up' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
+                      {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Últimos encuentros disputados</p>
               </div>
             )}
 
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PARTIDOS_JUGADOS')) && (
-              <div className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-blue-600/30 transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-blue-600/5 rounded-bl-full"></div>
-                <div className="flex justify-between items-start relative z-10">
-                  <div>
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 md:mb-3">Partidos Jugados</p>
-                    <h3 className="text-2xl md:text-5xl font-black text-[var(--text-main)] italic tracking-tighter">{matches.filter(m => m.status === 'Finished').length}</h3>
+              <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 rounded-xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform">
+                    <Target size={20} />
                   </div>
-                  <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-blue-600/10 text-blue-600 group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/5">
-                    <Target size={18} md:size={24} />
-                  </div>
+                  <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
                 </div>
+                <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Partidos Jugados</p>
+                <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{matches.filter(m => m.status === 'Finished').length}</h4>
+                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Historial completado</p>
               </div>
             )}
 
             {/* APTOS MÉDICOS POR VENCER (30 DÍAS) */}
             <div 
               onClick={() => { setMedicalFilter('squad'); setShowMedicalWarningModal(true); }}
-              className="bg-surface-card p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-[var(--surface-border)] hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/5 transition-all cursor-pointer group relative overflow-hidden"
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all cursor-pointer relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-orange-500/5 rounded-bl-full"></div>
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 md:mb-3">
-                    Aptos a Vencer <span className="text-orange-500 font-extrabold">(30d)</span>
-                  </p>
-                  <h3 className="text-2xl md:text-5xl font-black text-orange-500 italic tracking-tighter">
-                    {expiringInSquad.length}
-                    <span className="text-[10px] md:text-xs not-italic text-[var(--text-muted)] ml-1.5 font-bold">
-                      / {expiringOverall.length} total
-                    </span>
-                  </h3>
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500 group-hover:scale-110 transition-transform">
+                  <HeartPulse size={20} className="animate-pulse" />
                 </div>
-                <div className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-orange-500/10 text-orange-500 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/5">
-                  <HeartPulse size={18} md:size={24} className="animate-pulse" />
-                </div>
+                <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
               </div>
+              <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Aptos a Vencer <span className="text-orange-500 font-extrabold">(30d)</span></p>
+              <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">
+                {expiringInSquad.length}
+                <span className="text-xs font-semibold text-[#888888] dark:text-[#BBBBBB] ml-1.5">
+                  / {expiringOverall.length} total
+                </span>
+              </h4>
+              <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Revisión médica requerida</p>
             </div>
           </div>
 
           {/* Estadísticas Personales del Plantel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => (
-              <div key={et.id} className="bg-surface-card p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--surface-border)] flex items-center gap-3 md:gap-6">
-                <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-2xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
-                  <Award size={20} md:size={32} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[7px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest truncate">{et.name}S TOTALES</p>
-                  <h4 className="text-xl md:text-3xl font-black text-[var(--text-main)] italic">{squadStats[et.statsKey] || 0}</h4>
+              <div key={et.id} className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
+                    <Award size={24} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">{et.name}S TOTALES</p>
+                    <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats[et.statsKey] || 0}</h4>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setShowStatsType(et.name === 'GOL' ? 'Goles' : et.name.includes('AMARILLA') ? 'Amarillas' : 'Rojas')}
-                  className="ml-auto w-7 h-7 md:w-8 md:h-8 rounded-full bg-surface-ground flex items-center justify-center text-[var(--text-muted)] hover:text-primary-500 hover:bg-white transition-all shadow-sm shrink-0"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
                 >
-                  <ChevronRight size={12} md:size={14} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
             ))}
             
             {!disciplineConfig && (
               <>
-                <div className="bg-surface-card p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--surface-border)] flex items-center gap-3 md:gap-6 cursor-pointer hover:border-primary-500/50 transition-all" onClick={() => setShowStatsType('Goles')}>
-                  <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0">
-                    <Award size={20} md:size={32} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest truncate">Goles Totales</p>
-                    <h4 className="text-xl md:text-3xl font-black text-[var(--text-main)] italic">{squadStats.GOLES_TOTALES || 0}</h4>
-                  </div>
-                </div>
-
-                <div className="bg-surface-card p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--surface-border)] flex items-center gap-3 md:gap-6 cursor-pointer hover:border-amber-500/50 transition-all" onClick={() => setShowStatsType('Amarillas')}>
-                  <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                    <ShieldAlert size={20} md:size={32} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest truncate">Tarjetas Amarillas</p>
-                    <h4 className="text-xl md:text-3xl font-black text-[var(--text-main)] italic">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
+                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-primary-500/30" onClick={() => setShowStatsType('Goles')}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0">
+                      <Award size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles Totales</p>
+                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.GOLES_TOTALES || 0}</h4>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-surface-card p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--surface-border)] flex items-center gap-3 md:gap-6 cursor-pointer hover:border-red-500/50 transition-all" onClick={() => setShowStatsType('Rojas')}>
-                  <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
-                    <ShieldAlert size={20} md:size={32} />
+                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-amber-500/30" onClick={() => setShowStatsType('Amarillas')}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                      <ShieldAlert size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Amarillas</p>
+                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[8px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest truncate">Tarjetas Rojas</p>
-                    <h4 className="text-xl md:text-3xl font-black text-[var(--text-main)] italic">{squadStats.TARJETAS_ROJAS || 0}</h4>
+                </div>
+
+                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-red-500/30" onClick={() => setShowStatsType('Rojas')}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                      <ShieldAlert size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Rojas</p>
+                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_ROJAS || 0}</h4>
+                    </div>
                   </div>
                 </div>
               </>

@@ -255,35 +255,6 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
                   </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] ml-4">Color Principal</label>
-                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>
-                    <input 
-                      type="color" 
-                      disabled={!isEditingEnabled}
-                      value={localConfig.primary_color} 
-                      onChange={e => setLocalConfig({...localConfig, primary_color: e.target.value})} 
-                      className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
-                    />
-                    <span className="font-mono text-xs md:text-sm font-bold text-[var(--text-muted)] uppercase">{localConfig.primary_color}</span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] ml-4">Color Secundario</label>
-                  <div className={`flex items-center gap-6 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>
-                    <input 
-                      type="color" 
-                      disabled={!isEditingEnabled}
-                      value={localConfig.secondary_color} 
-                      onChange={e => setLocalConfig({...localConfig, secondary_color: e.target.value})} 
-                      className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl border-none p-0 bg-transparent ${isEditingEnabled ? 'cursor-pointer' : 'cursor-default opacity-80'}`} 
-                    />
-                    <span className="font-mono text-xs md:text-sm font-bold text-[var(--text-muted)] uppercase">{localConfig.secondary_color}</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className={`flex flex-col items-center justify-center p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border-4 border-dashed relative group transition-all ${isEditingEnabled ? 'bg-surface-ground border-[var(--surface-border)]' : 'bg-transparent border-transparent'}`}>

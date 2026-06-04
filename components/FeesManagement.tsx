@@ -1710,16 +1710,16 @@ const FeesManagement: React.FC = () => {
               bg: 'bg-primary-600/10' 
             },
           ].map((kpi, i) => (
-            <div key={i} className="bg-white dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all">
+            <div key={i} className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm group hover:shadow-lg transition-all">
               <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-xl ${kpi.bg} ${kpi.color} group-hover:scale-110 transition-transform`}>
+                <div className="p-3 rounded-xl bg-primary-500/10 text-primary-500 group-hover:scale-110 transition-transform">
                   <kpi.icon size={20} />
                 </div>
-                <ArrowUpRight size={14} className="text-slate-300" />
+                <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
               </div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{kpi.label}</p>
-              <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{kpi.value}</h4>
-              <p className="text-[9px] text-slate-400 mt-1 font-medium">{kpi.desc}</p>
+              <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">{kpi.label}</p>
+              <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{kpi.value}</h4>
+              <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">{kpi.desc}</p>
             </div>
           ))}
         </div>
@@ -2854,7 +2854,15 @@ const FeesManagement: React.FC = () => {
            <div className="bg-surface-card w-full max-w-3xl rounded-[3rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden flex flex-col h-[80vh]">
               <div className="p-8 border-b border-[var(--surface-border)] flex justify-between items-center bg-surface-hover">
                 <div className="flex items-center gap-6">
-                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg"><img src={selectedMemberHistory.photourl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'} className="w-full h-full object-cover" /></div>
+                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[var(--surface-border)] shadow-lg flex items-center justify-center bg-surface-ground">
+                     {selectedMemberHistory.photourl ? (
+                       <img src={selectedMemberHistory.photourl} className="w-full h-full object-cover" />
+                     ) : (
+                       <span className="text-lg font-black text-primary-500 italic">
+                         {getInitials(selectedMemberHistory.name)}
+                       </span>
+                     )}
+                   </div>
                    <div>
                       <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">{selectedMemberHistory.name}</h3>
                       <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">Resumen Histórico de Pagos</p>

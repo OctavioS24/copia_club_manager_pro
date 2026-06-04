@@ -3,13 +3,13 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Shield, Lock, AlertCircle } from 'lucide-react';
+import { Lock, AlertCircle } from 'lucide-react';
 
 interface LoginProps {
   config?: ClubConfig;
 }
 
-const Login: React.FC<LoginProps> = ({ config }) => {
+const Login: React.FC<LoginProps> = () => {
   const { user, signInWithGoogle, loading, error } = useAuth();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
@@ -31,16 +31,64 @@ const Login: React.FC<LoginProps> = ({ config }) => {
           className="bg-surface-card border border-[var(--surface-border)] rounded-[4rem] p-10 md:p-14 shadow-2xl relative z-10 backdrop-blur-sm"
         >
           <div className="flex flex-col items-center text-center mb-12">
-            <div className="w-24 h-24 rounded-full bg-slate-950 flex items-center justify-center mb-8 shadow-2xl border-4 border-[var(--surface-border)] overflow-hidden">
-              {config?.logo_url ? (
-                <img src={config.logo_url} alt="Club Logo" className="w-full h-full object-contain p-2" />
-              ) : (
-                <Shield size={40} className="text-primary-500" />
-              )}
+            <div className="mb-8 flex justify-center w-full">
+              <svg 
+                viewBox="0 0 690 164" 
+                className="w-full max-w-[280px] md:max-w-[320px] h-auto" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Left grid */}
+                <rect x="0" y="0" width="76" height="76" rx="22" fill="#e7567b" />
+                <rect x="88" y="0" width="76" height="76" rx="22" fill="#e7567b" />
+                <rect x="88" y="88" width="76" height="76" rx="22" fill="#e7567b" />
+                <rect x="4" y="92" width="68" height="68" rx="18" stroke="#e7567b" strokeWidth="8" fill="none" />
+
+                {/* PLEGMA letters */}
+                <path 
+                  d="M 205 12 L 205 152 M 205 12 H 235 C 265 12, 265 82, 235 82 H 205" 
+                  stroke="#e7567b" 
+                  strokeWidth="16" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 285 12 L 285 152 H 335" 
+                  stroke="#e7567b" 
+                  strokeWidth="16" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 410 12 H 360 L 360 152 H 410 M 360 82 H 395" 
+                  stroke="#e7567b" 
+                  strokeWidth="16" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 490 62 C 490 32, 470 12, 440 12 C 410 12, 390 41, 390 82 C 390 123, 410 152, 440 152 C 470 152, 490 128, 490 92 H 455" 
+                  stroke="#e7567b" 
+                  strokeWidth="16" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 515 152 L 515 15 L 550 92 L 585 15 L 585 152" 
+                  stroke="#e7567b" 
+                  strokeWidth="16" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 610 152 L 640 15 L 670 152 M 622 97 H 658" 
+                  stroke="#e7567b" 
+                  strokeWidth="15" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+              </svg>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none mb-4">
-              {config?.name || 'Club Manager'} <span className="text-primary-500 underline decoration-4 underline-offset-4">Pro</span>
-            </h1>
             <p className="text-[var(--text-muted)] font-black uppercase tracking-[0.3em] text-[10px]">Portal de Gestión Interna</p>
           </div>
 

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Match, Member, MatchSquadPlayer } from '../../types';
 import { getMatchSquad, saveMatchSquad } from '../../lib/squads';
 import { db, supabase } from '../../lib/supabase';
+import { getInitials, getInitialsSvg } from '../../lib/playerUtils';
 
 interface ConvocatoriaModalProps {
   match: Match;
@@ -180,12 +181,18 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
       >
         <div className="flex items-center gap-4 flex-1">
           <div className="relative">
-            <img 
-              referrerPolicy="no-referrer"
-              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
-              alt={player.name}
-              className={`w-12 h-12 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-md' : 'border-[var(--surface-border)] opacity-60'}`}
-            />
+            {player.photourl ? (
+              <img 
+                referrerPolicy="no-referrer"
+                src={player.photourl}
+                alt={player.name}
+                className={`w-12 h-12 rounded-2xl object-cover border-2 transition-all ${selData.selected ? 'border-primary-500 shadow-md' : 'border-[var(--surface-border)] opacity-60'}`}
+              />
+            ) : (
+              <div className={`w-12 h-12 rounded-2xl border-2 transition-all flex items-center justify-center font-bold text-sm uppercase ${selData.selected ? 'border-primary-500 bg-primary-500/10 text-primary-500 shadow-md' : 'border-[var(--surface-border)] bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 opacity-60'}`}>
+                {getInitials(player.name)}
+              </div>
+            )}
             {selData.selected && (
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-surface-card shadow-lg animate-fade-in">
                 <Check size={10} className="text-white" strokeWidth={4} />
@@ -373,7 +380,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                           <div className="flex items-center gap-3">
                             <img 
                               referrerPolicy="no-referrer"
-                              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
+                              src={player.photourl || getInitialsSvg(player.name)}
                               alt={player.name}
                               className="w-10 h-10 rounded-xl object-cover border border-[var(--surface-border)] opacity-80"
                             />
@@ -416,7 +423,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                           <div className="flex items-center gap-3">
                             <img 
                               referrerPolicy="no-referrer"
-                              src={player.photourl || `https://api.dicebear.com/7.x/initials/svg?seed=${player.name}`}
+                              src={player.photourl || getInitialsSvg(player.name)}
                               alt={player.name}
                               className="w-10 h-10 rounded-xl object-cover border-2 border-primary-500"
                             />

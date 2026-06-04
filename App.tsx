@@ -36,8 +36,8 @@ function App() {
   const [config, setConfig] = useState<ClubConfig>({
     name: 'MI CLUB',
     logo_url: '',
-    primary_color: '#ec4899',
-    secondary_color: '#0f172a',
+    primary_color: '#e7567b',
+    secondary_color: '#d43f66',
     disciplines: []
   });
 
@@ -69,17 +69,24 @@ function App() {
   // Efecto de colores de marca y optimización UX
   useEffect(() => {
     const root = document.documentElement;
-    const primaryColor = config.primary_color || '#ec4899';
-    const secondaryColor = config.secondary_color || '#0f172a';
+    
+    // Todos los clubes verán los mismos colores corporativos:
+    // Modo claro: #e7567b, Modo oscuro: #ff7b9e
+    const primaryColor = isDarkMode ? '#ff7b9e' : '#e7567b';
+    const secondaryColor = isDarkMode ? '#ff527b' : '#d43f66';
     
     // 1. Paleta Primaria
-    root.style.setProperty('--primary-50', adjustColor(primaryColor, 0.9));
+    if (isDarkMode) {
+      root.style.setProperty('--primary-50', '#1c2135');
+    } else {
+      root.style.setProperty('--primary-50', '#fce4e9'); // fondo claro corporativo
+    }
     root.style.setProperty('--primary-100', adjustColor(primaryColor, 0.8));
     root.style.setProperty('--primary-200', adjustColor(primaryColor, 0.6));
     root.style.setProperty('--primary-300', adjustColor(primaryColor, 0.4));
     root.style.setProperty('--primary-400', adjustColor(primaryColor, 0.2));
-    root.style.setProperty('--primary-500', primaryColor);
-    root.style.setProperty('--primary-600', adjustColor(primaryColor, -0.1));
+    root.style.setProperty('--primary-500', primaryColor); // único color primario
+    root.style.setProperty('--primary-600', isDarkMode ? '#ff527b' : '#d43f66'); // hover state corporativo
     root.style.setProperty('--primary-700', adjustColor(primaryColor, -0.15));
     root.style.setProperty('--primary-800', adjustColor(primaryColor, -0.25));
     root.style.setProperty('--primary-900', adjustColor(primaryColor, -0.4));
@@ -87,9 +94,8 @@ function App() {
     root.style.setProperty('--primary-soft', hexToRgba(primaryColor, 0.1));
     root.style.setProperty('--text-on-primary', getContrastText(primaryColor));
 
-    // 2. Paleta Secundaria e Inteligencia Visual
-    const secondaryIsBright = isBright(secondaryColor);
-    root.style.setProperty('--secondary-50', adjustColor(secondaryColor, 0.9));
+    // 2. Paleta Secundaria e Inteligencia Visual derivados de la misma marca
+    root.style.setProperty('--secondary-50', isDarkMode ? '#1c2135' : '#fce4e9');
     root.style.setProperty('--secondary-100', adjustColor(secondaryColor, 0.8));
     root.style.setProperty('--secondary-200', adjustColor(secondaryColor, 0.6));
     root.style.setProperty('--secondary-300', adjustColor(secondaryColor, 0.4));
@@ -104,16 +110,10 @@ function App() {
     root.style.setProperty('--text-on-secondary', getContrastText(secondaryColor));
 
     // 3. Optimización de Superficies (Modo Oscuro)
-    const primaryIsDark = !isBright(primaryColor);
-    
     if (isDarkMode) {
-      // 3.1 Fondo base inteligente:
-      // Si el primario es oscuro, usamos un gris "azulado/neutral" para contraste.
-      // Si el primario es claro, podemos usar un negro más profundo.
-      const darkBg = primaryIsDark ? '#11141b' : '#0a0c10';
-      
-      // Intentamos inyectar un toque sutil del color primario en las superficies para cohesión
-      const surfaceBase = primaryIsDark ? adjustColor(primaryColor, -0.85) : darkBg;
+      // Usar un azul/gris oscuro elegante y limpio para modo oscuro, evitando marrones/veteados de rojo
+      const darkBg = '#0F121D';
+      const surfaceBase = '#161C28';
       
       root.style.setProperty('--surface-ground', darkBg);
       root.style.setProperty('--surface-card', surfaceBase);
@@ -132,12 +132,11 @@ function App() {
       root.style.setProperty('--text-muted', '#64748b');
     }
 
-    // 4. Lógica de Acento para Colores Brillantes/Chillones
-    // Si el secundario es muy brillante, obligamos a usarlo solo como acento
-    const colorIsLoud = secondaryIsBright || primaryColor === '#eeff00';
+    // 4. Lógica de Acento para Colores de Marca
+    const colorIsLoud = isBright(secondaryColor) || primaryColor === '#eeff00';
     root.style.setProperty('--is-loud-theme', colorIsLoud ? '1' : '0');
 
-  }, [config.primary_color, config.secondary_color, isDarkMode]);
+  }, [isDarkMode]);
 
   // Efecto de tema oscuro
   useEffect(() => {
@@ -167,8 +166,8 @@ function App() {
         setConfig({
           name: configRes.data.name || 'MI CLUB',
           logo_url: configRes.data.logo_url || '',
-          primary_color: configRes.data.primary_color || '#ec4899',
-          secondary_color: configRes.data.secondary_color || '#0f172a',
+          primary_color: '#e7567b',
+          secondary_color: '#d43f66',
           disciplines: normalizedDisciplines
         });
       }
@@ -239,14 +238,18 @@ function App() {
   };
 
   const handleSaveConfig = async (newConfig: ClubConfig) => {
-    setConfig(newConfig);
+    // Mantener colores corporativos fijos en la configuración
+    const sanitizedConfig = {
+      ...newConfig,
+      primary_color: '#e7567b',
+      secondary_color: '#d43f66'
+    };
+    setConfig(sanitizedConfig);
     try {
       await db.config.update({
-        name: newConfig.name,
-        logo_url: newConfig.logo_url,
-        primary_color: newConfig.primary_color,
-        secondary_color: newConfig.secondary_color,
-        disciplines: newConfig.disciplines,
+        name: sanitizedConfig.name,
+        logo_url: sanitizedConfig.logo_url,
+        disciplines: sanitizedConfig.disciplines,
         updated_at: new Date().toISOString()
       });
     } catch (e) {
