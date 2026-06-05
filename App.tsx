@@ -20,6 +20,7 @@ import TorneosPrincipal from './components/Torneos/TorneosPrincipal.tsx';
 import TournamentMatchesPage from './components/Torneos/TournamentMatchesPage.tsx';
 import TournamentManagement from './components/TournamentManagement.tsx';
 import CentralMedica from './components/CentralMedica/CentralMedica.tsx';
+import MedicalDocumentation from './components/MedicalDocumentation.tsx';
 import ProtectedRoute from './components/Auth/ProtectedRoute.tsx';
 import Login from './components/Auth/Login.tsx';
 import { useAuth } from './context/AuthContext.tsx';
@@ -318,6 +319,14 @@ function App() {
             <ProtectedRoute allowedRoles={['Admin', 'Medico']}>
               <div className="pt-24">
                 <CentralMedica config={config} />
+              </div>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/documentacion" element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <div className="pt-24">
+                <MedicalDocumentation />
               </div>
             </ProtectedRoute>
           } />

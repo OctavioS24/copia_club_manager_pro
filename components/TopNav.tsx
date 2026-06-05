@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Database, Sun, Moon, Shield, Users, UserCog, Wallet, Trophy, Stethoscope, Menu, X, LogOut } from 'lucide-react';
+import { Database, Sun, Moon, Shield, Users, UserCog, Wallet, Trophy, Stethoscope, Menu, X, LogOut, FolderOpen, ChevronDown } from 'lucide-react';
 import { ClubConfig } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ const TopNav: React.FC<TopNavProps> = ({
   config 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { role, user, signOut } = useAuth();
 
   const allMenuItems = [
@@ -29,6 +30,7 @@ const TopNav: React.FC<TopNavProps> = ({
     { id: 'torneos', label: 'Torneos', icon: Trophy, roles: ['Admin'] },
     { id: 'members', label: 'Miembros', icon: UserCog, roles: ['Admin'] },
     { id: 'payments', label: 'Pagos', icon: Wallet, roles: ['Admin', 'Administrativo'] },
+    { id: 'documentacion', label: 'Documentación', icon: FolderOpen, roles: ['Admin'] },
     { id: 'master-data', label: 'Estructura', icon: Database, roles: ['Admin'] },
   ];
 
@@ -65,8 +67,8 @@ const TopNav: React.FC<TopNavProps> = ({
         </div>
 
         <div className="flex items-center gap-1 md:gap-4 lg:gap-8">
-          {/* DESKTOP MENU */}
-          <div className="hidden md:flex gap-0.5 lg:gap-2">
+          {/* DESKTOP MENU (lg and up) */}
+          <div className="hidden lg:flex gap-1 xl:gap-2">
             {menu.map(item => {
               const active = currentView === item.id || 
                             ((currentView === 'discipline-console' || currentView === 'squads-config') && item.id === 'squads');
@@ -74,13 +76,76 @@ const TopNav: React.FC<TopNavProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleSetView(item.id)}
-                  className={`flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-4 py-2 lg:py-3 rounded-xl lg:rounded-2xl font-black text-[9px] lg:text-[10px] uppercase tracking-widest transition-all ${active ? 'bg-primary-500 text-primary-contrast shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:bg-surface-hover hover:text-slate-600 dark:hover:text-slate-200'}`}
+                  className={`flex items-center gap-1.5 xl:gap-2 px-3 xl:px-4 py-2.5 rounded-xl xl:rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shrink-0 ${active ? 'bg-primary-500 text-primary-contrast shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:bg-surface-hover hover:text-slate-600 dark:hover:text-slate-200'}`}
                 >
                   <item.icon size={14} />
-                  <span className="hidden lg:inline-block xl:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </button>
               );
             })}
+          </div>
+
+          {/* TABLET MENU (md to lg) */}
+          <div className="hidden md:flex lg:hidden items-center gap-1.5">
+            {menu.slice(0, 4).map(item => {
+              const active = currentView === item.id || 
+                            ((currentView === 'discipline-console' || currentView === 'squads-config') && item.id === 'squads');
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSetView(item.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shrink-0 ${active ? 'bg-primary-500 text-primary-contrast shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:bg-surface-hover hover:text-slate-600 dark:hover:text-slate-200'}`}
+                >
+                  <item.icon size={14} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+            
+            {/* DROPDOWN TOGGLE FOR REMAINING MODULES */}
+            {menu.length > 4 && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all text-slate-400 hover:bg-surface-hover hover:text-slate-600 dark:hover:text-slate-200 ${menu.slice(4).some(item => currentView === item.id) ? 'border border-primary-500/30 text-primary-500' : ''}`}
+                >
+                  <span>Módulos</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <>
+                      {/* Click outdoor shield to close */}
+                      <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-56 rounded-2xl bg-[var(--surface-card)] border border-[var(--surface-border)] shadow-xl z-20 overflow-hidden py-2"
+                      >
+                        {menu.slice(4).map(item => {
+                          const active = currentView === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                handleSetView(item.id);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-5 py-3 text-left font-black text-[10px] uppercase tracking-wider transition-all ${active ? 'bg-primary-500 text-primary-contrast' : 'text-slate-400 hover:bg-surface-hover hover:text-slate-600 dark:hover:text-slate-200'}`}
+                            >
+                              <item.icon size={14} />
+                              <span>{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
           
           <div className="w-px h-6 md:h-8 bg-[var(--surface-border)] mx-0.5 lg:mx-2 hidden md:block"></div>

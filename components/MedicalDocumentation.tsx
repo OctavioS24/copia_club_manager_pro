@@ -232,7 +232,7 @@ const MedicalDocumentation: React.FC = () => {
   };
 
   return (
-    <div className="w-full">
+    <div className="p-4 md:p-12 max-w-7xl mx-auto animate-fade-in pb-40">
       {/* Upper Navigation Tabs */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="flex gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 w-full md:w-auto overflow-x-auto no-scrollbar">

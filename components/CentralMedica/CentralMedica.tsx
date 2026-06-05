@@ -3,12 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { ClubConfig, Member } from '../../types';
 import { 
   Stethoscope, Search, Edit2, Loader2, Filter, 
-  User, AlertTriangle, CheckCircle, Activity, Clock,
-  FolderOpen, Heart
+  User, AlertTriangle, CheckCircle, Activity, Clock
 } from 'lucide-react';
 import { db } from '../../lib/supabase';
 import MedicalEditModal from './MedicalEditModal';
-import MedicalDocumentation from '../MedicalDocumentation';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -22,7 +20,6 @@ interface CentralMedicaProps {
 }
 
 const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
-  const [activeTab, setActiveTab] = useState<'athletes' | 'documentation'>('athletes');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [players, setPlayers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,61 +101,40 @@ const CentralMedica: React.FC<CentralMedicaProps> = ({ config }) => {
               <p className="text-slate-400 font-bold uppercase tracking-widest text-[7px] md:text-[10px] mt-1 md:mt-2">Gestión de Salud e Integridad Física</p>
             </div>
           </div>
-
-          <div className="flex gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 w-full xl:w-auto overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setActiveTab('athletes')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'athletes' ? 'bg-white dark:bg-slate-800 text-primary-600 shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-            >
-              <Heart size={14} />
-              <span>Control de Atletas</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('documentation')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'documentation' ? 'bg-white dark:bg-slate-800 text-primary-600 shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-            >
-              <FolderOpen size={14} />
-              <span>Documentación</span>
-            </button>
-          </div>
         </div>
 
-        {activeTab === 'athletes' && (
-          <div className="bg-white dark:bg-[#0f1219] p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-2xl flex flex-col md:flex-row gap-4 md:gap-6 items-center mt-6 md:mt-12">
-            <div className="flex-1 w-full relative">
-              <Filter size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-primary-600" />
-              <select 
-                value={selectedCategory || ''}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-white/5 p-4 md:p-6 pl-14 md:pl-16 rounded-2xl md:rounded-[2rem] font-black text-xs uppercase tracking-widest dark:text-white outline-none border border-transparent focus:border-primary-600/30 appearance-none transition-all cursor-pointer shadow-inner"
-              >
-                <option value="">Seleccionar Categoría / Plantel</option>
-                {allCategories.map(cat => (
-                  <option key={cat.id} value={cat.id} className="bg-white dark:bg-slate-900 font-sans">
-                    {cat.discipline} - {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex-1 w-full relative">
-              <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text"
-                placeholder="Buscar por nombre o DNI..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={!selectedCategory}
-                className="w-full bg-slate-50 dark:bg-white/5 p-4 md:p-6 pl-14 md:pl-16 rounded-2xl md:rounded-[2rem] font-bold text-xs uppercase tracking-widest dark:text-white outline-none border border-transparent focus:border-primary-600/30 transition-all disabled:opacity-30 shadow-inner"
-              />
-            </div>
+        <div className="bg-white dark:bg-[#0f1219] p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-2xl flex flex-col md:flex-row gap-4 md:gap-6 items-center mt-6 md:mt-12">
+          <div className="flex-1 w-full relative">
+            <Filter size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-primary-600" />
+            <select 
+              value={selectedCategory || ''}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-white/5 p-4 md:p-6 pl-14 md:pl-16 rounded-2xl md:rounded-[2rem] font-black text-xs uppercase tracking-widest dark:text-white outline-none border border-transparent focus:border-primary-600/30 appearance-none transition-all cursor-pointer shadow-inner"
+            >
+              <option value="">Seleccionar Categoría / Plantel</option>
+              {allCategories.map(cat => (
+                <option key={cat.id} value={cat.id} className="bg-white dark:bg-slate-900 font-sans">
+                  {cat.discipline} - {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          <div className="flex-1 w-full relative">
+            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text"
+              placeholder="Buscar por nombre o DNI..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={!selectedCategory}
+              className="w-full bg-slate-50 dark:bg-white/5 p-4 md:p-6 pl-14 md:pl-16 rounded-2xl md:rounded-[2rem] font-bold text-xs uppercase tracking-widest dark:text-white outline-none border border-transparent focus:border-primary-600/30 transition-all disabled:opacity-30 shadow-inner"
+            />
+          </div>
+        </div>
       </header>
 
-      {activeTab === 'documentation' ? (
-        <MedicalDocumentation />
-      ) : !selectedCategory ? (
+      {!selectedCategory ? (
         <div className="py-24 md:py-40 text-center bg-white dark:bg-white/5 rounded-[2.5rem] md:rounded-[4rem] border-4 border-dashed border-slate-200 dark:border-white/5">
           <Filter size={48} md:size={64} className="mx-auto mb-6 md:mb-8 text-slate-200 dark:text-white/10" />
           <h3 className="text-lg md:text-xl font-black uppercase text-slate-400 tracking-widest px-4">
