@@ -225,66 +225,117 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
     return (
       <div 
         key={p.id} 
-        className="flex flex-col p-4 md:p-6 hover:bg-surface-hover/50 transition-colors group border-b border-[var(--surface-border)] last:border-b-0"
+        className="flex flex-col p-2.5 sm:p-4 md:p-6 hover:bg-surface-hover/50 transition-colors group border-b border-[var(--surface-border)] last:border-b-0"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center justify-between gap-2 md:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             {/* INDICADOR DE ESTADO */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center border transition-all shrink-0 ${
               status === 'P' ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/20' : 
               status === 'L' ? 'bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20' :
               'bg-red-500 border-red-500 shadow-lg shadow-red-500/20'
             }`}>
-              {status === 'P' && <CheckCircle2 size={20} className="text-white" />}
-              {status === 'L' && <span className="text-white font-black text-xs">T</span>}
-              {status === 'A' && <X size={20} className="text-white" />}
+              {status === 'P' && <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+              {status === 'L' && <span className="text-white font-black text-[10px] md:text-xs">T</span>}
+              {status === 'A' && <X className="w-4 h-4 md:w-5 md:h-5 text-white" />}
             </div>
 
             {/* INFO JUGADOR */}
             <div className="flex flex-col min-w-0">
-              <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-sm md:text-lg leading-tight break-words">
+              <span className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-xs sm:text-sm md:text-lg leading-tight truncate">
                 {p.name}
               </span>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5 sm:mt-1">
+                <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
                   #{p.number || 'S/N'} • {p.position || 'SIN POSICIÓN'}
                 </span>
                 {debtReason && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20 text-[8px] font-black uppercase tracking-wider animate-pulse" title={debtReason}>
+                  <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20 text-[7px] md:text-[8px] font-black uppercase tracking-wider animate-pulse" title={debtReason}>
                     <DollarSign size={8} strokeWidth={4} />
-                    {debtReason}
+                    <span className="hidden sm:inline">{debtReason}</span>
+                    <span className="sm:hidden">DEUDA</span>
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center self-end sm:self-center gap-2">
-            <select
-              value={status}
-              onChange={(e) => {
-                const newStatus = e.target.value;
+          {/* COMPACT BUTTONS COMPLIANT WITH USER SPECIFICATIONS */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* PRESENTE Button */}
+            <button
+              type="button"
+              onClick={() => {
                 setAttendance(prev => {
                   const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
                   return {
                     ...prev,
                     [p.id]: {
                       ...currentRecord,
-                      status: newStatus
+                      status: 'P'
                     }
                   };
                 });
               }}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all outline-none cursor-pointer ${
-                status === 'P' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                status === 'L' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                'bg-red-500/10 text-red-500 border-red-500/20'
+              className={`px-2 sm:px-3 py-1.5 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all h-[28px] md:h-[38px] flex items-center justify-center shrink-0 border ${
+                status === 'P'
+                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
+                  : 'bg-emerald-500/5 text-emerald-500/70 dark:text-emerald-400/80 border-emerald-500/10 hover:bg-emerald-500/10'
               }`}
             >
-              <option value="A" className="bg-surface-card text-[var(--text-main)]">AUSENTE</option>
-              <option value="P" className="bg-surface-card text-[var(--text-main)]">PRESENTE</option>
-              <option value="L" className="bg-surface-card text-[var(--text-main)]">TARDANZA</option>
-            </select>
+              <span className="hidden sm:inline">PRESENTE</span>
+              <span className="sm:hidden w-3.5 text-center text-[11px]">P</span>
+            </button>
+
+            {/* TARDANZA Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setAttendance(prev => {
+                  const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+                  return {
+                    ...prev,
+                    [p.id]: {
+                      ...currentRecord,
+                      status: 'L'
+                    }
+                  };
+                });
+              }}
+              className={`px-2 sm:px-3 py-1.5 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all h-[28px] md:h-[38px] flex items-center justify-center shrink-0 border ${
+                status === 'L'
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
+                  : 'bg-amber-500/5 text-amber-500/70 dark:text-amber-400/80 border-amber-500/10 hover:bg-amber-500/10'
+              }`}
+            >
+              <span className="hidden sm:inline">TARDANZA</span>
+              <span className="sm:hidden w-3.5 text-center text-[11px]">T</span>
+            </button>
+
+            {/* AUSENTE Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setAttendance(prev => {
+                  const currentRecord = prev[p.id] || { status: 'A', excuse_type: 'No justificado', excuse_detail: '' };
+                  return {
+                    ...prev,
+                    [p.id]: {
+                      ...currentRecord,
+                      status: 'A'
+                    }
+                  };
+                });
+              }}
+              className={`px-2 sm:px-3 py-1.5 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all h-[28px] md:h-[38px] flex items-center justify-center shrink-0 border ${
+                status === 'A'
+                  ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20'
+                  : 'bg-red-500/5 text-red-500/70 dark:text-red-400/80 border-red-500/10 hover:bg-red-500/10'
+              }`}
+            >
+              <span className="hidden sm:inline">AUSENTE</span>
+              <span className="sm:hidden w-3.5 text-center text-[11px]">A</span>
+            </button>
           </div>
         </div>
 
@@ -349,7 +400,7 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
   const totalPlayers = players.length;
 
   return (
-    <div className="p-4 md:p-10 max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto px-0 sm:px-4 md:px-10 py-4 md:py-10">
       {/* HEADER CON TITULO Y SELECTOR DE FECHA */}
       <div className="flex flex-col items-center mb-12 text-center">
         <h2 className="text-4xl md:text-5xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mb-8">
@@ -386,14 +437,14 @@ const Asistencia: React.FC<AsistenciaProps> = ({ players: propPlayers }) => {
       </div>
 
       {/* LISTADO VERTICAL */}
-      <div className="bg-surface-card rounded-[2.5rem] shadow-2xl border border-[var(--surface-border)] overflow-hidden relative min-h-[300px]">
+      <div className="bg-surface-card rounded-none sm:rounded-[2.5rem] shadow-2xl border-x-0 sm:border border-[var(--surface-border)] overflow-hidden relative min-h-[300px]">
         {isLoading && (
           <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
             <Loader2 className="animate-spin text-[var(--primary-500)] mb-4" size={40} />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando registros...</p>
           </div>
         )}
-        <div className="p-4 md:p-8">
+        <div className="p-2 sm:p-4 md:p-8">
             {totalPlayers > 0 ? (
               <div className="space-y-8">
                 {/* Primer Grupo: Jugadores que Adeudan */}
