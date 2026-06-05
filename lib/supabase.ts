@@ -246,7 +246,7 @@ tournaments: {
     },
       
     delete: async (id: string) => {
-      // 1. Get matches for this tournament to delete their events
+      // 1. Get matches for this tournament to delete their events, squads, and squad players
       const { data: matches } = await supabase
         .from('matches')
         .select('id')
@@ -254,6 +254,27 @@ tournaments: {
       
       if (matches && matches.length > 0) {
         const matchIds = matches.map(m => m.id);
+
+        // Delete match squad players
+        const { data: squads } = await supabase
+          .from('match_squads')
+          .select('id')
+          .in('match_id', matchIds);
+
+        if (squads && squads.length > 0) {
+          const squadIds = squads.map(s => s.id);
+          await supabase
+            .from('match_squad_players')
+            .delete()
+            .in('squad_id', squadIds);
+        }
+
+        // Delete match squads
+        await supabase
+          .from('match_squads')
+          .delete()
+          .in('match_id', matchIds);
+
         // 2. Delete match events
         await supabase
           .from('match_events')
@@ -420,7 +441,38 @@ tournaments: {
       return { data: mData };
     },
     
-    delete: (id: string) => supabase.from('matches').delete().eq('id', id)
+    delete: async (id: string) => {
+      // Delete squad players and squads for this match
+      const { data: squads } = await supabase
+        .from('match_squads')
+        .select('id')
+        .eq('match_id', id);
+        
+      if (squads && squads.length > 0) {
+        const squadIds = squads.map(s => s.id);
+        await supabase
+          .from('match_squad_players')
+          .delete()
+          .in('squad_id', squadIds);
+      }
+      
+      await supabase
+        .from('match_squads')
+        .delete()
+        .eq('match_id', id);
+
+      // Delete match events
+      await supabase
+        .from('match_events')
+        .delete()
+        .eq('match_id', id);
+
+      // Delete the match
+      return supabase
+        .from('matches')
+        .delete()
+        .eq('id', id);
+    }
   },
   matchEvents: {
     getByPlayerIds: (playerIds: string[]) => supabase
