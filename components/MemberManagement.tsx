@@ -1140,7 +1140,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                   )}
 
                   {activeTab === 'schooling' && (
-                    <div className="space-y-8 animate-fade-in">
+                    <div className="space-y-6 md:space-y-8 animate-fade-in">
                        <section className="space-y-6">
                           <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
@@ -1148,7 +1148,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                             </div>
                             Información Escolar / Educativa
                           </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <div className="space-y-2 col-span-1 md:col-span-2">
                                 <label className={labelClasses}>Nombre de la Escuela</label>
                                 <input 
@@ -1321,23 +1321,24 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                   )}
 
                   {activeTab === 'scholarship' && (
-                    <div className="space-y-10 animate-fade-in">
+                    <div className="space-y-6 md:space-y-8 animate-fade-in">
                        <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                         <div className="w-1 h-4 bg-[var(--text-main)] rounded-full"></div> Gestión de Beca
+                         <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0">
+                           <Award size={16} />
+                         </div>
+                         Gestión de Beca
                        </h4>
                        
-                       <div className="space-y-8 bg-surface-ground p-6 md:p-8 rounded-[2rem] border border-[var(--surface-border)]">
-                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                           <div>
-                             <h5 className="font-black text-sm uppercase text-[var(--text-main)]">¿Aplica Beca para este Miembro?</h5>
-                             <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                               Activa o desactiva la aplicación automática de descuento en sus cuotas
-                             </p>
-                           </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-2 col-span-1 md:col-span-2">
+                           <label className={labelClasses}>¿Aplica Beca para este Miembro?</label>
+                           <p className="text-[9px] text-[var(--text-muted)] font-black uppercase tracking-widest ml-3 mb-1.5">
+                             Activa o desactiva la aplicación automática de descuento en sus cuotas
+                           </p>
                            <select 
                              value={formData.has_scholarship ? 'Sí' : 'No'} 
                              onChange={e => setFormData({...formData, has_scholarship: e.target.value === 'Sí'})} 
-                             className="w-full md:w-48 p-4 bg-surface-card rounded-xl font-bold text-sm outline-none border border-[var(--surface-border)] shadow-sm text-[var(--text-main)] cursor-pointer"
+                             className={selectClasses}
                            >
                              <option value="No">No aplica</option>
                              <option value="Sí">Sí, aplica beca</option>
@@ -1345,63 +1346,61 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                          </div>
 
                          {formData.has_scholarship && (
-                           <div className="space-y-8 pt-6 border-t border-[var(--surface-border)] animate-fade-in">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                               <div className="space-y-2">
-                                 <label className={labelClasses}>Tipo de Beca</label>
-                                 <select 
-                                   value={formData.scholarship_type_id || ''} 
-                                   onChange={e => setFormData({...formData, scholarship_type_id: e.target.value})} 
-                                   className={selectClasses}
-                                   required={formData.has_scholarship}
-                                 >
-                                   <option value="">-- Seleccionar Tipo de Beca --</option>
-                                   {scholarshipTypes.map(st => (
-                                     <option key={st.id} value={st.id}>
-                                       {st.name} ({st.type === 'percentage' ? `${st.value}%` : `$${st.value.toLocaleString()}`})
-                                     </option>
-                                   ))}
-                                 </select>
-                                 {scholarshipTypes.length === 0 && (
-                                   <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-1">
-                                     No hay tipos de beca creados. Configúralos en Caja/Cuotas {'>'} Configuración.
-                                   </p>
-                                 )}
-                               </div>
-
-                               <div className="space-y-2">
-                                 <label className={labelClasses}>Detalle de la Beca</label>
-                                 <input 
-                                   type="text" 
-                                   value={formData.scholarship_details || ''} 
-                                   onChange={e => setFormData({...formData, scholarship_details: e.target.value})} 
-                                   className={inputClasses} 
-                                   placeholder="Ej: Aprobado por Comisión Directiva" 
-                                 />
-                               </div>
-
-                               <div className="space-y-2">
-                                 <label className={labelClasses}>Vigencia Desde</label>
-                                 <input 
-                                   type="date" 
-                                   value={formData.scholarship_start_date || ''} 
-                                   onChange={e => setFormData({...formData, scholarship_start_date: e.target.value})} 
-                                   className={inputClasses} 
-                                 />
-                               </div>
-
-                               <div className="space-y-2">
-                                 <label className={labelClasses}>Vigencia Hasta</label>
-                                 <input 
-                                   type="date" 
-                                   value={formData.scholarship_end_date || ''} 
-                                   onChange={e => setFormData({...formData, scholarship_end_date: e.target.value})} 
-                                   className={inputClasses} 
-                                 />
-                               </div>
+                           <>
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Tipo de Beca</label>
+                               <select 
+                                 value={formData.scholarship_type_id || ''} 
+                                 onChange={e => setFormData({...formData, scholarship_type_id: e.target.value})} 
+                                 className={selectClasses}
+                                 required={formData.has_scholarship}
+                               >
+                                 <option value="">-- Seleccionar Tipo de Beca --</option>
+                                 {scholarshipTypes.map(st => (
+                                   <option key={st.id} value={st.id}>
+                                     {st.name} ({st.type === 'percentage' ? `${st.value}%` : `$${st.value.toLocaleString()}`})
+                                   </option>
+                                 ))}
+                               </select>
+                               {scholarshipTypes.length === 0 && (
+                                 <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-1">
+                                   No hay tipos de beca creados. Configúralos en Caja/Cuotas {'>'} Configuración.
+                                 </p>
+                               )}
                              </div>
 
                              <div className="space-y-2">
+                               <label className={labelClasses}>Detalle de la Beca</label>
+                               <input 
+                                 type="text" 
+                                 value={formData.scholarship_details || ''} 
+                                 onChange={e => setFormData({...formData, scholarship_details: e.target.value})} 
+                                 className={inputClasses} 
+                                 placeholder="Ej: Aprobado por Comisión Directiva" 
+                               />
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Vigencia Desde</label>
+                               <input 
+                                 type="date" 
+                                 value={formData.scholarship_start_date || ''} 
+                                 onChange={e => setFormData({...formData, scholarship_start_date: e.target.value})} 
+                                 className={inputClasses} 
+                               />
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Vigencia Hasta</label>
+                               <input 
+                                 type="date" 
+                                 value={formData.scholarship_end_date || ''} 
+                                 onChange={e => setFormData({...formData, scholarship_end_date: e.target.value})} 
+                                 className={inputClasses} 
+                               />
+                             </div>
+
+                             <div className="space-y-2 col-span-1 md:col-span-2">
                                <label className={labelClasses}>Documentación Adjunta (Ej: Solicitud firmada, Acta)</label>
                                {formData.scholarship_attachment_url ? (
                                  <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">
@@ -1456,7 +1455,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                  </div>
                                )}
                              </div>
-                           </div>
+                           </>
                          )}
                        </div>
                     </div>

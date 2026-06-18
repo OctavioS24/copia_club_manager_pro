@@ -19,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentUserRef = React.useRef<User | null>(null);
 
   useEffect(() => {
     // 1. Verificar sesión inicial
@@ -32,13 +33,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUserChange = async (authUser: User | null) => {
-    setLoading(true);
+    // Si ya teníamos el mismo usuario verificado, evitamos reiniciar el estado loading
+    if (authUser && currentUserRef.current && authUser.id === currentUserRef.current.id) {
+      currentUserRef.current = authUser;
+      setUser(authUser);
+      return;
+    }
+
+    // Evitar relámpagos si pasamos de null a null
+    if (!authUser && !currentUserRef.current && !loading) {
+      return;
+    }
+
+    const isFirstLoadOrChange = !currentUserRef.current || !authUser || currentUserRef.current.id !== authUser.id;
+    if (isFirstLoadOrChange) {
+      setLoading(true);
+    }
     setError(null);
 
     if (!authUser) {
+      currentUserRef.current = null;
       setUser(null);
       setRole(null);
       setLoading(false);
@@ -56,17 +74,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (dbError || !member) {
         // El email no existe en la tabla members
         await supabase.auth.signOut();
+        currentUserRef.current = null;
         setUser(null);
         setRole(null);
         setError('Tu correo no está registrado en el sistema. Contacta al administrador.');
       } else if (!member.systemrole) {
         // Existe pero no tiene rol asignado
         await supabase.auth.signOut();
+        currentUserRef.current = null;
         setUser(null);
         setRole(null);
         setError('Tu usuario aún no tiene un rol asignado. Contacta al administrador.');
       } else {
         // Todo OK: Guardar usuario y su rol
+        currentUserRef.current = authUser;
         setUser(authUser);
         setRole(member.systemrole);
       }
@@ -94,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    currentUserRef.current = null;
     setUser(null);
     setRole(null);
   };
