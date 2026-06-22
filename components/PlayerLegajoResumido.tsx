@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, HeartPulse, ShieldCheck, Mail, Phone, MapPin, Droplets, Activity, Ruler, Weight, Users, Star, Save, Loader2, Shirt, Fingerprint, GraduationCap, PlusCircle, Trash2, Edit2, FileText, ExternalLink } from 'lucide-react';
+import { X, User, HeartPulse, ShieldCheck, Mail, Phone, MapPin, Droplets, Activity, Ruler, Weight, Users, Star, Save, Loader2, Shirt, Fingerprint, GraduationCap, PlusCircle, Trash2, Edit2, FileText, ExternalLink, BookOpen, Sparkles } from 'lucide-react';
 import { Member, PlayerContact } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -388,61 +388,72 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
     <div className="fixed inset-0 z-[5000] flex items-center justify-center p-2 sm:p-4 animate-fade-in">
       <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl" onClick={onClose} />
       
-      <div className="relative w-full max-w-[96%] sm:max-w-[95%] lg:max-w-[90%] bg-surface-card rounded-[1.5rem] md:rounded-[2.5rem] border border-[var(--surface-border)] shadow-2xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-400">
+      <div className="relative w-full max-w-[96%] sm:max-w-[90%] md:max-w-[85%] lg:max-w-4xl xl:max-w-5xl bg-surface-card rounded-[2rem] md:rounded-[2.5rem] border border-[var(--surface-border)] shadow-2xl flex flex-col max-h-[92vh] md:max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-400">
         
-        {/* Cabecera del Perfil (Fijo / No scrollable) */}
-        <div className="shrink-0">
-          {/* Banner de Perfil */}
-          <div className="relative h-20 md:h-28 bg-surface-ground">
-            <div className="absolute inset-0 bg-primary-500/10" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-1 h-14 md:h-20 bg-primary-500/10 rounded-full blur-xl" />
-            </div>
-            
-            <button 
-              onClick={onClose}
-              className="absolute top-3 right-3 md:top-4 md:right-4 w-8 h-8 md:w-9 md:h-9 rounded-xl bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-all z-20"
-            >
-              <X size={16} />
-            </button>
+        {/* Cabecera del Perfil (Fijo / No scrollable) - Now aligned side-by-side cleanly */}
+        <div className="shrink-0 bg-gradient-to-b from-primary-500/5 to-transparent border-b border-[var(--surface-border)] p-6 md:p-8 relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-surface-hover hover:bg-slate-200 dark:hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center transition-all z-20 shadow-sm"
+          >
+            <X size={16} />
+          </button>
 
-            <div className="absolute -bottom-8 md:-bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 md:gap-2.5 w-full">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[1.75rem] bg-surface-card border-2 md:border-4 border-surface-card shadow-2xl overflow-hidden relative group shrink-0">
-                {player.photourl ? (
-                  <img 
-                    src={player.photourl} 
-                    alt={player.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-surface-hover flex items-center justify-center">
-                    <span className="text-xl md:text-3xl font-black text-primary-600 italic tracking-tighter">{getInitials(player.name)}</span>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 md:gap-8">
+            {/* Foto o avatar del jugador */}
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-surface-card border-3 border-primary-500/15 shadow-xl overflow-hidden relative group shrink-0">
+              {player.photourl ? (
+                <img 
+                  src={player.photourl} 
+                  alt={player.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full bg-surface-hover flex items-center justify-center">
+                  <span className="text-2xl md:text-4xl font-black text-primary-600 italic tracking-tighter">{getInitials(player.name)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Nombre y detalles de una línea */}
+            <div className="flex-1 text-center sm:text-left min-w-0 space-y-2 md:space-y-3">
+              <div>
+                <span className="inline-block text-[8px] md:text-[9.5px] font-black text-primary-500 uppercase tracking-[0.25em] bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20 italic mb-1.5">
+                  Legajo de Jugador
+                </span>
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none truncate">
+                  {player.name}
+                </h3>
+              </div>
+              
+              {/* DNI, Dorsal y Título (Titularidades) en una sola línea */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 md:gap-2.5">
+                <span className="text-[7.5px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest italic px-2.5 py-1 bg-surface-ground rounded-xl border border-[var(--surface-border)] shadow-sm">
+                  DNI: {player.dni}
+                </span>
+                
+                {sportsForm.dorsal && (
+                  <span className="text-[7.5px] md:text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 italic flex items-center gap-1 shadow-sm">
+                    <Shirt size={10} className="stroke-[3px]" />
+                    DORSAL: {sportsForm.dorsal}
+                  </span>
+                )}
+                
+                {titularityCount !== null && titularityCount > 0 && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20 shadow-sm">
+                    <Star size={9} md:size={10} fill="currentColor" />
+                    <span className="text-[7.5px] md:text-[9px] font-black uppercase tracking-widest italic">
+                      {titularityCount} Titularidades
+                    </span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="mt-10 md:mt-12 text-center w-full px-4 md:px-6">
-            <h3 className="text-lg md:text-2xl lg:text-3xl font-black uppercase italic tracking-tighter text-[var(--text-main)] leading-none mb-1 md:mb-1.5">{player.name}</h3>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
-              <span className="text-[7.5px] md:text-[9px] font-black text-primary-500 uppercase tracking-widest bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20 italic">JUGADOR</span>
-              <span className="text-[7.5px] md:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-50 px-2.5 py-0.5 bg-surface-ground rounded-full">DNI: {player.dni}</span>
-              {sportsForm.dorsal && (
-                <span className="text-[7.5px] md:text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 italic">DORSAL: {sportsForm.dorsal}</span>
-              )}
-              {titularityCount !== null && titularityCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 shadow-sm">
-                  <Star size={9} md:size={10} fill="currentColor" />
-                  <span className="text-[7.5px] md:text-[9px] font-black uppercase tracking-widest">{titularityCount} TITULARIDADES</span>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Selector de Tabs */}
-          <div className="px-4 md:px-8 mt-4 md:mt-5">
+          <div className="mt-6 md:mt-8">
             <div className="flex gap-1 md:gap-1.5 p-1 bg-surface-ground rounded-xl md:rounded-2xl border border-[var(--surface-border)] shadow-inner">
               {tabs.map(tab => (
                 <button
@@ -450,7 +461,7 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`flex-1 flex items-center justify-center gap-1 md:gap-1.5 py-1.5 md:py-2.5 rounded-lg md:rounded-xl text-[8.5px] md:text-[9.5px] font-black uppercase tracking-[0.1em] transition-all ${
                     activeTab === tab.id 
-                      ? 'bg-surface-card text-primary-500 shadow-sm' 
+                      ? 'bg-surface-card text-primary-500 shadow-sm border border-[var(--surface-border)]' 
                       : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                   }`}
                 >
@@ -464,16 +475,37 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
         </div>
 
         {/* Contenido Principal (Scrollable) */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 space-y-4 md:space-y-6 min-h-0 bg-surface-card/30">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 md:p-8 space-y-4 md:space-y-6 min-h-0 bg-surface-card/30">
           {activeTab === 'ID' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
-              <InfoCard icon={User} label="Género" value={player.gender} />
-              <InfoCard icon={ShieldCheck} label="Fecha de Nacimiento" value={player.birthdate} />
-              <InfoCard icon={Fingerprint} label="N° Carnet" value={player.carnet_number || 'No asignado'} />
-              <InfoCard icon={Mail} label="Email" value={player.email || 'No registrado'} />
-              <InfoCard icon={Phone} label="Teléfono" value={player.phone || 'No registrado'} />
-              <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
-                <InfoCard icon={MapPin} label="Dirección Completa" value={`${player.address || ''}, ${player.city || ''} (${player.province || ''})`} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in slide-in-from-bottom-4 fade-in duration-500">
+              {/* Grupo 1: Información Personal fundamental */}
+              <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                  <User className="text-primary-500" size={14} />
+                  <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Información Personal</h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <InfoCard icon={User} label="Género" value={player.gender} />
+                  <InfoCard icon={ShieldCheck} label="Fecha de Nacimiento" value={player.birthdate} />
+                  <div className="col-span-1 sm:col-span-2">
+                    <InfoCard icon={Fingerprint} label="N° Carnet" value={player.carnet_number || 'No asignado'} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Grupo 2: Contacto & Residencia */}
+              <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                  <Mail className="text-emerald-500" size={14} />
+                  <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Contacto & Residencia</h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <InfoCard icon={Mail} label="Email" value={player.email || 'No registrado'} />
+                  <InfoCard icon={Phone} label="Teléfono" value={player.phone || 'No registrado'} />
+                  <div className="col-span-1 sm:col-span-2">
+                    <InfoCard icon={MapPin} label="Dirección Completa" value={`${player.address || ''}, ${player.city || ''} (${player.province || ''})`} />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -489,94 +521,117 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Dorsal (No. Camiseta)</label>
-                  <input 
-                    value={sportsForm.dorsal} 
-                    onChange={e => setSportsForm({...sportsForm, dorsal: e.target.value})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: 10"
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Juega en el Club Desde (Año)</label>
-                  <input 
-                    value={sportsForm.plays_since_year} 
-                    onChange={e => setSportsForm({...sportsForm, plays_since_year: e.target.value})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: 2018"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Puesto Frecuente</label>
-                  <input 
-                    value={sportsForm.frequent_position} 
-                    onChange={e => setSportsForm({...sportsForm, frequent_position: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: VOLANTE"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Pierna Hábil</label>
-                  <select 
-                    value={sportsForm.skilled_leg} 
-                    onChange={e => setSportsForm({...sportsForm, skilled_leg: e.target.value})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer"
-                  >
-                    <option value="">No definido</option>
-                    <option value="Derecha">Derecha</option>
-                    <option value="Izquierda">Izquierda</option>
-                    <option value="Ambidiestro">Ambidiestro</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Días de Entrenamiento Semanal</label>
-                  <input 
-                    value={sportsForm.training_days_per_week} 
-                    onChange={e => setSportsForm({...sportsForm, training_days_per_week: e.target.value})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: 3"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Asiste al Gimnasio</label>
-                  <select 
-                    value={sportsForm.gym_attendance ? 'Sí' : 'No'} 
-                    onChange={e => setSportsForm({...sportsForm, gym_attendance: e.target.value === 'Sí'})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer"
-                  >
-                    <option value="No">No</option>
-                    <option value="Sí">Sí</option>
-                  </select>
-                </div>
-
-                {sportsForm.gym_attendance && (
-                  <div className="space-y-1.5 col-span-1 sm:col-span-2">
-                    <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Frecuencia del Gimnasio</label>
-                    <input 
-                      value={sportsForm.gym_frequency} 
-                      onChange={e => setSportsForm({...sportsForm, gym_frequency: e.target.value.toUpperCase()})}
-                      className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                      placeholder="Ej: 3 VECES POR SEMANA, 1 HORA"
-                    />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Panel 1: Ficha Cancha */}
+                <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                    <Shirt className="text-primary-500" size={14} />
+                    <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Información de Cancha</h4>
                   </div>
-                )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Dorsal (No. Camiseta)</label>
+                      <input 
+                        value={sportsForm.dorsal} 
+                        onChange={e => setSportsForm({...sportsForm, dorsal: e.target.value})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors" 
+                        placeholder="Ej: 10"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Desde el Año</label>
+                      <input 
+                        value={sportsForm.plays_since_year} 
+                        onChange={e => setSportsForm({...sportsForm, plays_since_year: e.target.value})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors" 
+                        placeholder="Ej: 2018"
+                      />
+                    </div>
 
-                <div className="space-y-1.5 col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Antecedentes de Lesiones (más de 2 meses inactivo)</label>
-                  <textarea 
-                    value={sportsForm.injury_history} 
-                    onChange={e => setSportsForm({...sportsForm, injury_history: e.target.value})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] h-16 sm:h-20 resize-none py-2" 
-                    placeholder="Describa lesiones con más de 2 meses de inactividad..."
-                  />
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Puesto Frecuente</label>
+                      <input 
+                        value={sportsForm.frequent_position} 
+                        onChange={e => setSportsForm({...sportsForm, frequent_position: e.target.value.toUpperCase()})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors" 
+                        placeholder="Ej: VOLANTE"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Pierna Hábil</label>
+                      <select 
+                        value={sportsForm.skilled_leg} 
+                        onChange={e => setSportsForm({...sportsForm, skilled_leg: e.target.value})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer focus:border-primary-500 transition-colors"
+                      >
+                        <option value="">No definido</option>
+                        <option value="Derecha">Derecha</option>
+                        <option value="Izquierda">Izquierda</option>
+                        <option value="Ambidiestro">Ambidiestro</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Panel 2: Régimen Físico / Gimnasio */}
+                <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                    <Activity className="text-emerald-500" size={14} />
+                    <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Régimen Físico & Gimnasio</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Entrenamientos Semanales</label>
+                      <input 
+                        value={sportsForm.training_days_per_week} 
+                        onChange={e => setSportsForm({...sportsForm, training_days_per_week: e.target.value})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors" 
+                        placeholder="Ej: 3"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Asiste al Gimnasio</label>
+                      <select 
+                        value={sportsForm.gym_attendance ? 'Sí' : 'No'} 
+                        onChange={e => setSportsForm({...sportsForm, gym_attendance: e.target.value === 'Sí'})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer focus:border-primary-500 transition-colors"
+                      >
+                        <option value="No">No</option>
+                        <option value="Sí">Sí</option>
+                      </select>
+                    </div>
+
+                    {sportsForm.gym_attendance && (
+                      <div className="space-y-1.5 col-span-1 sm:col-span-2">
+                        <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Frecuencia del Gimnasio</label>
+                        <input 
+                          value={sportsForm.gym_frequency} 
+                          onChange={e => setSportsForm({...sportsForm, gym_frequency: e.target.value.toUpperCase()})}
+                          className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors" 
+                          placeholder="Ej: 3 VECES POR SEMANA, 1 HORA"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Lesiones en bloque ancho */}
+              <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-3">
+                <label className="text-[9.5px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1 flex items-center gap-2">
+                  <HeartPulse className="text-red-500 animate-pulse" size={13} />
+                  <span>Antecedentes de Lesiones Relevantes (Inactividad &gt; 2 meses)</span>
+                </label>
+                <textarea 
+                  value={sportsForm.injury_history} 
+                  onChange={e => setSportsForm({...sportsForm, injury_history: e.target.value})}
+                  className="w-full p-3 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-primary-500 transition-colors h-16 sm:h-20 resize-none py-2" 
+                  placeholder="Describa brevemente lesiones previas de importancia..."
+                />
               </div>
 
               <div className="pt-1 flex justify-end">
@@ -597,50 +652,70 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
           )}
 
           {activeTab === 'SALUD' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
-              <InfoCard icon={Droplets} label="Grupo Sanguíneo" value={player.bloodtype || 'No informado'} />
-              <InfoCard icon={ShieldCheck} label="Obra Social" value={player.medicalinsurance || 'No registrada'} />
-              <InfoCard icon={Weight} label="Peso Actual" value={player.weight ? `${player.weight} kg` : 'Sin datos'} />
-              <InfoCard icon={Ruler} label="Altura" value={player.height ? `${player.height} cm` : 'Sin datos'} />
-              
-              <div className="col-span-1 sm:col-span-2 lg:col-span-4 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-red-500/10">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-red-500">¿Posee Enfermedades Preexistentes u Alergias?</span>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${player.has_preexisting_condition ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-500/20 text-[var(--text-main)]'}`}>
-                    {player.has_preexisting_condition ? 'SÍ' : 'NO'}
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in slide-in-from-bottom-4 fade-in duration-500">
+              {/* Grupo 1: Ficha Médica Básica */}
+              <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                  <Activity className="text-primary-500" size={14} />
+                  <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Ficha Médica Básica</h4>
                 </div>
-                
-                {player.has_preexisting_condition && (
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Detalle Médico / Alergias / Medicación</span>
-                    <p className="text-xs font-bold text-[var(--text-main)] uppercase whitespace-pre-wrap bg-surface-ground/30 p-2.5 rounded-xl border border-[var(--surface-border)]">
-                      {player.preexisting_condition_details || 'SIN ESPECIFICAR'}
-                    </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <InfoCard icon={Droplets} label="Grupo Sanguíneo" value={player.bloodtype || 'No informado'} />
+                  <InfoCard icon={ShieldCheck} label="Obra Social" value={player.medicalinsurance || 'No registrada'} />
+                  <InfoCard icon={Weight} label="Peso Actual" value={player.weight ? `${player.weight} kg` : 'Sin datos'} />
+                  <InfoCard icon={Ruler} label="Altura" value={player.height ? `${player.height} cm` : 'Sin datos'} />
+                </div>
+              </div>
+
+              {/* Grupo 2: Condiciones Especiales & Respaldo */}
+              <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5 mb-3.5">
+                    <HeartPulse className="text-red-500 animate-pulse" size={14} />
+                    <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Condiciones & Alergias</h4>
                   </div>
-                )}
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center bg-surface-card p-3 rounded-xl border border-[var(--surface-border)]">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-red-500">¿Posee preexistencias u alergias?</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-lg ${player.has_preexisting_condition ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-500/20 text-[var(--text-main)]'}`}>
+                        {player.has_preexisting_condition ? 'SÍ' : 'NO'}
+                      </span>
+                    </div>
+                    
+                    {player.has_preexisting_condition && (
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)] pl-1">Detalle Médico / Medicación</span>
+                        <p className="text-xs font-bold text-[var(--text-main)] uppercase whitespace-pre-wrap bg-surface-card p-3 rounded-xl border border-[var(--surface-border)]">
+                          {player.preexisting_condition_details || 'SIN ESPECIFICAR'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {player.medical_file_url && (
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Documentación de Respaldo</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--surface-border)]/55 mt-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Certificado Médico</span>
                     <a 
                       href={player.medical_file_url} 
                       target="_blank" 
                       rel="noreferrer noopener"
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider transition-colors inline-flex cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[9.5px] font-black uppercase tracking-wider transition-colors inline-flex cursor-pointer shadow-sm"
                     >
-                      <FileText size={12} />
-                      <span>Ver Certificado / Estudio</span>
+                      <FileText size={11} />
+                      <span>Ver Certificado</span>
                       <ExternalLink size={10} className="opacity-70" />
                     </a>
                   </div>
                 )}
               </div>
 
-              <div className="col-span-1 sm:col-span-2 lg:col-span-4 p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-4">
-                <Activity className="text-emerald-500 shrink-0" size={20} />
+              {/* Indicador de ayuda al final */}
+              <div className="col-span-1 md:col-span-2 p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-4">
+                <Activity className="text-emerald-500 shrink-0 select-none animate-pulse" size={20} />
                 <div>
-                  <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 italic">Estado de Salud</h5>
+                  <h5 className="text-[9.5px] font-black text-emerald-600 uppercase tracking-widest mb-0.5 italic">Estado de Salud</h5>
                   <p className="text-xs font-bold text-[var(--text-muted)] italic leading-relaxed">Información médica básica para uso institucional rápido en caso de emergencias.</p>
                 </div>
               </div>
@@ -830,71 +905,91 @@ const PlayerLegajoResumido: React.FC<PlayerLegajoResumidoProps> = ({
 
           {activeTab === 'ESCOLARIDAD' && (
             <div className="space-y-4 md:space-y-5 animate-in slide-in-from-bottom-4 fade-in duration-500">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className="space-y-1.5 col-span-1 sm:col-span-2">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Nombre de la Escuela</label>
-                  <input 
-                    value={schoolingForm.school_name} 
-                    onChange={e => setSchoolingForm({...schoolingForm, school_name: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: COLEGIO NACIONAL N° 1"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Grupo 1: Escuela */}
+                <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                    <BookOpen className="text-indigo-500" size={14} />
+                    <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Establecimiento Educativo</h4>
+                  </div>
+                  <div className="space-y-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Nombre de la Escuela</label>
+                      <input 
+                        value={schoolingForm.school_name} 
+                        onChange={e => setSchoolingForm({...schoolingForm, school_name: e.target.value.toUpperCase()})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-indigo-500 transition-colors" 
+                        placeholder="Ej: COLEGIO NACIONAL N° 1"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Turno Escolar</label>
+                        <select 
+                          value={schoolingForm.school_shift} 
+                          onChange={e => setSchoolingForm({...schoolingForm, school_shift: e.target.value.toUpperCase()})}
+                          className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer focus:border-indigo-500 transition-colors"
+                        >
+                          <option value="">Seleccionar turno</option>
+                          <option value="MAÑANA">Mañana</option>
+                          <option value="TARDE">Tarde</option>
+                          <option value="NOCHE">Noche</option>
+                          <option value="DOBLE TURNO">Doble Turno</option>
+                          <option value="OTRO">Otro</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Horario Escolar</label>
+                        <input 
+                          value={schoolingForm.school_schedule} 
+                          onChange={e => setSchoolingForm({...schoolingForm, school_schedule: e.target.value.toUpperCase()})}
+                          className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-indigo-500 transition-colors" 
+                          placeholder="Ej: 07:30 a 13:00 hs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Contacto de la Escuela / Teléfono</label>
+                      <input 
+                        value={schoolingForm.school_contact} 
+                        onChange={e => setSchoolingForm({...schoolingForm, school_contact: e.target.value.toUpperCase()})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-indigo-500 transition-colors" 
+                        placeholder="Ej: Bedelía / +54 341..."
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 col-span-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Turno Escolar</label>
-                  <select 
-                    value={schoolingForm.school_shift} 
-                    onChange={e => setSchoolingForm({...schoolingForm, school_shift: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] cursor-pointer"
-                  >
-                    <option value="">Seleccionar turno</option>
-                    <option value="MAÑANA">Mañana</option>
-                    <option value="TARDE">Tarde</option>
-                    <option value="NOCHE">Noche</option>
-                    <option value="DOBLE TURNO">Doble Turno</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                </div>
+                {/* Grupo 2: Actividades Extraescolares */}
+                <div className="bg-surface-ground p-5 md:p-6 rounded-2xl border border-[var(--surface-border)] shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2.5">
+                    <Sparkles className="text-pink-500" size={14} />
+                    <h4 className="text-[9.5px] font-black uppercase tracking-widest text-[var(--text-main)]">Actividades Complementarias</h4>
+                  </div>
+                  <div className="space-y-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Actividad Extraescolar (si realiza)</label>
+                      <input 
+                        value={schoolingForm.extra_activity} 
+                        onChange={e => setSchoolingForm({...schoolingForm, extra_activity: e.target.value.toUpperCase()})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-indigo-500 transition-colors" 
+                        placeholder="Ej: Inglés, Computación..."
+                      />
+                    </div>
 
-                <div className="space-y-1.5 col-span-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Horario Escolar</label>
-                  <input 
-                    value={schoolingForm.school_schedule} 
-                    onChange={e => setSchoolingForm({...schoolingForm, school_schedule: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: 07:30 a 13:00 hs"
-                  />
-                </div>
-
-                <div className="space-y-1.5 col-span-1 sm:col-span-2">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Actividad Extraescolar (si realiza alguna)</label>
-                  <input 
-                    value={schoolingForm.extra_activity} 
-                    onChange={e => setSchoolingForm({...schoolingForm, extra_activity: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: Inglés, Computación..."
-                  />
-                </div>
-
-                <div className="space-y-1.5 col-span-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Horarios de la Actividad</label>
-                  <input 
-                    value={schoolingForm.extra_activity_schedule} 
-                    onChange={e => setSchoolingForm({...schoolingForm, extra_activity_schedule: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: Lun y Mié - 16:30 a 18:00 hs"
-                  />
-                </div>
-
-                <div className="space-y-1.5 col-span-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-2">Contacto de la Escuela / Teléfono</label>
-                  <input 
-                    value={schoolingForm.school_contact} 
-                    onChange={e => setSchoolingForm({...schoolingForm, school_contact: e.target.value.toUpperCase()})}
-                    className="w-full p-2.5 bg-surface-ground rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)]" 
-                    placeholder="Ej: Alumnos / +54 341..."
-                  />
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Horarios de la Actividad</label>
+                      <input 
+                        value={schoolingForm.extra_activity_schedule} 
+                        onChange={e => setSchoolingForm({...schoolingForm, extra_activity_schedule: e.target.value.toUpperCase()})}
+                        className="w-full p-2.5 bg-surface-card rounded-xl font-bold text-xs outline-none border border-[var(--surface-border)] text-[var(--text-main)] focus:border-indigo-500 transition-colors" 
+                        placeholder="Ej: Lun y Mié - 16:30 a 18:00 hs"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
