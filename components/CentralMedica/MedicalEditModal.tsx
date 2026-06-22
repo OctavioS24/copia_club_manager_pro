@@ -874,7 +874,7 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
                     Control de integridad física
                   </p>
                 </div>
-                {!isAddingInjury && (
+                {!isAddingInjury && !readOnly && (
                   <button
                     onClick={() => setIsAddingInjury(true)}
                     className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-slate-950 dark:bg-white/5 rounded-full font-black uppercase text-[9px] md:text-[10px] tracking-widest hover:scale-105 transition-all shadow-2xl flex items-center justify-center gap-3 text-white"
@@ -1125,28 +1125,30 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
                         key={injury.id}
                         className="bg-white dark:bg-[#0f121a] p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-secondary-600/20 dark:border-secondary-400/10 shadow-xl hover:border-primary-600/30 transition-all flex flex-col group/injury relative"
                       >
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (
-                              confirm(
-                                "¿Estás seguro de eliminar este registro de lesión? Esta acción no se puede deshacer.",
-                              )
-                            ) {
-                              try {
-                                await db.medical.deleteInjury(injury.id);
-                                await syncPlayerStatusAfterInjuryUpdate();
-                              } catch (err) {
-                                console.error("Error deleting injury:", err);
-                                alert("No se pudo eliminar la lesión");
+                        {!readOnly && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (
+                                confirm(
+                                  "¿Estás seguro de eliminar este registro de lesión? Esta acción no se puede deshacer.",
+                                )
+                              ) {
+                                try {
+                                  await db.medical.deleteInjury(injury.id);
+                                  await syncPlayerStatusAfterInjuryUpdate();
+                                } catch (err) {
+                                  console.error("Error deleting injury:", err);
+                                  alert("No se pudo eliminar la lesión");
+                                }
                               }
-                            }
-                          }}
-                          className="absolute top-4 right-4 md:top-6 md:right-6 p-1.5 md:p-2 bg-red-50 dark:bg-red-500/10 text-red-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg md:rounded-xl transition-all shadow-sm z-10"
-                          title="Eliminar lesión"
-                        >
-                          <Trash2 size={14} md:size={16} />
-                        </button>
+                            }}
+                            className="absolute top-4 right-4 md:top-6 md:right-6 p-1.5 md:p-2 bg-red-50 dark:bg-red-500/10 text-red-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg md:rounded-xl transition-all shadow-sm z-10"
+                            title="Eliminar lesión"
+                          >
+                            <Trash2 size={14} md:size={16} />
+                          </button>
+                        )}
 
                         <div className="flex items-center gap-4 md:gap-5 mb-6 md:mb-8">
                           <div className="w-12 h-12 md:w-14 md:h-14 bg-red-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-red-600 shrink-0">
@@ -1196,6 +1198,7 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
                             <div className="flex items-center gap-2">
                               <input
                                 type="date"
+                                disabled={readOnly}
                                 value={injury.release_date || ""}
                                 onChange={async (e) => {
                                   const val = e.target.value || null;
@@ -1206,7 +1209,7 @@ const MedicalEditModal: React.FC<MedicalEditModalProps> = ({
                                   await db.medical.upsertInjury(newInjury);
                                   await syncPlayerStatusAfterInjuryUpdate();
                                 }}
-                                className="text-[10px] font-black bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/10 rounded-lg px-1.5 py-1 outline-none focus:border-emerald-500 transition-colors w-full"
+                                className="text-[10px] font-black bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/10 rounded-lg px-1.5 py-1 outline-none focus:border-emerald-500 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
                               />
                             </div>
                           </div>
