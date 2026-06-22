@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Database, Sun, Moon, Shield, Users, UserCog, Wallet, Trophy, Stethoscope, Menu, X, LogOut, FolderOpen, ChevronDown } from 'lucide-react';
+import { Database, Sun, Moon, Shield, Users, UserCog, Wallet, Trophy, Stethoscope, Menu, X, LogOut, FolderOpen, ChevronDown, LogIn } from 'lucide-react';
 import { ClubConfig } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +26,7 @@ const TopNav: React.FC<TopNavProps> = ({
 
   const allMenuItems = [
     { id: 'squads', label: 'Planteles', icon: Users, roles: ['Admin', 'Entrenador'] },
+    { id: 'ingreso', label: 'Ingreso', icon: LogIn, roles: ['Admin', 'Boletero', 'boletero'] },
     { id: 'central-medica', label: 'Médica', icon: Stethoscope, roles: ['Admin', 'Medico'] },
     { id: 'torneos', label: 'Torneos', icon: Trophy, roles: ['Admin'] },
     { id: 'members', label: 'Miembros', icon: UserCog, roles: ['Admin'] },
@@ -36,7 +37,9 @@ const TopNav: React.FC<TopNavProps> = ({
 
   // Filtrar menú según rol
   const menu = allMenuItems.filter(item => 
-    !role || role === 'Admin' || item.roles.includes(role)
+    !role || 
+    role.toLowerCase() === 'admin' || 
+    item.roles.map(r => r.toLowerCase()).includes(role.toLowerCase())
   );
 
   const handleSetView = (id: string) => {

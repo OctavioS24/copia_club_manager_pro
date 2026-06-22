@@ -21,6 +21,7 @@ import TournamentMatchesPage from './components/Torneos/TournamentMatchesPage.ts
 import TournamentManagement from './components/TournamentManagement.tsx';
 import CentralMedica from './components/CentralMedica/CentralMedica.tsx';
 import MedicalDocumentation from './components/MedicalDocumentation.tsx';
+import ControlAcceso from './components/ControlAcceso.tsx';
 import ProtectedRoute from './components/Auth/ProtectedRoute.tsx';
 import Login from './components/Auth/Login.tsx';
 import { useAuth } from './context/AuthContext.tsx';
@@ -303,6 +304,14 @@ function App() {
                   onSaveMember={handleSaveMember}
                   onDeleteMember={handleDeleteMember}
                 />
+              </div>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/ingreso" element={
+            <ProtectedRoute allowedRoles={['Admin', 'Boletero', 'boletero']}>
+              <div className="pt-24">
+                <ControlAcceso />
               </div>
             </ProtectedRoute>
           } />

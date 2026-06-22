@@ -1483,6 +1483,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                 <option value="Administrativo">Personal Administrativo (Pagos)</option>
                                 <option value="Entrenador">Director Técnico / Coach</option>
                                 <option value="Medico">Médico / Salud</option>
+                                <option value="Boletero">Boletero / Control de Acceso</option>
                              </select>
                           </div>
                           <div className="col-span-1 md:col-span-2 p-6 bg-surface-ground rounded-3xl border border-[var(--surface-border)]">

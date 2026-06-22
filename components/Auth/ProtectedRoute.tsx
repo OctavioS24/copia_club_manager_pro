@@ -22,7 +22,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role) && role !== 'Admin') {
+  if (allowedRoles && role && !allowedRoles.some(r => r.toLowerCase() === role.toLowerCase()) && role.toLowerCase() !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--surface-ground)]">
         <div className="bg-surface-card border border-[var(--surface-border)] rounded-[3rem] p-12 max-w-md w-full text-center shadow-2xl relative overflow-hidden">

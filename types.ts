@@ -105,7 +105,7 @@ export interface Member {
   assignments: MemberAssignment[];
   status: 'Active' | 'Inactive' | 'Pending';
   created_at: string;
-  systemrole: 'STAFF' | 'Socio' | 'Externo';
+  systemrole: string;
   canlogin: boolean;
   username?: string;
   stats: Record<string, number>;
