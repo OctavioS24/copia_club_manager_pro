@@ -5,7 +5,7 @@ import {
   UserPlus, Search, Trash2, X, Save, Camera, Loader2, PlusCircle, Heart, 
   Fingerprint, ShieldCheck, 
   Contact2, UserCircle, AlertCircle, Shirt, Settings, GraduationCap,
-  ExternalLink, FileText, Upload, Trash, Award
+  ExternalLink, FileText, Upload, Trash, Award, Briefcase
 } from 'lucide-react';
 import { getPositionsByDiscipline } from '../lib/disciplinePositions';
 import { db } from '../lib/supabase';
@@ -17,7 +17,7 @@ interface MemberManagementProps {
   onDeleteMember: (id: string) => Promise<void>;
 }
 
-type ModalTab = 'identity' | 'health' | 'contacts' | 'schooling' | 'sports_data' | 'sports' | 'system' | 'scholarship';
+type ModalTab = 'identity' | 'health' | 'contacts' | 'schooling' | 'sports_data' | 'sports' | 'system' | 'scholarship' | 'contractual';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -35,6 +35,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
   const [saveError, setSaveError] = useState<string | null>(null);
   const [scholarshipTypes, setScholarshipTypes] = useState<ScholarshipType[]>([]);
   const [isUploadingScholarshipFile, setIsUploadingScholarshipFile] = useState(false);
+  const [isUploadingContractFile, setIsUploadingContractFile] = useState(false);
 
   useEffect(() => {
     const fetchScholarships = async () => {
@@ -122,7 +123,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     scholarship_details: '',
     scholarship_attachment_url: '',
     scholarship_start_date: '',
-    scholarship_end_date: ''
+    scholarship_end_date: '',
+    contract_condition: 'Propio',
+    contract_loan_club: '',
+    contract_loan_from: '',
+    contract_loan_to: '',
+    contract_loan_attachment_url: ''
   });
 
   const [isUploadingMedicalFile, setIsUploadingMedicalFile] = useState(false);
@@ -213,7 +219,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       scholarship_details: member.scholarship_details || '',
       scholarship_attachment_url: member.scholarship_attachment_url || '',
       scholarship_start_date: member.scholarship_start_date || '',
-      scholarship_end_date: member.scholarship_end_date || ''
+      scholarship_end_date: member.scholarship_end_date || '',
+      contract_condition: member.contract_condition || 'Propio',
+      contract_loan_club: member.contract_loan_club || '',
+      contract_loan_from: member.contract_loan_from || '',
+      contract_loan_to: member.contract_loan_to || '',
+      contract_loan_attachment_url: member.contract_loan_attachment_url || ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -253,7 +264,12 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       scholarship_details: '',
       scholarship_attachment_url: '',
       scholarship_start_date: '',
-      scholarship_end_date: ''
+      scholarship_end_date: '',
+      contract_condition: 'Propio',
+      contract_loan_club: '',
+      contract_loan_from: '',
+      contract_loan_to: '',
+      contract_loan_attachment_url: ''
     });
     setActiveTab('identity');
     setShowModal(true);
@@ -299,6 +315,22 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
       alert("Error al subir el archivo. Por favor, reintente.");
     } finally {
        setIsUploadingScholarshipFile(false);
+    }
+  };
+
+  const handleContractFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingContractFile(true);
+    try {
+      const publicUrl = await db.members.uploadContractAttachment(file);
+      setFormData(prev => ({ ...prev, contract_loan_attachment_url: publicUrl }));
+    } catch (err: any) {
+      console.error("Error al subir contrato de préstamo:", err);
+      alert("Error al subir el archivo de contrato. Por favor, reintente.");
+    } finally {
+      setIsUploadingContractFile(false);
     }
   };
 
@@ -503,6 +535,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
     { id: 'schooling', label: 'Escolaridad', icon: GraduationCap },
     { id: 'sports', label: 'Config. Deportiva', icon: Settings },
     { id: 'scholarship', label: 'Beca', icon: Award },
+    { id: 'contractual', label: 'Situación Contractual', icon: Briefcase },
     { id: 'system', label: 'Sistema', icon: ShieldCheck },
   ];
 
@@ -598,7 +631,7 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                           isActive ? 'bg-primary-500 text-primary-contrast shadow-xl shadow-primary-500/30 border-primary-400' : 'text-[var(--text-muted)] border-transparent hover:bg-surface-hover hover:text-[var(--text-main)]'
                         }`}
                       >
-                        <tab.icon size={18} />
+                        <tab.icon size={20} strokeWidth={2} className="shrink-0" />
                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap">{tab.label}</span>
                       </button>
                     );
@@ -671,8 +704,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                     <div className="space-y-8 animate-fade-in">
                       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                         <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                            <Shirt size={16} />
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                            <Shirt size={20} />
                           </div>
                           Datos Deportivos
                         </h4>
@@ -1143,8 +1176,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
                        <section className="space-y-6">
                           <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
-                              <GraduationCap size={16} />
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+                              <GraduationCap size={20} />
                             </div>
                             Información Escolar / Educativa
                           </h4>
@@ -1223,8 +1256,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
                       <div className="flex justify-between items-center">
                         <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                            <Settings size={16} />
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                            <Settings size={20} />
                           </div>
                           Config. Deportiva
                         </h4>
@@ -1323,8 +1356,8 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                   {activeTab === 'scholarship' && (
                     <div className="space-y-6 md:space-y-8 animate-fade-in">
                        <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0">
-                           <Award size={16} />
+                         <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0">
+                           <Award size={20} />
                          </div>
                          Gestión de Beca
                        </h4>
@@ -1450,6 +1483,128 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ members, config, on
                                        className="hidden" 
                                        accept="image/*,application/pdf" 
                                        disabled={isUploadingScholarshipFile}
+                                     />
+                                   </label>
+                                 </div>
+                               )}
+                             </div>
+                           </>
+                         )}
+                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'contractual' && (
+                    <div className="space-y-6 md:space-y-8 animate-fade-in">
+                       <h4 className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                           <Briefcase size={24} />
+                         </div>
+                         Situación Contractual
+                       </h4>
+                       
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-2 col-span-1 md:col-span-2">
+                           <label className={labelClasses}>Condición</label>
+                           <p className="text-[9px] text-[var(--text-muted)] font-black uppercase tracking-widest ml-3 mb-1.5">
+                             Seleccione si el jugador pertenece al club o está cedido a préstamo
+                           </p>
+                           <select 
+                             value={formData.contract_condition || 'Propio'} 
+                             onChange={e => setFormData({...formData, contract_condition: e.target.value})} 
+                             className={selectClasses}
+                           >
+                             <option value="Propio">Propio</option>
+                             <option value="Préstamo">Préstamo</option>
+                           </select>
+                         </div>
+
+                         {formData.contract_condition === 'Préstamo' && (
+                           <>
+                             <div className="space-y-2 col-span-1 md:col-span-2">
+                               <label className={labelClasses}>Club de Origen</label>
+                               <input 
+                                 type="text" 
+                                 value={formData.contract_loan_club || ''} 
+                                 onChange={e => setFormData({...formData, contract_loan_club: e.target.value})} 
+                                 className={inputClasses} 
+                                 placeholder="Ej: Club Atlético River Plate" 
+                                 required={formData.contract_condition === 'Préstamo'}
+                               />
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Desde</label>
+                               <input 
+                                 type="date" 
+                                 value={formData.contract_loan_from || ''} 
+                                 onChange={e => setFormData({...formData, contract_loan_from: e.target.value})} 
+                                 className={inputClasses} 
+                                 required={formData.contract_condition === 'Préstamo'}
+                               />
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className={labelClasses}>Hasta</label>
+                               <input 
+                                 type="date" 
+                                 value={formData.contract_loan_to || ''} 
+                                 onChange={e => setFormData({...formData, contract_loan_to: e.target.value})} 
+                                 className={inputClasses} 
+                                 required={formData.contract_condition === 'Préstamo'}
+                               />
+                             </div>
+
+                             <div className="space-y-2 col-span-1 md:col-span-2">
+                               <label className={labelClasses}>Adjunto (Contrato de Préstamo)</label>
+                               {formData.contract_loan_attachment_url ? (
+                                 <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">
+                                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                     <FileText size={18} />
+                                     <span className="truncate max-w-[200px] md:max-w-xs block font-bold">Documento de Préstamo Adjunto</span>
+                                   </div>
+                                   <div className="flex gap-2">
+                                     <a 
+                                       href={formData.contract_loan_attachment_url} 
+                                       target="_blank" 
+                                       rel="noreferrer noopener" 
+                                       className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider transition-colors inline-flex items-center"
+                                     >
+                                       <ExternalLink size={12} className="mr-1" />
+                                       Ver archivo
+                                     </a>
+                                     <button 
+                                       type="button"
+                                       onClick={() => setFormData({...formData, contract_loan_attachment_url: ''})}
+                                       className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors cursor-pointer"
+                                       title="Eliminar adjunto"
+                                     >
+                                       <Trash size={14} />
+                                     </button>
+                                   </div>
+                                 </div>
+                               ) : (
+                                 <div className="flex items-center justify-center w-full">
+                                   <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[var(--surface-border)] rounded-2xl cursor-pointer hover:bg-surface-ground transition-all group">
+                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                       {isUploadingContractFile ? (
+                                         <>
+                                           <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mb-2" />
+                                           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Subiendo archivo...</p>
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Upload className="w-5 h-5 mb-2 text-[var(--text-muted)] group-hover:text-emerald-500" />
+                                           <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] group-hover:text-[var(--text-main)]">Seleccionar Contrato de Préstamo (PDF, Imagen)</p>
+                                         </>
+                                       )}
+                                     </div>
+                                     <input 
+                                       type="file" 
+                                       onChange={handleContractFileUpload} 
+                                       className="hidden" 
+                                       accept="image/*,application/pdf" 
+                                       disabled={isUploadingContractFile}
                                      />
                                    </label>
                                  </div>

@@ -136,6 +136,11 @@ export interface Member {
   scholarship_attachment_url?: string;
   scholarship_start_date?: string;
   scholarship_end_date?: string;
+  contract_condition?: string;
+  contract_loan_club?: string;
+  contract_loan_from?: string;
+  contract_loan_to?: string;
+  contract_loan_attachment_url?: string;
 }
 
 export interface MedicalHistoryItem {

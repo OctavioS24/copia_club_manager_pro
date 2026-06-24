@@ -106,6 +106,11 @@ export const db = {
       scholarship_attachment_url: member.scholarship_attachment_url || member.scholarshipAttachmentUrl || '',
       scholarship_start_date: member.scholarship_start_date || member.scholarshipStartDate || null,
       scholarship_end_date: member.scholarship_end_date || member.scholarshipEndDate || null,
+      contract_condition: member.contract_condition !== undefined ? member.contract_condition : (member.contractCondition || 'Propio'),
+      contract_loan_club: member.contract_loan_club || member.contractLoanClub || '',
+      contract_loan_from: member.contract_loan_from || member.contractLoanFrom || null,
+      contract_loan_to: member.contract_loan_to || member.contractLoanTo || null,
+      contract_loan_attachment_url: member.contract_loan_attachment_url || member.contractLoanAttachmentUrl || '',
       created_at: member.created_at
     };
 
@@ -128,7 +133,24 @@ export const db = {
   delete: (id: string) => supabase
     .from('members')
     .delete()
-    .eq('id', id)
+    .eq('id', id),
+
+  uploadContractAttachment: async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('prestamos')
+      .upload(fileName, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('prestamos')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
 },
 medical: {
   getInjuryTypes: () => supabase
