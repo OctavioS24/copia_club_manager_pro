@@ -1096,6 +1096,23 @@ const FeesManagement: React.FC = () => {
     return selectedPeriodsDetail.reduce((acc, curr) => acc + curr.amount, 0);
   }, [selectedPeriodsDetail]);
 
+  // Form Validation Computations
+  const isMemberMissing = !formData.member_id;
+  
+  const isPeriodMissing = formData.concept === 'Cuota Mensual' 
+    ? (selectedPeriods.length === 0) 
+    : (!formData.period || !formData.period.trim());
+    
+  const isAmountMissing = formData.concept === 'Cuota Mensual'
+    ? (totalAmountForSelectedPeriods <= 0)
+    : (formData.amount === undefined || formData.amount === null || isNaN(formData.amount) || formData.amount <= 0);
+    
+  const isPaymentMethodMissing = !formData.payment_method || !formData.payment_method.trim();
+  
+  const isReferenceMissing = !formData.reference || !formData.reference.trim();
+
+  const hasValidationErrors = isMemberMissing || isPeriodMissing || isAmountMissing || isPaymentMethodMissing || isReferenceMissing;
+
   // Sincronizar periodos seleccionados cuando cambia el miembro o se abre el modal
   useEffect(() => {
     if (showModal) {
@@ -1123,7 +1140,10 @@ const FeesManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.member_id) return alert("Selecciona un miembro / socio");
+    if (hasValidationErrors) {
+      alert("⚠️ Por favor completa todos los campos obligatorios.");
+      return;
+    }
 
     if (formData.concept === 'Cuota Mensual') {
       const parentMember = members.find(m => m.id === formData.member_id);
@@ -1174,8 +1194,8 @@ const FeesManagement: React.FC = () => {
         }
       }
 
-      const finalStatus = uploadedUrl || formData.payment_date ? 'Paid' : (formData.status || 'Pending');
-      const paymentDate = finalStatus === 'Paid' ? (formData.payment_date || new Date().toISOString().split('T')[0]) : null;
+      const finalStatus = 'Paid';
+      const paymentDate = formData.payment_date || new Date().toISOString().split('T')[0];
 
       if (formData.concept === 'Cuota Mensual' && selectedPeriods.length > 0) {
         // REGISTRO DE MÚLTIPLES MESES SELECCIONADOS
@@ -1250,19 +1270,6 @@ const FeesManagement: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const markAsPaid = async (fee: MemberFee) => {
-    const updated = { 
-      ...fee, 
-      status: 'Paid' as const, 
-      payment_date: new Date().toISOString().split('T')[0], 
-      payment_method: fee.payment_method || 'Efectivo',
-      amount: getFeeAmountWithSurcharge(fee)
-    };
-    delete updated.member;
-    await db.fees.upsert(updated);
-    await loadData();
   };
 
   const handleVoidFee = async (fee: MemberFee) => {
@@ -2017,15 +2024,6 @@ const FeesManagement: React.FC = () => {
                                     >
                                       <Check size={14} strokeWidth={3} /> Registrar Pago
                                     </button>
-                                    {fee && (
-                                      <button 
-                                        onClick={() => markAsPaid(fee)} 
-                                        className="p-2.5 bg-emerald-550/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl border border-emerald-500/10 hover:border-transparent transition-all shadow-sm cursor-pointer" 
-                                        title="Marcar como Pagado rápido"
-                                      >
-                                        <Check size={14} strokeWidth={3} />
-                                      </button>
-                                    )}
                                   </div>
                                 );
                               })()}
@@ -2478,7 +2476,10 @@ const FeesManagement: React.FC = () => {
                  <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white shadow-lg"><DollarSign size={20} /></div>
                  <div>
                     <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase italic tracking-tighter">Gestión de Cobro</h3>
-                    <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">Emisión de Comprobante</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest leading-none">Emisión de Comprobante</p>
+                      <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">* Campos obligatorios</span>
+                    </div>
                  </div>
               </div>
               <button onClick={() => setShowModal(false)} className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-red-500 hover:text-white transition-all"><X size={20} /></button>
@@ -2489,7 +2490,9 @@ const FeesManagement: React.FC = () => {
                 <div className="space-y-8">
                   {/* BUSCADOR INTELIGENTE DE SOCIOS */}
                   <div className="space-y-3 relative" ref={dropdownRef}>
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Seleccionar Miembro / Socio</label>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1">
+                       Seleccionar Miembro / Socio <span className="text-red-500 font-black text-xs">*</span>
+                     </label>
                      
                      {!selectedMemberInModal ? (
                        <div className="relative">
@@ -2500,8 +2503,13 @@ const FeesManagement: React.FC = () => {
                            onFocus={() => setIsMemberDropdownOpen(true)}
                            onChange={(e) => { setMemberSearchQuery(e.target.value); setIsMemberDropdownOpen(true); }}
                            placeholder="BUSCAR POR NOMBRE O DNI..."
-                           className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 shadow-inner"
+                           className={`w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border ${
+                             isMemberMissing ? 'border-red-500/50 focus:border-red-500' : 'border-transparent dark:border-white/5 focus:border-primary-500'
+                           } shadow-inner`}
                          />
+                         {isMemberMissing && (
+                           <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-3">Este campo es obligatorio</p>
+                         )}
                          
                          {isMemberDropdownOpen && (
                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-white/5 overflow-hidden z-[600] animate-fade-in-up">
@@ -2614,14 +2622,38 @@ const FeesManagement: React.FC = () => {
                   </div>
 
                   {formData.concept !== 'Cuota Mensual' ? (
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-6 animate-fade-in">
                       <div className="space-y-3">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Importe ($)</label>
-                         <input type="number" value={formData.amount ?? ''} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-xl dark:text-white outline-none border border-transparent dark:border-white/5 shadow-inner" />
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1">
+                           Importe ($) <span className="text-red-500 font-black text-xs">*</span>
+                         </label>
+                         <input 
+                           type="number" 
+                           value={formData.amount ?? ''} 
+                           onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} 
+                           className={`w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-black text-xl dark:text-white outline-none border ${
+                             isAmountMissing ? 'border-red-500/50 focus:border-red-500' : 'border-transparent dark:border-white/5 focus:border-primary-500'
+                           } shadow-inner`} 
+                         />
+                         {isAmountMissing && (
+                           <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-3">Este campo es obligatorio</p>
+                         )}
                       </div>
                       <div className="space-y-3">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Periodo</label>
-                         <input type="text" value={formData.period || ''} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5" />
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1">
+                           Periodo <span className="text-red-500 font-black text-xs">*</span>
+                         </label>
+                         <input 
+                           type="text" 
+                           value={formData.period || ''} 
+                           onChange={e => setFormData({...formData, period: e.target.value})} 
+                           className={`w-full px-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border ${
+                             isPeriodMissing ? 'border-red-500/50 focus:border-red-500' : 'border-transparent dark:border-white/5 focus:border-primary-500'
+                           }`} 
+                         />
+                         {isPeriodMissing && (
+                           <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-3">Este campo es obligatorio</p>
+                         )}
                       </div>
                     </div>
                   ) : (
@@ -2637,9 +2669,11 @@ const FeesManagement: React.FC = () => {
                           </p>
                         </div>
                       ) : (
-                        <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-white/5">
+                        <div className={`space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border ${
+                          isPeriodMissing ? 'border-red-500/50' : 'border-slate-100 dark:border-white/5'
+                        }`}>
                           <div className="flex justify-between items-center border-b border-slate-150/50 dark:border-white/5 pb-3">
-                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Historial de Periodos Disponibles</h4>
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">Historial de Periodos Disponibles <span className="text-red-500 font-black text-xs">*</span></h4>
                             <span className="text-[8px] font-bold text-primary-500 uppercase tracking-widest bg-primary-500/10 px-2 py-1 rounded">Pago Multi-Mes</span>
                           </div>
                           <div className="grid grid-cols-2 gap-3 max-h-[170px] overflow-y-auto pr-2 custom-scrollbar">
@@ -2708,13 +2742,17 @@ const FeesManagement: React.FC = () => {
                             )}
                           </div>
 
+                          {isPeriodMissing && (
+                            <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-1">Este campo es obligatorio (debe seleccionar al menos un período)</p>
+                          )}
+
                           <div className="flex justify-between items-center bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-100 dark:border-white/5">
                             <div>
                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Cant. Meses</p>
                               <p className="text-[10px] font-black text-primary-500 uppercase mt-1">{selectedPeriods.length} Seleccionado(s)</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Monto Neto</p>
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none flex items-center justify-end gap-1">Monto Neto <span className="text-red-500 font-black text-xs">*</span></p>
                               <p className="text-base font-black text-emerald-500 italic leading-none mt-1">${totalAmountForSelectedPeriods.toLocaleString()}</p>
                             </div>
                           </div>
@@ -2728,14 +2766,26 @@ const FeesManagement: React.FC = () => {
                   )}
  
                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Método de Pago</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1">
+                        Método de Pago <span className="text-red-500 font-black text-xs">*</span>
+                      </label>
                       <div className="relative">
                         <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <select value={formData.payment_method || 'Efectivo'} onChange={e => setFormData({...formData, payment_method: e.target.value})} className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border border-transparent dark:border-white/5 appearance-none">
+                        <select 
+                          value={formData.payment_method || ''} 
+                          onChange={e => setFormData({...formData, payment_method: e.target.value})} 
+                          className={`w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-sm dark:text-white outline-none border ${
+                            isPaymentMethodMissing ? 'border-red-500/50 focus:border-red-500' : 'border-transparent dark:border-white/5 focus:border-primary-500'
+                          } appearance-none`}
+                        >
+                          <option value="">Seleccionar método de pago...</option>
                           {['Efectivo', 'Transferencia Bancaria', 'Tarjeta Débito', 'Tarjeta Crédito', 'QR / Billetera Digital', 'Débito Automático', 'Otro'].map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
                       </div>
+                      {isPaymentMethodMissing && (
+                        <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-3">Este campo es obligatorio</p>
+                      )}
                    </div>
                  </div>
  
@@ -2818,8 +2868,18 @@ const FeesManagement: React.FC = () => {
                         <input type="date" value={formData.due_date || ''} onChange={e => setFormData({...formData, due_date: e.target.value})} className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
                      </div>
                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Ref. Operación</label>
-                        <input value={formData.reference || ''} onChange={e => setFormData({...formData, reference: e.target.value})} placeholder="NRO TRANSF" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border border-transparent dark:border-white/5" />
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1">Ref. Operación <span className="text-red-500 font-black text-xs">*</span></label>
+                        <input 
+                          value={formData.reference || ''} 
+                          onChange={e => setFormData({...formData, reference: e.target.value})} 
+                          placeholder="NRO TRANSF" 
+                          className={`w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-xs dark:text-white outline-none border ${
+                            isReferenceMissing ? 'border-red-500/50 focus:border-red-500' : 'border-transparent dark:border-white/5 focus:border-primary-500'
+                          }`} 
+                        />
+                        {isReferenceMissing && (
+                          <p className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider mt-1.5 ml-3">Este campo es obligatorio</p>
+                        )}
                      </div>
                    </div>
  
@@ -2839,7 +2899,7 @@ const FeesManagement: React.FC = () => {
 
             <div className="p-8 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-white/5 flex flex-col md:flex-row justify-end gap-4">
                <button onClick={() => setShowModal(false)} className="px-10 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400">Cancelar</button>
-               <button onClick={handleSave} disabled={isSaving} className="flex items-center justify-center gap-4 bg-primary-600 text-white px-16 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50">
+               <button onClick={handleSave} disabled={isSaving || hasValidationErrors} className="flex items-center justify-center gap-4 bg-primary-600 text-white px-16 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50">
                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                  Registrar Pago
                </button>

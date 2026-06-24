@@ -191,17 +191,31 @@ function App() {
 
   // Actualización dinámica de identidad visual (Favicon y Título)
   useEffect(() => {
-    if (config.logo_url) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.href = config.logo_url;
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.getElementsByTagName('head')[0].appendChild(link);
     }
+    
+    if (config.logo_url) {
+      link.href = config.logo_url;
+      if (config.logo_url.startsWith('data:image/svg+xml')) {
+        link.type = 'image/svg+xml';
+      } else if (config.logo_url.startsWith('data:image/png')) {
+        link.type = 'image/png';
+      } else {
+        link.removeAttribute('type');
+      }
+    } else {
+      link.type = 'image/svg+xml';
+      link.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%23ec4899'/><path d='M50 15 L25 25 V50 C25 68 36 80 50 85 C64 80 75 68 75 50 V25 L50 15 Z' fill='white'/><path d='M50 22 L31 30 V48 C31 62 40 73 50 78 C60 73 69 62 69 48 V30 L50 22 Z' fill='%230f172a'/><text x='50' y='58' font-family='system-ui, sans-serif' font-size='32' font-weight='900' fill='white' text-anchor='middle'>P</text></svg>";
+    }
+
     if (config.name && config.name !== 'MI CLUB') {
       document.title = `${config.name} | Management System`;
+    } else {
+      document.title = 'Club Manager Plegma';
     }
   }, [config.logo_url, config.name]);
 
