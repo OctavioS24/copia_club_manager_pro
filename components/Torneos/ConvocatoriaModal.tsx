@@ -56,6 +56,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const [appointmentTime, setAppointmentTime] = useState('');
   const [location, setLocation] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [mobileLineupTab, setMobileLineupTab] = useState<'titulares' | 'suplentes'>('titulares');
 
   useEffect(() => {
     const loadSquadAndDebts = async () => {
@@ -686,43 +687,43 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-surface-ground/90 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-surface-ground/90 backdrop-blur-xl">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-surface-card border border-[var(--surface-border)] rounded-[2.5rem] w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl relative"
+        className="bg-surface-card border border-[var(--surface-border)] rounded-3xl sm:rounded-[2.5rem] w-full max-w-5xl h-[94vh] sm:h-auto sm:max-h-[92vh] overflow-hidden flex flex-col shadow-2xl relative"
       >
         {/* Header */}
-        <div className="p-6 md:p-8 border-b border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky top-0 z-10 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 md:w-14 md:h-14 bg-primary-600/10 rounded-2xl flex items-center justify-center border border-primary-600/20 shadow-inner">
-              <Users className="text-primary-600" size={24} />
+        <div className="p-4 sm:p-6 md:p-8 border-b border-[var(--surface-border)] bg-surface-card/80 backdrop-blur-md flex justify-between items-center sticky top-0 z-10 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-primary-600/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-primary-600/20 shadow-inner shrink-0">
+              <Users className="text-primary-600" size={20} />
             </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none">Planilla de Convocados</h2>
-              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black text-[var(--text-main)] uppercase italic tracking-tighter leading-none truncate">Planilla de Convocados</h2>
+              <p className="text-[8px] sm:text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 truncate">
                 {match.hometeam} vs {match.awayteam} • {new Date(match.date).toLocaleDateString()}
               </p>
             </div>
           </div>
-          <button onClick={actionStep === 'titulares' ? onSuccess : onClose} className="p-3 text-[var(--text-muted)] hover:text-red-500 hover:bg-surface-hover rounded-xl transition-all">
+          <button onClick={actionStep === 'titulares' ? onSuccess : onClose} className="p-2 sm:p-3 text-[var(--text-muted)] hover:text-red-500 hover:bg-surface-hover rounded-xl transition-all shrink-0">
             <X size={20} />
           </button>
         </div>
 
         {/* Wizard progress steps indicator */}
-        <div className="px-8 py-3 bg-surface-ground border-b border-[var(--surface-border)] flex items-center justify-center gap-5 shrink-0 select-none">
+        <div className="px-4 sm:px-8 py-2.5 sm:py-3 bg-surface-ground border-b border-[var(--surface-border)] flex items-center justify-center gap-2 sm:gap-5 shrink-0 select-none overflow-x-auto">
           <button 
             onClick={() => setActionStep('convocatoria')}
-            className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${actionStep === 'convocatoria' ? 'text-primary-600' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+            className={`flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-widest transition-colors shrink-0 ${actionStep === 'convocatoria' ? 'text-primary-600' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
           >
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${actionStep === 'convocatoria' ? 'bg-primary-600 text-white' : hasExistingSquad ? 'bg-emerald-500 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 ${actionStep === 'convocatoria' ? 'bg-primary-600 text-white' : hasExistingSquad ? 'bg-emerald-500 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>
               {hasExistingSquad && actionStep !== 'convocatoria' ? <Check size={10} strokeWidth={3} /> : '1'}
             </div>
-            <span>1. Armar Convocatoria</span>
+            <span className="truncate">1. Armar Convocatoria</span>
           </button>
           
-          <div className="h-0.5 w-12 bg-[var(--surface-border)]" />
+          <div className="h-0.5 w-6 sm:w-12 bg-[var(--surface-border)] shrink-0" />
           
           <button 
             disabled={!hasExistingSquad && summonedCount === 0}
@@ -731,7 +732,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                 setActionStep('titulares');
               }
             }}
-            className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-widest transition-colors shrink-0 ${
               actionStep === 'titulares' 
                 ? 'text-primary-600' 
                 : hasExistingSquad 
@@ -739,15 +740,15 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                   : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
             }`}
           >
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${actionStep === 'titulares' ? 'bg-primary-600 text-white' : hasConfirmedLineup ? 'bg-emerald-500 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 ${actionStep === 'titulares' ? 'bg-primary-600 text-white' : hasConfirmedLineup ? 'bg-emerald-500 text-white' : 'bg-surface-card border border-[var(--surface-border)] text-[var(--text-muted)]'}`}>
               {hasConfirmedLineup ? <Check size={10} strokeWidth={3} /> : '2'}
             </div>
-            <span>2. Definir Equipo Titular</span>
+            <span className="truncate">2. Definir Equipo Titular</span>
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 custom-scrollbar pb-8">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <Loader2 className="animate-spin text-primary-600" size={36} />
@@ -757,13 +758,13 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
             /* ================= STEP 1: SELECT SQUAD PLAYERS & INPUT DETAILS ================= */
             <div className="space-y-6">
               {/* Campos de la Convocatoria en Paso 1 */}
-              <div className="bg-surface-card border-[3px] border-primary-600/20 rounded-[2.5rem] p-6 space-y-4 shadow-sm">
+              <div className="bg-surface-card border-[2px] sm:border-[3px] border-primary-600/20 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-3 mb-1">
                   <span className="flex h-2 w-2 rounded-full bg-primary-600 animate-pulse" />
                   <h3 className="text-[10px] font-black uppercase text-primary-600 tracking-widest italic">Detalles de la Convocatoria</h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   {/* Columna Izquierda: Hora y Ubicación */}
                   <div className="space-y-4">
                     {/* Hora de Citación */}
@@ -799,7 +800,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                           value={location}
                           onChange={(e) => setLocation(e.target.value)}
                           placeholder="Dirección, cancha o enlace de Google Maps"
-                          className="flex-1 bg-surface-card border border-[var(--surface-border)] focus:border-emerald-600 rounded-xl px-4 py-2.5 text-xs font-bold text-[var(--text-main)] outline-none transition-all"
+                          className="flex-1 min-w-0 bg-surface-card border border-[var(--surface-border)] focus:border-emerald-600 rounded-xl px-3 sm:px-4 py-2.5 text-xs font-bold text-[var(--text-main)] outline-none transition-all truncate"
                           required
                         />
                         {location && (
@@ -807,7 +808,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                             href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-xl border border-emerald-500/20 flex items-center justify-center transition-all cursor-pointer"
+                            className="p-2.5 sm:p-3 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-xl border border-emerald-500/20 flex items-center justify-center transition-all cursor-pointer shrink-0"
                             title="Abrir ubicación en Google Maps"
                           >
                             <MapPin size={16} />
@@ -833,14 +834,14 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Escribe las directivas tácticas u observaciones aquí..."
-                      className="w-full bg-surface-card border border-[var(--surface-border)] rounded-xl p-3 text-[var(--text-main)] font-semibold text-xs outline-none focus:border-slate-500 transition-all min-h-[110px] resize-none flex-1"
+                      className="w-full bg-surface-card border border-[var(--surface-border)] rounded-xl p-3 text-[var(--text-main)] font-semibold text-xs outline-none focus:border-slate-500 transition-all min-h-[90px] sm:min-h-[110px] resize-none flex-1"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Estadísticas Rápidas de Convocatoria */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pb-2">
                 <div className="bg-surface-ground rounded-2xl p-4 border border-[var(--surface-border)] flex items-center justify-between">
                   <div>
                     <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Efectivos Convocados</p>
@@ -868,9 +869,9 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
               {/* Barra de Filtro, Búsqueda y Acciones Rápidas */}
               <div className="bg-surface-ground border border-[var(--surface-border)] rounded-2xl p-4 space-y-3">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                   {/* Buscador de jugadores */}
-                  <div className="relative w-full md:w-80">
+                  <div className="relative w-full sm:w-80">
                     <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                     <input 
                       type="text"
@@ -890,11 +891,11 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                   </div>
 
                   {/* Botones de acción masiva */}
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                     <button 
                       type="button"
                       onClick={() => handleSelectAll(true)}
-                      className="px-3 py-2 bg-primary-600/10 hover:bg-primary-600/20 text-primary-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-primary-600/20"
+                      className="flex-1 sm:flex-initial px-3 py-2 bg-primary-600/10 hover:bg-primary-600/20 text-primary-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-primary-600/20"
                     >
                       <CheckSquare size={12} />
                       <span>Convocar a Todos</span>
@@ -902,7 +903,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                     <button 
                       type="button"
                       onClick={() => handleSelectAll(false)}
-                      className="px-3 py-2 bg-slate-500/10 hover:bg-slate-500/20 text-[var(--text-muted)] rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-[var(--surface-border)]"
+                      className="flex-1 sm:flex-initial px-3 py-2 bg-slate-500/10 hover:bg-slate-500/20 text-[var(--text-muted)] rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-[var(--surface-border)]"
                     >
                       <Square size={12} />
                       <span>Deseleccionar</span>
@@ -994,7 +995,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                         </div>
 
                         {/* Grid de Jugadores del Puesto */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {group.players.map(renderPlayerSelectCard)}
                         </div>
                       </div>
@@ -1020,7 +1021,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
             </div>
           ) : (
             /* ================= STEP 2: INTERACTIVE ALIGNMENT VIEW ================= */
-            <div className="space-y-6 animate-fade-in text-[var(--text-main)]">
+            <div className="space-y-5 sm:space-y-6 animate-fade-in text-[var(--text-main)]">
               {/* Tactical banner with instructions or success status */}
               {hasConfirmedLineup || justConfirmedLineup ? (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm select-none">
@@ -1098,50 +1099,88 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
               )}
 
               {/* Match and convocatoria details board */}
-              <div className="bg-surface-ground border border-[var(--surface-border)] rounded-[2rem] p-6 space-y-4">
-                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2 mb-2">
+              <div className="bg-surface-ground border border-[var(--surface-border)] rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 space-y-4">
+                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] pb-2 mb-1">
                   <span className="flex h-2 w-2 rounded-full bg-primary-600" />
-                  <h4 className="text-[10px] font-black uppercase text-primary-500 tracking-widest italic font-black uppercase tracking-widest">Información Oficial de la Citación</h4>
+                  <h4 className="text-[10px] font-black uppercase text-primary-500 tracking-widest italic">Información Oficial de la Citación</h4>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-surface-card rounded-xl p-4 border border-[var(--surface-border)] flex flex-col justify-center shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-surface-card rounded-xl p-3.5 sm:p-4 border border-[var(--surface-border)] flex flex-col justify-center shadow-sm">
                     <span className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Hora de Citación</span>
                     <span className="text-sm font-black uppercase text-[var(--text-main)] mt-1">{appointmentTime || 'NO DEFINIDA'}</span>
                   </div>
 
-                  <div className="bg-surface-card rounded-xl p-4 border border-[var(--surface-border)] flex items-center justify-between shadow-sm">
-                    <div>
+                  <div className="bg-surface-card rounded-xl p-3.5 sm:p-4 border border-[var(--surface-border)] flex items-center justify-between gap-2 shadow-sm min-w-0">
+                    <div className="min-w-0 flex-1 pr-2">
                       <span className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Ubicación del Partido</span>
-                      <span className="block text-xs font-black text-[var(--text-main)] mt-1">{location || 'NO DEFINIDA'}</span>
+                      {location ? (
+                        location.startsWith('http://') || location.startsWith('https://') ? (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-xs font-bold text-emerald-600 truncate block">Ubicación en Google Maps</span>
+                          </div>
+                        ) : (
+                          <span className="block text-xs font-bold text-[var(--text-main)] mt-1 truncate">{location}</span>
+                        )
+                      ) : (
+                        <span className="block text-xs font-bold text-[var(--text-muted)] mt-1">NO DEFINIDA</span>
+                      )}
                     </div>
                     {location && (
                       <a
-                         href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                        href={location.startsWith('http://') || location.startsWith('https://') ? location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-lg border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+                        className="p-2 sm:p-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-lg border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-all shrink-0"
                         title="Ver en Google Maps"
                       >
-                        <MapPin size={12} />
-                        <span>Ver mapa</span>
+                        <MapPin size={13} />
+                        <span className="hidden sm:inline">Ver mapa</span>
                       </a>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-surface-card rounded-xl p-4 border border-[var(--surface-border)] shadow-sm">
+                <div className="bg-surface-card rounded-xl p-3.5 sm:p-4 border border-[var(--surface-border)] shadow-sm">
                   <span className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Apuntes Tácticos & Observaciones</span>
-                  <p className="text-xs font-semibold text-[var(--text-main)] mt-2 whitespace-pre-line italic leading-relaxed">
+                  <p className="text-xs font-semibold text-[var(--text-main)] mt-1.5 whitespace-pre-line italic leading-relaxed">
                     {notes || 'Sin observaciones cargadas.'}
                   </p>
                 </div>
               </div>
 
+              {/* Selector de pestañas para vista Móvil (Titulares / Suplentes) */}
+              <div className="flex md:hidden items-center p-1 bg-surface-ground rounded-2xl border border-[var(--surface-border)]">
+                <button
+                  type="button"
+                  onClick={() => setMobileLineupTab('titulares')}
+                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                    mobileLineupTab === 'titulares'
+                      ? 'bg-emerald-500 text-white shadow-md'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <Star size={13} fill={mobileLineupTab === 'titulares' ? 'currentColor' : 'none'} />
+                  <span>Titulares ({startingLineup.length}/11)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileLineupTab('suplentes')}
+                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                    mobileLineupTab === 'suplentes'
+                      ? 'bg-amber-500 text-white shadow-md'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <Users size={13} />
+                  <span>Suplentes ({substitutesLineup.length})</span>
+                </button>
+              </div>
+
               {/* Interactive columns layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                {/* Column Titulares */}
-                <div className="bg-emerald-500/[0.01] border-2 border-emerald-500/20 rounded-[2rem] p-5 space-y-4 shadow-sm min-h-[300px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                {/* Column Titulares (Visible siempre en escritorio o cuando está seleccionada en móvil) */}
+                <div className={`${mobileLineupTab === 'titulares' ? 'block' : 'hidden md:block'} bg-emerald-500/[0.01] border-2 border-emerald-500/20 rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 space-y-3 sm:space-y-4 shadow-sm min-h-[300px]`}>
                   <div className="flex justify-between items-center border-b border-emerald-500/10 pb-2.5">
                     <div className="flex items-center gap-2">
                       <Star size={14} className="text-emerald-500" fill="currentColor" />
@@ -1156,23 +1195,24 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                         <div 
                           key={player.id} 
                           onClick={() => toggleStarting(player.id)}
-                          className="p-3 bg-surface-card hover:bg-surface-hover hover:border-amber-500/30 border border-emerald-500/30 rounded-xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-1 group"
+                          className="p-3 bg-surface-card hover:bg-surface-hover hover:border-amber-500/30 border border-emerald-500/30 rounded-xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-1 group select-none"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
                             <img 
                               referrerPolicy="no-referrer"
                               src={player.photourl || getInitialsSvg(player.name)}
                               alt={player.name}
-                              className="w-10 h-10 rounded-lg object-cover border-2 border-emerald-500"
+                              className="w-10 h-10 rounded-lg object-cover border-2 border-emerald-500 shrink-0"
                             />
-                            <div>
-                              <p className="text-xs font-black uppercase text-emerald-600">{player.name}</p>
-                              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">{player.frequent_position || 'Sin puesto'}</span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase text-emerald-600 truncate">{player.name}</p>
+                              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase block truncate">{player.frequent_position || 'Sin puesto'}</span>
                             </div>
                           </div>
-                          <span className="text-[8px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded uppercase font-black flex items-center gap-1 group-hover:text-amber-550 group-hover:bg-amber-500/5 group-hover:border-amber-500/20 transition-all">
+                          <span className="text-[8px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-1 rounded uppercase font-black flex items-center gap-1 group-hover:text-amber-500 group-hover:bg-amber-500/10 group-hover:border-amber-500/20 transition-all shrink-0">
                             <Star size={10} fill="currentColor" />
-                            Titular
+                            <span className="hidden sm:inline">Titular</span>
+                            <span className="sm:hidden">Quitar</span>
                           </span>
                         </div>
                       ))}
@@ -1182,8 +1222,8 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                   )}
                 </div>
 
-                {/* Column Suplentes */}
-                <div className="bg-surface-ground border border-[var(--surface-border)] rounded-[2rem] p-5 space-y-4 shadow-sm min-h-[300px]">
+                {/* Column Suplentes (Visible siempre en escritorio o cuando está seleccionada en móvil) */}
+                <div className={`${mobileLineupTab === 'suplentes' ? 'block' : 'hidden md:block'} bg-surface-ground border border-[var(--surface-border)] rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 space-y-3 sm:space-y-4 shadow-sm min-h-[300px]`}>
                   <div className="flex justify-between items-center border-b border-[var(--surface-border)] pb-2.5">
                     <div className="flex items-center gap-2">
                       <Users size={14} className="text-amber-500" />
@@ -1198,21 +1238,21 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                         <div 
                           key={player.id} 
                           onClick={() => toggleStarting(player.id)}
-                          className="p-3 bg-surface-card hover:bg-emerald-550/5 hover:border-emerald-500/30 border border-[var(--surface-border)] rounded-xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-1 group"
+                          className="p-3 bg-surface-card hover:bg-emerald-500/5 hover:border-emerald-500/30 border border-[var(--surface-border)] rounded-xl flex items-center justify-between cursor-pointer transition-all hover:translate-x-1 group select-none"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
                             <img 
                               referrerPolicy="no-referrer"
                               src={player.photourl || getInitialsSvg(player.name)}
                               alt={player.name}
-                              className="w-10 h-10 rounded-lg object-cover border border-[var(--surface-border)] opacity-80"
+                              className="w-10 h-10 rounded-lg object-cover border border-[var(--surface-border)] opacity-80 shrink-0"
                             />
-                            <div>
-                              <p className="text-xs font-black uppercase text-[var(--text-main)] leading-none mb-1">{player.name}</p>
-                              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">{player.frequent_position || 'Sin puesto'}</span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase text-[var(--text-main)] leading-none mb-1 truncate">{player.name}</p>
+                              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase block truncate">{player.frequent_position || 'Sin puesto'}</span>
                             </div>
                           </div>
-                          <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] border border-[var(--surface-border)] px-2 py-0.5 rounded uppercase font-black group-hover:text-emerald-500 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all">
+                          <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] border border-[var(--surface-border)] px-2 py-1 rounded uppercase font-black group-hover:text-emerald-500 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all shrink-0">
                             Poner titular ➔
                           </span>
                         </div>

@@ -3,4 +3,4 @@
   "description": "Una plataforma integral para la gestión deportiva y administrativa de un club de fútbol, con análisis de jugadores potenciado por IA.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-} 
+}  

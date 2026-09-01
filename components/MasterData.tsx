@@ -12,6 +12,7 @@ import {
 import PosicionesPorDisciplina from './Estructura/PosicionesPorDisciplina';
 import ReglasPorDisciplina from './Estructura/ReglasPorDisciplina';
 import RivalesPorDisciplina from './Estructura/RivalesPorDisciplina';
+import { updateAppFaviconAndTitle } from '../utils/favicon';
 
 interface MasterDataProps {
   config: ClubConfig;
@@ -84,6 +85,7 @@ const MasterData: React.FC<MasterDataProps> = ({ config, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     await onSave(localConfig);
+    updateAppFaviconAndTitle(localConfig.logo_url, localConfig.name);
     setIsSaving(false);
     setShowSaved(true);
     setIsEditingEnabled(false);
