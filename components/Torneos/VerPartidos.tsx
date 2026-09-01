@@ -171,6 +171,27 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
         db.matches.update(match.id, { date: newDateValue })
       );
       await Promise.all(promises);
+
+      // Si el torneo tiene fixture_base sincronizado, actualizar la fecha allí también
+      try {
+        const { data: tourney } = await supabase
+          .from('tournaments')
+          .select('fixture_base')
+          .eq('id', tournament.id)
+          .single();
+        if (tourney && tourney.fixture_base && Array.isArray(tourney.fixture_base)) {
+          const updatedFixture = tourney.fixture_base.map((f: any) => 
+            f.date === oldDate ? { ...f, date: newDateValue } : f
+          );
+          await supabase
+            .from('tournaments')
+            .update({ fixture_base: updatedFixture })
+            .eq('id', tournament.id);
+        }
+      } catch (err) {
+        console.warn('Could not sync tournament fixture_base date:', err);
+      }
+
       await loadMatches();
       setEditingDate(null);
     } catch (error) {
@@ -324,7 +345,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                           </span>
                         )}
                       </div>
-                      <p className="text-[8px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
+                      <div className="text-[8px] md:text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2 opacity-60">
                         <Calendar size={12} className="text-primary-500 md:w-[14px] md:h-[14px]" />
                         {editingDate === date ? (
                           <div className="flex items-center gap-2 bg-surface-card p-1 rounded-xl border border-primary-500/50 shadow-lg">
@@ -362,7 +383,7 @@ const VerPartidos: React.FC<VerPartidosProps> = ({ tournament, onBack, clubName,
                             <Edit3 size={10} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                           </button>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
                   

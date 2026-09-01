@@ -462,6 +462,45 @@ tournaments: {
       
       return { data: mData };
     },
+
+    update: async (id: string, updates: any) => {
+      const mappedUpdates: any = {};
+      if (updates.date !== undefined) mappedUpdates.date = updates.date;
+      if (updates.status !== undefined) mappedUpdates.status = updates.status;
+      if (updates.location !== undefined) mappedUpdates.location = updates.location;
+      if (updates.referee !== undefined) mappedUpdates.referee = updates.referee;
+      if (updates.notes !== undefined) mappedUpdates.notes = updates.notes;
+      if (updates.homescore !== undefined || updates.home_score !== undefined || updates.homeScore !== undefined) {
+        mappedUpdates.homescore = updates.homescore !== undefined ? updates.homescore : (updates.home_score !== undefined ? updates.home_score : updates.homeScore);
+      }
+      if (updates.awayscore !== undefined || updates.away_score !== undefined || updates.awayScore !== undefined) {
+        mappedUpdates.awayscore = updates.awayscore !== undefined ? updates.awayscore : (updates.away_score !== undefined ? updates.away_score : updates.awayScore);
+      }
+      if (updates.hometeam !== undefined || updates.home_team !== undefined || updates.homeTeam !== undefined) {
+        mappedUpdates.hometeam = updates.hometeam || updates.home_team || updates.homeTeam;
+      }
+      if (updates.awayteam !== undefined || updates.away_team !== undefined || updates.awayTeam !== undefined) {
+        mappedUpdates.awayteam = updates.awayteam || updates.away_team || updates.awayTeam;
+      }
+      if (updates.suspension_reason !== undefined || updates.suspensionReason !== undefined) {
+        mappedUpdates.suspension_reason = updates.suspension_reason !== undefined ? updates.suspension_reason : updates.suspensionReason;
+      }
+      if (updates.is_overridden !== undefined) mappedUpdates.is_overridden = updates.is_overridden;
+      if (updates.original_date !== undefined) mappedUpdates.original_date = updates.original_date;
+      if (updates.original_match_id !== undefined) mappedUpdates.original_match_id = updates.original_match_id;
+
+      const { data, error } = await supabase
+        .from('matches')
+        .update(mappedUpdates)
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        console.error("Error updating match in Supabase:", error.message);
+        throw error;
+      }
+      return { data, error: null };
+    },
     
     delete: async (id: string) => {
       // Delete squad players and squads for this match

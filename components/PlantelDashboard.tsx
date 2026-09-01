@@ -4,15 +4,14 @@ import {
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
   TrendingDown, ShieldAlert, ShieldX, Target,
   Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw, HeartPulse, Heart, X,
-  ArrowUpRight
+  ArrowUpRight, ChevronDown
 } from 'lucide-react';
-import { ClubConfig, Match, Member, MatchEvent } from '../types';
+import { ClubConfig, Match, Member, MatchEvent, Tournament } from '../types';
 import { db, supabase } from '../lib/supabase';
-
-interface PlantelDashboardProps {
-  clubConfig: ClubConfig;
-  members: Member[];
-}
+import { useCategory } from '../context/useCategory';
+import { getDisciplineConfig, DisciplineConfig } from '../lib/disciplineConfig';
+import MatchDetailModal from './MatchDetailModal';
+import StatsDetailModal, { StatsDetailType } from './StatsDetailModal';
 
 const MatchSkeleton = () => (
   <div className="animate-pulse flex items-center justify-between p-4 md:p-6 bg-surface-ground rounded-2xl md:rounded-3xl border border-[var(--surface-border)]">
@@ -27,16 +26,18 @@ const MatchSkeleton = () => (
   </div>
 );
 
-import { useCategory } from '../context/useCategory';
-import { getDisciplineConfig, DisciplineConfig } from '../lib/disciplineConfig';
-import MatchDetailModal from './MatchDetailModal';
-import StatsDetailModal from './StatsDetailModal';
-
 const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClubConfig, members: propMembers }) => {
-  const { selectedDiscipline, selectedDivision } = useCategory();
+  const { 
+    selectedDiscipline, 
+    selectedDivision, 
+    selectedGender, 
+    selectedTournamentId, 
+    setSelectedTournamentId 
+  } = useCategory();
   const [clubConfig, setClubConfig] = useState<ClubConfig | null>(propClubConfig || null);
   const [members, setMembers] = useState<Member[]>(propMembers || []);
   const [disciplineConfig, setDisciplineConfig] = useState<DisciplineConfig | null>(null);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
 
   // Fetch initial data if needed
   useEffect(() => {
@@ -56,6 +57,43 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     };
     fetchInitialData();
   }, [propClubConfig, propMembers]);
+
+  // Fetch tournaments for category & discipline
+  useEffect(() => {
+    const fetchCategoryTournaments = async () => {
+      if (!selectedDivision || !selectedDiscipline) return;
+      try {
+        const { data, error } = await supabase
+          .from('tournaments')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data) {
+          const normalized: Tournament[] = data.map((t: any) => ({
+            ...t,
+            discipline_id: t.discipline_id || t.discipline || t.disciplineid,
+            category_id: t.category_id || t.categoryid,
+            assigned_categories: t.assigned_categories || t.assignedcategories || []
+          }));
+
+          const filtered = normalized.filter((t: any) => {
+            const matchDisc = !selectedDiscipline || t.discipline_id === selectedDiscipline;
+            const matchGender = !t.gender || !selectedGender || t.gender.toLowerCase() === selectedGender.toLowerCase();
+            const hasCat = t.assigned_categories?.includes(selectedDivision) || t.category_id === selectedDivision;
+            return matchDisc && matchGender && hasCat;
+          });
+
+          setTournaments(filtered);
+        }
+      } catch (err) {
+        console.error('Error fetching tournaments in PlantelDashboard:', err);
+      }
+    };
+
+    fetchCategoryTournaments();
+  }, [selectedDivision, selectedDiscipline, selectedGender]);
   
   const selectedCategory = useMemo(() => {
     if (!selectedDiscipline || !selectedDivision || !clubConfig) return null;
@@ -70,15 +108,12 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
   }, [clubConfig, selectedDiscipline, selectedDivision]);
 
   const [matches, setMatches] = useState<Match[]>([]);
-  const [lastResults, setLastResults] = useState<Match[]>([]);
-  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [suspendedMatches, setSuspendedMatches] = useState<Match[]>([]);
   const [playerEvents, setPlayerEvents] = useState<MatchEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [showStatsType, setShowStatsType] = useState<'Goles' | 'Amarillas' | 'Rojas' | 'Goles en Contra' | null>(null);
+  const [showStatsType, setShowStatsType] = useState<StatsDetailType | null>(null);
   
   // Medical fitness warnings states
   const [showMedicalWarningModal, setShowMedicalWarningModal] = useState(false);
@@ -107,11 +142,6 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
         return discMatch && catMatch && isPlayer;
       })
     );
-
-    if (filtered.length === 0 && members.length > 0) {
-      console.log(`Dashboard: No se encontraron jugadores para ${discName} - ${selectedCategory.category.name}`);
-      console.log(`Buscando: DiscID=${selectedCategory.disciplineId}, CatID=${selectedCategory.category.id}, DiscName=${discName}, CatName=${selectedCategory.category.name}`);
-    }
 
     return filtered;
   }, [members, selectedCategory, clubConfig]);
@@ -196,15 +226,8 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
         if (matchesError) throw matchesError;
 
-        const finishedMatches = (allMatches || []).filter(m => m.status === 'Finished');
-        const upcomingFiltered = (allMatches || []).filter(m => m.status === 'Scheduled');
-        const suspendedFiltered = (allMatches || []).filter(m => m.status === 'Suspended');
-
         setMatches(allMatches || []);
-        setPlayerEvents([]); // We will use match events instead
-        setLastResults(finishedMatches.slice(0, 5));
-        setUpcomingMatches(upcomingFiltered.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5));
-        setSuspendedMatches(suspendedFiltered);
+        setPlayerEvents([]);
       } catch (err) {
         console.error("Error fetching stats:", err);
         setError("No se pudieron cargar las estadísticas del plantel.");
@@ -215,14 +238,50 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     };
 
     fetchStats();
-  }, [selectedCategory, squadPlayers, selectedDivision, clubConfig, selectedDiscipline]);
+  }, [selectedCategory, selectedDivision, clubConfig, selectedDiscipline]);
+
+  // Current selected tournament object
+  const currentSelectedTournament = useMemo(() => {
+    if (!selectedTournamentId || selectedTournamentId === 'all') return null;
+    return tournaments.find(t => t.id === selectedTournamentId) || null;
+  }, [tournaments, selectedTournamentId]);
+
+  // Filter matches by selected tournament if one is chosen
+  const filteredMatches = useMemo(() => {
+    if (!selectedTournamentId || selectedTournamentId === 'all') {
+      return matches;
+    }
+    return matches.filter(m => {
+      const matchTournamentId = m.tournamentid || (m as any).tournament_id || (m as any).tournament;
+      return matchTournamentId === selectedTournamentId;
+    });
+  }, [matches, selectedTournamentId]);
+
+  const finishedMatches = useMemo(() => {
+    return filteredMatches.filter(m => m.status === 'Finished');
+  }, [filteredMatches]);
+
+  const lastResults = useMemo(() => {
+    return finishedMatches.slice(0, 5);
+  }, [finishedMatches]);
+
+  const upcomingMatches = useMemo(() => {
+    return filteredMatches
+      .filter(m => m.status === 'Scheduled')
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 5);
+  }, [filteredMatches]);
+
+  const suspendedMatches = useMemo(() => {
+    return filteredMatches.filter(m => m.status === 'Suspended');
+  }, [filteredMatches]);
 
   const points = useMemo(() => {
     if (!selectedCategory || !clubConfig) return 0;
     const teamName = clubConfig.name || 'Mi Equipo';
     const rules = disciplineConfig?.scoring_rules || { win: 3, draw: 1, loss: 0 };
 
-    return matches.reduce((acc, match) => {
+    return filteredMatches.reduce((acc, match) => {
       if (match.status !== 'Finished') return acc;
       const isHome = (match.hometeam || match.home_team) === teamName;
       const myScore = isHome ? (match.homescore ?? match.home_score ?? 0) : (match.awayscore ?? match.away_score ?? 0);
@@ -232,32 +291,30 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       if (myScore === rivalScore) return acc + rules.draw;
       return acc + rules.loss;
     }, 0);
-  }, [matches, selectedCategory, clubConfig, disciplineConfig]);
+  }, [filteredMatches, selectedCategory, clubConfig, disciplineConfig]);
 
   const visualStreak = useMemo(() => {
-    const finishedMatches = matches.filter(m => m.status === 'Finished');
     if (finishedMatches.length === 0 || !clubConfig) return [];
     const teamName = clubConfig.name || 'Mi Equipo';
     return finishedMatches.slice(0, 5).map(m => {
-      const isHome = m.hometeam === teamName;
-      const myScore = isHome ? (m.homescore || 0) : (m.awayscore || 0);
-      const rivalScore = isHome ? (m.awayscore || 0) : (m.homescore || 0);
+      const isHome = (m.hometeam || m.home_team) === teamName;
+      const myScore = isHome ? (m.homescore ?? m.home_score ?? 0) : (m.awayscore ?? m.away_score ?? 0);
+      const rivalScore = isHome ? (m.awayscore ?? m.away_score ?? 0) : (m.homescore ?? m.home_score ?? 0);
       
       if (myScore > rivalScore) return { result: 'G', color: 'bg-emerald-500' };
       if (myScore === rivalScore) return { result: 'E', color: 'bg-amber-500' };
       return { result: 'P', color: 'bg-red-500' };
     });
-  }, [matches, clubConfig]);
+  }, [finishedMatches, clubConfig]);
 
   const trend = useMemo(() => {
-    const finishedMatches = matches.filter(m => m.status === 'Finished');
     if (finishedMatches.length < 3 || !clubConfig) return 'neutral';
     const teamName = clubConfig.name || 'Mi Equipo';
     
     const getPoints = (m: Match) => {
-      const isHome = m.hometeam === teamName;
-      const myScore = isHome ? (m.homescore || 0) : (m.awayscore || 0);
-      const rivalScore = isHome ? (m.awayscore || 0) : (m.homescore || 0);
+      const isHome = (m.hometeam || m.home_team) === teamName;
+      const myScore = isHome ? (m.homescore ?? m.home_score ?? 0) : (m.awayscore ?? m.away_score ?? 0);
+      const rivalScore = isHome ? (m.awayscore ?? m.away_score ?? 0) : (m.homescore ?? m.home_score ?? 0);
       const rules = disciplineConfig?.scoring_rules || { win: 3, draw: 1, loss: 0 };
       
       if (myScore > rivalScore) return rules.win;
@@ -271,20 +328,19 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     if (last3 > prev3) return 'up';
     if (last3 < prev3) return 'down';
     return 'neutral';
-  }, [matches, clubConfig, disciplineConfig]);
+  }, [finishedMatches, clubConfig, disciplineConfig]);
 
   const goalsConceded = useMemo(() => {
     if (!selectedCategory || !clubConfig) return 0;
     const teamName = clubConfig.name || 'Mi Equipo';
 
-    return matches.reduce((acc, match) => {
+    return filteredMatches.reduce((acc, match) => {
       if (match.status !== 'Finished') return acc;
       const isHome = (match.hometeam || match.home_team) === teamName;
-      // If our team is home, goals conceded is away score; if our team is away, goals conceded is home score
       const conceded = isHome ? (match.awayscore ?? match.away_score ?? 0) : (match.homescore ?? match.home_score ?? 0);
       return acc + conceded;
     }, 0);
-  }, [matches, selectedCategory, clubConfig]);
+  }, [filteredMatches, selectedCategory, clubConfig]);
 
   const squadStats = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -292,18 +348,17 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     // Inicializar stats según config
     if (disciplineConfig) {
       disciplineConfig.dashboard_stats.forEach(s => stats[s] = 0);
-      // También inicializar las que vienen de eventos
       disciplineConfig.event_types.forEach(et => {
         if (et.statsKey) stats[et.statsKey] = 0;
       });
     }
 
-    // Solo contar eventos de partidos DISPUTADOS (status === 'Finished')
-    const finishedMatchIds = new Set(matches.filter(m => m.status === 'Finished').map(m => m.id));
+    // Solo contar eventos de partidos DISPUTADOS del torneo seleccionado (status === 'Finished')
+    const finishedMatchIds = new Set(filteredMatches.filter(m => m.status === 'Finished').map(m => m.id));
 
-    // Combinar eventos de playerEvents (por jugador) y de matches (por categoría)
+    // Combinar eventos de playerEvents (por jugador) y de matches (por categoría/torneo)
     const allEvents = [...playerEvents].filter(e => finishedMatchIds.has(e.match_id));
-    matches.forEach(m => {
+    filteredMatches.forEach(m => {
       if (m.status === 'Finished' && m.events) {
         m.events.forEach(e => {
           if (!allEvents.find(ae => ae.id === e.id)) {
@@ -333,12 +388,28 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       }
       return acc;
     }, stats);
-  }, [playerEvents, matches, disciplineConfig]);
+  }, [playerEvents, filteredMatches, disciplineConfig]);
+
+  const goalsFor = useMemo(() => {
+    if (!selectedCategory || !clubConfig) return squadStats.GOLES_TOTALES || 0;
+    const teamName = clubConfig.name || 'Mi Equipo';
+
+    const matchGoals = filteredMatches.reduce((acc, match) => {
+      if (match.status !== 'Finished') return acc;
+      const isHome = (match.hometeam || match.home_team) === teamName;
+      const scored = isHome ? (match.homescore ?? match.home_score ?? 0) : (match.awayscore ?? match.away_score ?? 0);
+      return acc + scored;
+    }, 0);
+
+    return Math.max(matchGoals, squadStats.GOLES_TOTALES || 0);
+  }, [filteredMatches, selectedCategory, clubConfig, squadStats]);
+
+  const goalDifference = useMemo(() => {
+    return goalsFor - goalsConceded;
+  }, [goalsFor, goalsConceded]);
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Selector de Plantel - ELIMINADO PORQUE YA ESTÁ EN EL PADRE */}
-      
       {!selectedCategory ? (
         <div className="py-32 text-center bg-surface-ground rounded-[3rem] border-4 border-dashed border-[var(--surface-border)]">
           <Users size={64} className="mx-auto text-[var(--text-muted)] mb-6 opacity-20" />
@@ -356,6 +427,83 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
         </div>
       ) : (
         <div className="space-y-8 animate-fade-in">
+          {/* Header de Filtro por Torneo */}
+          <div className="bg-surface-card border border-[var(--surface-border)] rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center shrink-0">
+                <Trophy size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                    Competición Seleccionada
+                  </span>
+                  {currentSelectedTournament ? (
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Torneo Activo
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                      Todos los Torneos
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-base md:text-lg font-black uppercase italic tracking-tight text-[var(--text-main)]">
+                  {currentSelectedTournament ? currentSelectedTournament.name : 'Estadísticas Globales de la División'}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full md:w-72">
+                <select
+                  value={selectedTournamentId || ''}
+                  onChange={(e) => setSelectedTournamentId(e.target.value || null)}
+                  className="w-full bg-surface-ground border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-xs font-bold text-[var(--text-main)] appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer pr-10"
+                >
+                  <option value="">🏆 Todos los Torneos ({matches.length} partidos)</option>
+                  {tournaments.map(t => {
+                    const tMatches = matches.filter(m => (m.tournamentid || (m as any).tournament_id || (m as any).tournament) === t.id);
+                    return (
+                      <option key={t.id} value={t.id}>
+                        {t.name.toUpperCase()} ({tMatches.length} part.)
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" size={16} />
+              </div>
+
+              {selectedTournamentId && (
+                <button
+                  onClick={() => setSelectedTournamentId(null)}
+                  title="Restablecer a todos los torneos"
+                  className="px-3 py-2.5 bg-surface-ground hover:bg-surface-hover border border-[var(--surface-border)] rounded-xl text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors whitespace-nowrap"
+                >
+                  Todos
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Aviso si el torneo no tiene partidos */}
+          {selectedTournamentId && filteredMatches.length === 0 && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle size={20} className="text-amber-500 shrink-0" />
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                  No hay partidos registrados en el torneo <span className="font-extrabold">{currentSelectedTournament?.name}</span> para esta categoría aún.
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedTournamentId(null)}
+                className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 underline hover:no-underline whitespace-nowrap"
+              >
+                Ver todos los partidos
+              </button>
+            </div>
+          )}
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {(!disciplineConfig || disciplineConfig.dashboard_stats.includes('PUNTOS_ACUMULADOS')) && (
@@ -370,7 +518,9 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                 <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">
                   {points} <span className="text-xs font-semibold text-[#888888] dark:text-[#BBBBBB] ml-1">PTS</span>
                 </h4>
-                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Consolidado en fixture</p>
+                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">
+                  {currentSelectedTournament ? currentSelectedTournament.name : 'Consolidado en fixture'}
+                </p>
               </div>
             )}
 
@@ -412,8 +562,10 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                   <ArrowUpRight size={14} className="text-slate-300 dark:text-[#AAAAAA]" />
                 </div>
                 <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest leading-none">Partidos Jugados</p>
-                <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{matches.filter(m => m.status === 'Finished').length}</h4>
-                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">Historial completado</p>
+                <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{finishedMatches.length}</h4>
+                <p className="text-[10px] text-[#888888] dark:text-[#BBBBBB] mt-1 font-medium">
+                  {currentSelectedTournament ? `En ${currentSelectedTournament.name}` : 'Historial completado'}
+                </p>
               </div>
             )}
 
@@ -439,130 +591,151 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
             </div>
           </div>
 
-          {/* Estadísticas Secundarias del Plantel (Goles a Favor, Goles en Contra, Tarjetas Amarillas y Rojas) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => {
-              const isGoal = et.name === 'GOL' || et.statsKey === 'GOLES_TOTALES';
-              return (
-                <React.Fragment key={et.id}>
-                  <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
-                        <Award size={24} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">{et.name}S TOTALES</p>
-                        <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats[et.statsKey] || 0}</h4>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setShowStatsType(et.name === 'GOL' ? 'Goles' : et.name.includes('AMARILLA') ? 'Amarillas' : 'Rojas')}
-                      className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-
-                  {/* Card específica de GOLES EN CONTRA inmediatamente al lado de Goles Totales */}
-                  {isGoal && (
-                    <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all hover:border-rose-500/30">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
-                          <ShieldX size={24} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles en Contra</p>
-                          <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsConceded}</h4>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => setShowStatsType('Goles en Contra')}
-                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
-            
-            {!disciplineConfig && (
-              <>
-                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-primary-500/30" onClick={() => setShowStatsType('Goles')}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0 shadow-inner">
-                      <Award size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles Totales</p>
-                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.GOLES_TOTALES || 0}</h4>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles'); }}
-                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+          {/* Estadísticas Secundarias del Plantel (Goles a Favor, Goles en Contra, Diferencia de Goles, Tarjetas) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
+            {/* 1. GOLES A FAVOR (Con detalle del jugador) */}
+            <div 
+              onClick={() => setShowStatsType('Goles a Favor')}
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-emerald-500/30"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                  <Award size={24} />
                 </div>
-
-                {/* Card de Goles en Contra en fallback sin config */}
-                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-rose-500/30" onClick={() => setShowStatsType('Goles en Contra')}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
-                      <ShieldX size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles en Contra</p>
-                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsConceded}</h4>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles en Contra'); }}
-                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles a Favor</p>
+                  <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsFor}</h4>
+                  <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-tight flex items-center gap-1 mt-0.5">
+                    Detalle por jugador
+                  </span>
                 </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles a Favor'); }}
+                title="Ver goleadores por jugador"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-emerald-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
 
-                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-amber-500/30" onClick={() => setShowStatsType('Amarillas')}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0 shadow-inner">
-                      <ShieldAlert size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Amarillas</p>
-                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Amarillas'); }}
-                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+            {/* 2. GOLES EN CONTRA */}
+            <div 
+              onClick={() => setShowStatsType('Goles en Contra')}
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-rose-500/30"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                  <ShieldX size={24} />
                 </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles en Contra</p>
+                  <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsConceded}</h4>
+                  <span className="text-[8px] font-bold text-rose-500 uppercase tracking-tight flex items-center gap-1 mt-0.5">
+                    Ver partidos
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles en Contra'); }}
+                title="Ver goles recibidos"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
 
-                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-red-500/30" onClick={() => setShowStatsType('Rojas')}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0 shadow-inner">
-                      <ShieldAlert size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Rojas</p>
-                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_ROJAS || 0}</h4>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Rojas'); }}
-                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+            {/* 3. DIFERENCIA DE GOLES */}
+            <div 
+              onClick={() => setShowStatsType('Diferencia de Goles')}
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-blue-500/30"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform ${
+                  goalDifference > 0 
+                    ? 'bg-emerald-500/10 text-emerald-500' 
+                    : goalDifference < 0 
+                    ? 'bg-rose-500/10 text-rose-500' 
+                    : 'bg-slate-500/10 text-slate-400'
+                }`}>
+                  <Activity size={24} />
                 </div>
-              </>
-            )}
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Diferencia de Goles</p>
+                  <h4 className={`text-2xl font-black mt-1.5 ${
+                    goalDifference > 0 
+                      ? 'text-emerald-500' 
+                      : goalDifference < 0 
+                      ? 'text-rose-500' 
+                      : 'text-[#333333] dark:text-[#E0E0E0]'
+                  }`}>
+                    {goalDifference > 0 ? `+${goalDifference}` : goalDifference}
+                  </h4>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tight flex items-center gap-1 mt-0.5">
+                    GF: {goalsFor} | GC: {goalsConceded}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowStatsType('Diferencia de Goles'); }}
+                title="Ver balance de goles"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-blue-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* 4. TARJETAS AMARILLAS */}
+            <div 
+              onClick={() => setShowStatsType('Amarillas')}
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-amber-500/30"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                  <ShieldAlert size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Amarillas</p>
+                  <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
+                  <span className="text-[8px] font-bold text-amber-500 uppercase tracking-tight flex items-center gap-1 mt-0.5">
+                    Ver amonestados
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowStatsType('Amarillas'); }}
+                title="Ver amonestados"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* 5. TARJETAS ROJAS */}
+            <div 
+              onClick={() => setShowStatsType('Rojas')}
+              className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-red-500/30"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                  <ShieldAlert size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Tarjetas Rojas</p>
+                  <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_ROJAS || 0}</h4>
+                  <span className="text-[8px] font-bold text-red-500 uppercase tracking-tight flex items-center gap-1 mt-0.5">
+                    Ver expulsados
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowStatsType('Rojas'); }}
+                title="Ver expulsados"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Match History & Upcoming Matches */}
@@ -575,7 +748,9 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                     <History size={16} md:size={18} className="text-primary-500" />
                     Últimos 5 Resultados
                   </h3>
-                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Historial de encuentros disputados</p>
+                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">
+                    {currentSelectedTournament ? `Partidos en ${currentSelectedTournament.name}` : 'Historial de encuentros disputados'}
+                  </p>
                 </div>
               </div>
               
@@ -599,32 +774,44 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                         className="group flex items-center justify-between p-4 md:p-6 bg-surface-ground rounded-2xl md:rounded-3xl border border-[var(--surface-border)] hover:border-primary-500/30 transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-3 md:gap-4">
-                          <div className={`w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black italic shadow-lg shrink-0 text-xs md:text-base ${isWin ? 'bg-emerald-500' : isDraw ? 'bg-amber-500' : 'bg-red-500'}`}>
+                          <div className={`w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-[10px] md:text-xs text-white shrink-0 ${isWin ? 'bg-emerald-500' : isDraw ? 'bg-amber-500' : 'bg-red-500'}`}>
                             {isWin ? 'G' : isDraw ? 'E' : 'P'}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase truncate max-w-[80px] sm:max-w-[120px]">{rival}</p>
-                            <p className="text-[7px] md:text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{m.date}</p>
+                            <h4 className="text-xs md:text-sm font-black text-[var(--text-main)] uppercase truncate">vs {rival}</h4>
+                            <p className="text-[8px] md:text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5 md:gap-2 mt-0.5">
+                              <Calendar size={10} md:size={12} />
+                              {new Date(m.date).toLocaleDateString()}
+                              <span className="opacity-30">•</span>
+                              {isHome ? 'Local' : 'Visitante'}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 md:gap-6 shrink-0">
-                          <div className="text-sm md:text-xl font-black italic text-[var(--text-main)]">
-                            {m.homescore} - {m.awayscore}
+
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <div className="text-right">
+                            <span className="text-sm md:text-lg font-black text-[var(--text-main)] tracking-tight">
+                              {myScore} - {rivalScore}
+                            </span>
                           </div>
-                          <ChevronRight size={14} md:size={16} className="text-[var(--text-muted)] group-hover:text-primary-500 transition-colors" />
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-surface-card flex items-center justify-center text-[var(--text-muted)] group-hover:text-primary-500 transition-colors">
+                            <ChevronRight size={14} md:size={16} />
+                          </div>
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="py-12 text-center border-2 border-dashed border-[var(--surface-border)] rounded-3xl">
-                    <p className="text-[10px] font-black uppercase text-[var(--text-muted)] opacity-30 tracking-widest">Sin resultados registrados</p>
+                  <div className="py-12 text-center border-2 border-dashed border-[var(--surface-border)] rounded-2xl md:rounded-3xl">
+                    <p className="text-[10px] md:text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">
+                      {currentSelectedTournament ? 'No hay partidos disputados en este torneo' : 'No hay partidos finalizados'}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* PRÓXIMOS PARTIDOS */}
+            {/* PRÓXIMOS ENCUENTROS */}
             <div className="bg-surface-card p-6 md:p-10 rounded-3xl md:rounded-[3.5rem] shadow-sm border border-[var(--surface-border)]">
               <div className="flex justify-between items-center mb-6 md:mb-8">
                 <div>
@@ -632,13 +819,15 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                     <Timer size={16} md:size={18} className="text-primary-500" />
                     Próximos Partidos
                   </h3>
-                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Agenda de competiciones</p>
+                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">
+                    {currentSelectedTournament ? `Fixture de ${currentSelectedTournament.name}` : 'Calendario de partidos programados'}
+                  </p>
                 </div>
               </div>
-              
+
               <div className="space-y-3 md:space-y-4">
                 {isLoadingLists ? (
-                  Array(3).fill(0).map((_, i) => <MatchSkeleton key={i} />)
+                  Array(5).fill(0).map((_, i) => <MatchSkeleton key={i} />)
                 ) : upcomingMatches.length > 0 ? (
                   upcomingMatches.map((m) => {
                     const teamName = clubConfig.name || 'Mi Equipo';
@@ -647,38 +836,42 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
                     return (
                       <div 
-                        key={m.id} 
+                        key={m.id}
                         onClick={() => setSelectedMatch(m)}
                         className="group flex items-center justify-between p-4 md:p-6 bg-surface-ground rounded-2xl md:rounded-3xl border border-[var(--surface-border)] hover:border-primary-500/30 transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-3 md:gap-4">
-                          <div className="w-9 h-9 md:w-12 md:h-12 bg-primary-500/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary-500 shrink-0">
-                            <Calendar size={18} md:size={24} />
+                          <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-[10px] md:text-xs shrink-0">
+                            <Calendar size={16} md:size={20} />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase truncate max-w-[70px] sm:max-w-[120px]">{rival}</p>
-                              {m.original_match_id && (
-                                <span className="bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded text-[5px] md:text-[7px] font-black uppercase tracking-widest border border-blue-500/20 shrink-0">
-                                  Reprog.
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[7px] md:text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{m.date}</p>
+                            <h4 className="text-xs md:text-sm font-black text-[var(--text-main)] uppercase truncate">vs {rival}</h4>
+                            <p className="text-[8px] md:text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5 md:gap-2 mt-0.5">
+                              <span>{new Date(m.date).toLocaleDateString()}</span>
+                              <span className="opacity-30">•</span>
+                              <span>{m.time || 'Horario a confirmar'}</span>
+                              <span className="opacity-30">•</span>
+                              <span className="text-primary-500 font-extrabold">{isHome ? 'Local' : 'Visitante'}</span>
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 md:gap-6 shrink-0">
-                          <span className={`px-2 md:px-4 py-1 rounded-full text-[6px] md:text-[8px] font-black uppercase tracking-widest ${isHome ? 'bg-blue-500/10 text-blue-500' : 'bg-surface-hover text-[var(--text-muted)]'}`}>
-                            {isHome ? 'Local' : 'Visit.'}
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest px-2.5 py-1 md:px-3 md:py-1.5 bg-surface-card rounded-lg md:rounded-xl text-[var(--text-muted)] border border-[var(--surface-border)]">
+                            Programado
                           </span>
-                          <ChevronRight size={12} md:size={16} className="text-[var(--text-muted)] group-hover:text-primary-500 transition-colors" />
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-surface-card flex items-center justify-center text-[var(--text-muted)] group-hover:text-primary-500 transition-colors">
+                            <ChevronRight size={14} md:size={16} />
+                          </div>
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="py-12 text-center border-2 border-dashed border-[var(--surface-border)] rounded-3xl">
-                    <p className="text-[10px] font-black uppercase text-[var(--text-muted)] opacity-30 tracking-widest">Sin partidos programados</p>
+                  <div className="py-12 text-center border-2 border-dashed border-[var(--surface-border)] rounded-2xl md:rounded-3xl">
+                    <p className="text-[10px] md:text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">
+                      {currentSelectedTournament ? 'No hay partidos próximos para este torneo' : 'No hay partidos programados'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -687,67 +880,58 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
 
           {/* PARTIDOS SUSPENDIDOS / REPROGRAMADOS */}
           {suspendedMatches.length > 0 && (
-            <div className="bg-surface-card p-6 md:p-10 rounded-3xl md:rounded-[3.5rem] shadow-sm border border-[var(--surface-border)]">
+            <div className="bg-surface-card p-6 md:p-10 rounded-3xl md:rounded-[3.5rem] shadow-sm border border-[var(--surface-border)] border-amber-500/30">
               <div className="flex justify-between items-center mb-6 md:mb-8">
                 <div>
                   <h3 className="text-xs md:text-sm font-black text-[var(--text-main)] uppercase tracking-widest flex items-center gap-2 md:gap-3">
-                    <AlertTriangle size={16} md:size={18} className="text-orange-500" />
-                    Partidos Suspendidos / Reprogramados
+                    <AlertTriangle size={16} md:size={18} className="text-amber-500" />
+                    Partidos Suspendidos / Postergados
                   </h3>
-                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Gestión de incidencias en el fixture</p>
+                  <p className="text-[7px] md:text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">
+                    Atención técnica requerida para reprogramación
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {suspendedMatches.map((m) => {
                   const teamName = clubConfig.name || 'Mi Equipo';
                   const isHome = m.hometeam === teamName;
                   const rival = isHome ? m.awayteam : m.hometeam;
-                  // A match is "rescheduled" if there exists another match referencing this one as original
                   const newMatch = matches.find(nm => nm.original_match_id === m.id);
-                  const isRescheduled = !!newMatch;
 
                   return (
                     <div 
-                      key={m.id} 
-                      className="bg-surface-ground p-4 md:p-6 rounded-2xl md:rounded-3xl border border-[var(--surface-border)] relative overflow-hidden group"
+                      key={m.id}
+                      onClick={() => setSelectedMatch(m)}
+                      className="p-5 bg-amber-500/5 rounded-2xl border border-amber-500/20 flex items-center justify-between group hover:border-amber-500/50 transition-all cursor-pointer"
                     >
-                      <div className={`absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 ${isRescheduled ? 'bg-blue-500/5' : 'bg-orange-500/5'} rounded-bl-full`}></div>
-                      
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={`w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center ${isRescheduled ? 'bg-blue-500/10 text-blue-500' : 'bg-orange-500/10 text-orange-500'} shrink-0`}>
-                          {isRescheduled ? <RefreshCw size={18} md:size={20} /> : <AlertTriangle size={18} md:size={20} />}
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-black shrink-0">
+                          <AlertTriangle size={20} />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
-                             {isRescheduled ? 'Reprogramado' : 'Suspendido'}
-                          </p>
-                          <p className="text-[10px] md:text-xs font-black text-[var(--text-main)] uppercase truncate">{rival}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 md:space-y-3">
-                        <div className="flex justify-between items-center text-[9px] md:text-[10px] bg-surface-card p-2 md:p-3 rounded-xl md:rounded-2xl border border-[var(--surface-border)]">
-                          <span className="text-[var(--text-muted)] font-bold uppercase tracking-wider italic">Original:</span>
-                          <span className="text-[var(--text-main)] font-black">{m.original_date || m.date}</span>
-                        </div>
-
-                        {newMatch && (
-                          <div className="flex justify-between items-center text-[9px] md:text-[10px] bg-blue-500/10 p-2 md:p-3 rounded-xl md:rounded-2xl border border-blue-500/20">
-                            <span className="text-blue-500 font-bold uppercase tracking-wider italic">Nueva Fecha:</span>
-                            <span className="text-blue-600 dark:text-blue-400 font-black">{newMatch.date}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black text-[var(--text-main)] uppercase truncate">vs {rival}</h4>
+                            <span className="px-2 py-0.5 rounded text-[7px] font-black uppercase bg-amber-500 text-white">
+                              Suspendido
+                            </span>
                           </div>
-                        )}
-
-                        <div className="flex justify-between items-center text-[9px] md:text-[10px] pt-1 md:pt-2">
-                           <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-md md:rounded-lg font-black uppercase tracking-widest ${isHome ? 'bg-surface-hover text-[var(--text-muted)]' : 'bg-[var(--secondary-600)] text-white shadow-sm'}`}>
-                             {isHome ? 'L' : 'V'}
-                           </span>
-                           {!isRescheduled && (
-                             <span className="text-orange-500 font-black uppercase text-[7px] md:text-[8px] animate-pulse italic">Pendiente de Fecha</span>
-                           )}
+                          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-1">
+                            Fecha original: {new Date(m.date).toLocaleDateString()}
+                          </p>
+                          {newMatch ? (
+                            <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mt-1 flex items-center gap-1">
+                              <RefreshCw size={10} /> Reprogramado: {new Date(newMatch.date).toLocaleDateString()} {newMatch.time || ''}
+                            </p>
+                          ) : (
+                            <p className="text-[8px] font-bold text-red-400 uppercase tracking-widest mt-1">
+                              Pendiente de reprogramar
+                            </p>
+                          )}
                         </div>
                       </div>
+                      <ChevronRight size={16} className="text-[var(--text-muted)] group-hover:text-amber-500 transition-colors" />
                     </div>
                   );
                 })}
@@ -756,6 +940,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
           )}
         </div>
       )}
+
       {/* Modales */}
       {selectedMatch && (
         <MatchDetailModal 
@@ -767,8 +952,10 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
       {showStatsType && (
         <StatsDetailModal 
           type={showStatsType} 
-          matches={matches} 
+          matches={filteredMatches} 
           teamName={clubConfig?.name || 'Mi Equipo'}
+          goalsFor={goalsFor}
+          goalsConceded={goalsConceded}
           onClose={() => setShowStatsType(null)} 
         />
       )}

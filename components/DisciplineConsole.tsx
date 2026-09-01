@@ -6,6 +6,7 @@ import {
   Activity, Trophy, 
   ChevronUp, ChevronDown
 } from 'lucide-react';
+import { useCategory } from '../context/useCategory';
 import PlantelDashboard from './PlantelDashboard';
 import Asistencia from './Asistencia';
 import MedicalDashboard from './MedicalDashboard';
@@ -22,11 +23,20 @@ interface DisciplineConsoleProps {
 }
 
 const DisciplineConsole: React.FC<DisciplineConsoleProps> = ({ discipline, clubConfig, members, onBack }) => {
+  const { setSelectedDiscipline, setSelectedGender: setContextGender, setSelectedDivision: setContextDivision } = useCategory();
   const [activeSubTab, setActiveSubTab] = useState<'summary' | 'players' | 'attendance' | 'medical' | 'fixture'>('summary');
   const [selectedGender, setSelectedGender] = useState<'Masculino' | 'Femenino'>('Masculino');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(true);
+
+  useEffect(() => {
+    setSelectedDiscipline(discipline.id);
+    setContextGender(selectedGender);
+    if (selectedCategoryId) {
+      setContextDivision(selectedCategoryId);
+    }
+  }, [discipline.id, selectedGender, selectedCategoryId, setSelectedDiscipline, setContextGender, setContextDivision]);
 
   const activeBranch = useMemo(() => 
     discipline.branches.find(b => b.gender === selectedGender && b.enabled),

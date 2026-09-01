@@ -58,12 +58,19 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [mobileLineupTab, setMobileLineupTab] = useState<'titulares' | 'suplentes'>('titulares');
 
+  const matchId = match.id;
+  const matchHome = match.hometeam;
+  const matchAway = match.awayteam;
+  const matchDate = match.date;
+  const matchLoc = (match as any).location || '';
+  const matchAddr = (match as any).address || '';
+
   useEffect(() => {
     const loadSquadAndDebts = async () => {
       setIsLoading(true);
       try {
         // Cargar convocatoria existente
-        const existingSquad = await getMatchSquad(match.id);
+        const existingSquad = await getMatchSquad(matchId);
         
         // Cargar club config
         const { data: configData } = await db.config.get();
@@ -76,8 +83,8 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
 
         // Cargar rival para obtener la ubicación por defecto y logo del rival
         const { data: rivalsData } = await supabase.from('rivals').select('*');
-        const matchRival = rivalsData?.find(r => r.name === match.hometeam || r.name === match.awayteam);
-        const defaultLocation = matchRival?.address_url || '';
+        const matchRival = rivalsData?.find(r => r.name === matchHome || r.name === matchAway);
+        const defaultLocation = matchRival?.address_url || matchLoc || matchAddr || (match as any).venue || '';
         if (matchRival && matchRival.logo_url) {
           setRivalLogo(matchRival.logo_url);
         }
@@ -98,7 +105,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         }
 
         // Cargar asistencias de la última semana antes del partido
-        const matchDateStr = match.date ? match.date.split('T')[0] : new Date().toISOString().split('T')[0];
+        const matchDateStr = matchDate ? matchDate.split('T')[0] : new Date().toISOString().split('T')[0];
         const targetDate = new Date(matchDateStr + 'T00:00:00');
         const weekAgo = new Date(targetDate);
         weekAgo.setDate(weekAgo.getDate() - 7);
@@ -168,7 +175,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
     };
 
     loadSquadAndDebts();
-  }, [match.id, match.hometeam, match.awayteam, match.date, players]);
+  }, [matchId, matchHome, matchAway, matchDate, matchLoc, matchAddr, players]);
 
   const toggleSelected = (playerId: string) => {
     setSelection(prev => {
@@ -341,7 +348,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         rivalLogo,
         discipline,
         appointmentTime,
-        location,
+        location: location || (match as any).location || (match as any).address || '',
         notes,
         selectedPlayers,
         startersMap
@@ -398,7 +405,7 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
         rivalLogo,
         discipline,
         appointmentTime,
-        location,
+        location: location || (match as any).location || (match as any).address || '',
         notes,
         selectedPlayers,
         startersMap
@@ -1365,14 +1372,14 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                 </button>
               </div>
 
-              {/* Main Sharing & Saving Actions in 1 single horizontal row on computer */}
+              {/* Main Sharing & Saving Actions (On mobile only Confirmar Titulares is shown) */}
               <div className="flex flex-col sm:flex-row md:flex-nowrap items-stretch sm:items-center gap-2 md:gap-2.5 order-1 md:order-2">
-                {/* WhatsApp button */}
+                {/* WhatsApp button - Desktop only */}
                 <button
                   type="button"
                   disabled={isGeneratingPdf}
                   onClick={handleShareWhatsApp}
-                  className="min-h-[44px] px-3.5 md:px-4 py-2.5 bg-[#25D366] hover:bg-[#1EBE5D] disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md shrink-0 whitespace-nowrap"
+                  className="hidden md:flex min-h-[44px] px-3.5 md:px-4 py-2.5 bg-[#25D366] hover:bg-[#1EBE5D] disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase tracking-widest items-center justify-center gap-1.5 transition-all shadow-md shrink-0 whitespace-nowrap"
                   title="Compartir por WhatsApp adjuntando el archivo PDF"
                 >
                   {isGeneratingPdf ? (
@@ -1388,34 +1395,34 @@ const ConvocatoriaModal: React.FC<ConvocatoriaModalProps> = ({
                   )}
                 </button>
 
-                {/* PDF download */}
+                {/* PDF download - Desktop only */}
                 <button
                   type="button"
                   disabled={isGeneratingPdf}
                   onClick={handleExportPDF}
-                  className="min-h-[44px] px-3.5 md:px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap"
+                  className="hidden md:flex min-h-[44px] px-3.5 md:px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest items-center justify-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap"
                 >
                   <FileText size={15} />
                   <span>Descargar PDF</span>
                 </button>
 
-                {/* Save only */}
+                {/* Save only - Desktop only */}
                 <button 
                   type="button"
                   disabled={isSaving}
                   onClick={() => handleFinalize(false)}
-                  className="min-h-[44px] px-3.5 md:px-4 py-2.5 border border-[var(--surface-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50 shrink-0 whitespace-nowrap"
+                  className="hidden md:flex min-h-[44px] px-3.5 md:px-4 py-2.5 border border-[var(--surface-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50 shrink-0 whitespace-nowrap"
                 >
                   <Check size={15} className="text-emerald-500" />
                   <span>Guardar Equipo</span>
                 </button>
 
-                {/* Confirm and open statistics */}
+                {/* Confirm and open statistics - Always visible (Full width on mobile) */}
                 <button 
                   type="button"
                   disabled={isSaving}
                   onClick={() => handleFinalize(true)}
-                  className="min-h-[44px] px-4 md:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 italic shrink-0 whitespace-nowrap"
+                  className="w-full md:w-auto min-h-[44px] px-4 md:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 italic shrink-0 whitespace-nowrap"
                 >
                   {isSaving ? (
                     <>

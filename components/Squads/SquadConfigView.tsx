@@ -335,12 +335,12 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
                       onChange={(e) => setSelectedTournamentId(e.target.value || null)}
                       className={`w-full bg-surface-ground border border-[var(--surface-border)] rounded-xl px-4 py-4 text-[var(--text-main)] font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer ${(!selectedDivision || filteredTournaments.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="" disabled={filteredTournaments.length > 0}>
+                      <option value="">
                         {!selectedDivision 
                           ? 'SELECCIONE CATEGORÍA PRIMERO' 
                           : filteredTournaments.length === 0 
                             ? 'SIN TORNEOS PARA ESTA CATEGORÍA' 
-                            : 'SELECCIONAR TORNEO'}
+                            : 'TODOS LOS TORNEOS'}
                       </option>
                       {filteredTournaments.map(t => (
                         <option key={t.id} value={t.id}>

@@ -14,7 +14,9 @@ export const updateAppFaviconAndTitle = (logoUrl?: string | null, clubName?: str
     if (clubName && clubName.trim().length > 0) {
       localStorage.setItem('club_manager_custom_name', clubName);
     }
-  } catch (e) {}
+  } catch {
+    // Silently ignore storage quota/security errors
+  }
 
   // 2. Función para aplicar el favicon en el DOM reemplazando los nodos viejos (fuerza a Chrome a refrescar)
   const applyFaviconHref = (href: string) => {
@@ -61,14 +63,18 @@ export const updateAppFaviconAndTitle = (logoUrl?: string | null, clubName?: str
             applyFaviconHref(dataUrl);
             try {
               localStorage.setItem('club_manager_custom_logo', dataUrl);
-            } catch (e) {}
+            } catch {
+              // Silently ignore
+            }
           }
-        } catch (canvasErr) {
+        } catch {
           // Si hay restricción CORS de canvas, se mantiene el targetLogo original ya aplicado
         }
       };
       img.src = targetLogo;
-    } catch (e) {}
+    } catch {
+      // Silently ignore
+    }
   } else {
     applyFaviconHref(targetLogo);
   }

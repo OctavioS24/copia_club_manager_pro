@@ -122,9 +122,18 @@ export const generateConvocatoriaHtml = (data: ConvocatoriaPdfData, isForPrintWi
     renderSection('Otros Convocados', otros)
   ].join('');
 
-  const isLocationUrl = location && (location.startsWith('http://') || location.startsWith('https://') || location.includes('maps.google') || location.includes('maps.app'));
-  const locationDisplayText = isLocationUrl ? 'Ver en Google Maps 📍' : (location || 'A CONFIRMAR');
-  const locationUrl = isLocationUrl ? location : (location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}` : '');
+  const rawLoc = (location || match.location || (match as any).address || (match as any).venue || '').trim();
+  const hasValidLocation = rawLoc.length > 0 && rawLoc.toUpperCase() !== 'A CONFIRMAR';
+  const isDirectUrl = hasValidLocation && (rawLoc.startsWith('http://') || rawLoc.startsWith('https://') || rawLoc.startsWith('www.') || rawLoc.includes('maps.google') || rawLoc.includes('maps.app'));
+  const locationUrl = hasValidLocation 
+    ? (isDirectUrl 
+        ? (rawLoc.startsWith('www.') ? `https://${rawLoc}` : rawLoc)
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawLoc)}`
+      )
+    : '';
+  const locationDisplayText = hasValidLocation 
+    ? (isDirectUrl ? 'Ver en Google Maps 📍' : `${rawLoc} 📍`)
+    : 'A CONFIRMAR';
 
   const localInitial = match.hometeam ? match.hometeam.substring(0, 2).toUpperCase() : 'L';
   const visitorInitial = match.awayteam ? match.awayteam.substring(0, 2).toUpperCase() : 'V';
@@ -377,16 +386,22 @@ export const generateConvocatoriaHtml = (data: ConvocatoriaPdfData, isForPrintWi
         }
 
         .detail-link {
-          color: #059669;
-          text-decoration: none;
+          color: #0284c7;
+          text-decoration: underline;
           font-weight: 800;
           line-height: 16px;
           display: inline-block;
+          word-break: break-word;
         }
         
         .detail-item.citation-item {
           background-color: #ecfdf5;
           border: 1px solid #a7f3d0;
+        }
+
+        .detail-item.location-item {
+          background-color: #f0f9ff;
+          border: 1px solid #bae6fd;
         }
 
         .detail-value.citation {
@@ -627,10 +642,10 @@ export const generateConvocatoriaHtml = (data: ConvocatoriaPdfData, isForPrintWi
             <span class="detail-label" style="color: #059669;">Citación DT</span>
             <span class="detail-value citation">${formattedAppointment}</span>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Ubicación / Cancha</span>
-            <span class="detail-value" title="${location || 'A CONFIRMAR'}">
-              ${isLocationUrl && locationUrl ? `<a href="${locationUrl}" target="_blank" class="detail-link">${locationDisplayText}</a>` : locationDisplayText}
+          <div class="detail-item location-item" id="pdf-location-container">
+            <span class="detail-label" style="color: #0284c7;">Ubicación / Cancha 📍</span>
+            <span class="detail-value" id="pdf-location-val" title="${rawLoc || 'A CONFIRMAR'}">
+              ${locationUrl ? `<a href="${locationUrl}" target="_blank" class="detail-link" id="pdf-location-link">${locationDisplayText}</a>` : locationDisplayText}
             </span>
           </div>
         </div>
@@ -755,6 +770,64 @@ export const generateConvocatoriaPdfBlob = async (data: ConvocatoriaPdfData): Pr
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', margin, position, printableWidth, imgHeight);
         heightLeft -= printableHeight;
+      }
+    }
+
+    // Add real interactive PDF link for location if specified
+    const rawLoc = (data.location || data.match.location || (data.match as any).address || (data.match as any).venue || '').trim();
+    if (rawLoc && rawLoc.toUpperCase() !== 'A CONFIRMAR') {
+      const isDirectUrl = rawLoc.startsWith('http://') || rawLoc.startsWith('https://') || rawLoc.startsWith('www.') || rawLoc.includes('maps.google') || rawLoc.includes('maps.app');
+      const targetUrl = isDirectUrl
+        ? (rawLoc.startsWith('www.') ? `https://${rawLoc}` : rawLoc)
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawLoc)}`;
+
+      const locContainer = iframeDoc.getElementById('pdf-location-container');
+      const locLink = iframeDoc.getElementById('pdf-location-link');
+      const targetElementForLoc = locContainer || locLink;
+
+      if (targetElementForLoc && targetUrl) {
+        try {
+          const bodyRect = targetElement.getBoundingClientRect();
+          const targetRect = targetElementForLoc.getBoundingClientRect();
+          const linkRect = locLink ? locLink.getBoundingClientRect() : targetRect;
+
+          const bodyWidth = targetElement.scrollWidth || targetElement.offsetWidth || 794;
+          const bodyHeight = targetElement.scrollHeight || targetElement.offsetHeight || 1123;
+
+          const scaleX = printableWidth / bodyWidth;
+          const scaleY = imgHeight / bodyHeight;
+
+          // Calculate offset relative to body
+          const relLeft = targetRect.left - bodyRect.left;
+          const relTop = targetRect.top - bodyRect.top;
+
+          // Expand hitbox with generous margin/radius (in mm) so the whole card and its surroundings are easily clickable
+          const padX = 2.5;
+          const padY = 2.5;
+
+          const linkX = Math.max(margin, margin + (relLeft * scaleX) - padX);
+          const linkY = Math.max(margin, margin + (relTop * scaleY) - padY);
+          const linkW = Math.max(targetRect.width * scaleX + (padX * 2), 35);
+          const linkH = Math.max(targetRect.height * scaleY + (padY * 2), 18);
+
+          // Add interactive link annotation in jsPDF on page 1
+          pdf.setPage(1);
+          // Set primary enlarged clickable hotspot covering the entire location card + extra hit radius
+          pdf.link(linkX, linkY, linkW, linkH, { url: targetUrl });
+
+          // Also set text-level clickable hotspot if present
+          if (locLink) {
+            const textRelLeft = linkRect.left - bodyRect.left;
+            const textRelTop = linkRect.top - bodyRect.top;
+            const textLinkX = margin + (textRelLeft * scaleX) - 1.5;
+            const textLinkY = margin + (textRelTop * scaleY) - 1.5;
+            const textLinkW = Math.max(linkRect.width * scaleX + 3, 20);
+            const textLinkH = Math.max(linkRect.height * scaleY + 3, 10);
+            pdf.link(textLinkX, textLinkY, textLinkW, textLinkH, { url: targetUrl });
+          }
+        } catch (linkErr) {
+          console.warn('Could not add PDF hyperlink annotation:', linkErr);
+        }
       }
     }
 

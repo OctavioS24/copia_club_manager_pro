@@ -138,7 +138,7 @@ export const PublicConvocatoriaView: React.FC = () => {
         clubInfo,
         discipline: match.discipline,
         appointmentTime: squad?.appointment_time,
-        location: squad?.location,
+        location: squad?.location || (match as any).location || (match as any).address || '',
         notes: squad?.notes,
         selectedPlayers: players,
         startersMap
@@ -174,7 +174,7 @@ export const PublicConvocatoriaView: React.FC = () => {
         clubInfo,
         discipline: match.discipline,
         appointmentTime: squad?.appointment_time,
-        location: squad?.location,
+        location: squad?.location || (match as any).location || (match as any).address || '',
         notes: squad?.notes,
         selectedPlayers: players,
         startersMap
