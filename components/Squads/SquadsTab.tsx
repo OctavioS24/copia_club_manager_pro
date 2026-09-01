@@ -2,11 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Match, Member, Tournament } from '../../types';
 import { db, supabase } from '../../lib/supabase';
 import { useCategory } from '../../context/useCategory';
-import { Calendar, Search, Loader2, CheckCircle2, AlertCircle, ChevronRight, ExternalLink, Trophy } from 'lucide-react';
+import { Calendar, Search, Loader2, CheckCircle2, AlertCircle, ChevronRight, ExternalLink, Trophy, Plus, Users, Star } from 'lucide-react';
 import ConvocatoriaModal from '../Torneos/ConvocatoriaModal';
 import { getPlayersByCategory } from '../../lib/playerUtils';
 
-const SquadsTab: React.FC = () => {
+interface SquadsTabProps {
+  onNavigateToFixture?: (matchId?: string) => void;
+}
+
+const SquadsTab: React.FC<SquadsTabProps> = ({ onNavigateToFixture }) => {
   const { selectedDiscipline, selectedDivision, selectedGender, selectedTournamentId } = useCategory();
   
   // States
@@ -82,7 +86,7 @@ const SquadsTab: React.FC = () => {
         // Fetch matches for this category/discipline/gender and SELECTED local tournament
         const { data: matchesData, error: matchesError } = await supabase
           .from('matches')
-          .select('*, squad:match_squads(id, appointment_time, location)')
+          .select('*, squad:match_squads(id, appointment_time, location, players:match_squad_players(*))')
           .eq('categoryid', selectedDivision)
           .eq('tournamentid', localTournamentId)
           .order('date', { ascending: true });
@@ -125,7 +129,7 @@ const SquadsTab: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedDivision, selectedDiscipline, localTournamentId, refreshTrigger]);
+  }, [selectedDivision, selectedDiscipline, selectedGender, localTournamentId, refreshTrigger]);
 
   const filteredMatches = useMemo(() => {
     return matches.filter(m => {
@@ -162,20 +166,42 @@ const SquadsTab: React.FC = () => {
     };
   }, [filteredMatches]);
 
+  const handleGoToFixture = (matchId: string) => {
+    if (onNavigateToFixture) {
+      onNavigateToFixture(matchId);
+    } else {
+      localStorage.setItem('open_fixture_match_id', matchId);
+      localStorage.setItem('squad_active_tab', 'fixture');
+      window.location.reload();
+    }
+  };
+
   const renderMatchCard = (m: Match, isUpcoming: boolean) => {
-    const hasSquad = (m as any).squad && (m as any).squad.length > 0;
+    const matchSquad = Array.isArray((m as any).squad) ? (m as any).squad[0] : (m as any).squad;
+    const hasSquad = !!matchSquad;
+    const squadPlayers = matchSquad?.players || [];
+    const hasStarters = squadPlayers.some((p: any) => p.is_starting);
     const isFinished = m.status === 'Finished';
     
     return (
       <div 
         key={m.id}
-        onClick={() => { setSelectedMatch(m); setShowSquadModal(true); }}
+        onClick={() => { 
+          if (hasStarters) {
+            handleGoToFixture(m.id);
+          } else {
+            setSelectedMatch(m); 
+            setShowSquadModal(true); 
+          }
+        }}
         className={`group relative bg-surface-card p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer overflow-hidden shadow-sm ${
           isUpcoming 
             ? 'border-amber-500/80 bg-amber-500/[0.02] hover:bg-amber-500/[0.04] shadow-xl shadow-amber-500/5 scale-[1.01]'
-            : hasSquad 
-              ? 'border-green-500/20 hover:border-green-500/50' 
-              : 'border-[var(--surface-border)] hover:border-primary-500/50'
+            : hasStarters
+              ? 'border-emerald-500/40 hover:border-emerald-500 bg-emerald-500/[0.01] hover:bg-emerald-500/[0.03]'
+              : hasSquad 
+                ? 'border-amber-500/30 hover:border-amber-500/60' 
+                : 'border-[var(--surface-border)] hover:border-primary-500/50'
         } ${isFinished ? 'opacity-70' : ''}`}
       >
         {isUpcoming && (
@@ -185,23 +211,30 @@ const SquadsTab: React.FC = () => {
           </div>
         )}
 
-        {hasSquad && (
-          <div className="absolute top-4 right-4">
-            <CheckCircle2 className="text-green-500" size={20} />
+        {hasStarters ? (
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full" title="Titulares confirmados">
+            <CheckCircle2 className="text-emerald-500" size={14} />
+            <span className="text-[8px] font-black uppercase text-emerald-500 tracking-wider">Formación Lista</span>
           </div>
-        )}
+        ) : hasSquad ? (
+          <div className="absolute top-4 right-4" title="Convocatoria guardada, pendientes los titulares">
+            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md text-[8px] font-black uppercase">
+              Pendiente Titulares
+            </span>
+          </div>
+        ) : null}
         
         <div className={`flex items-center gap-3 mb-6 flex-wrap ${isUpcoming ? 'mt-4' : ''}`}>
           <div className="px-3 py-1 bg-surface-ground border border-[var(--surface-border)] rounded-lg text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">
             {new Date(m.date).toLocaleDateString()}
           </div>
-          {hasSquad && (m as any).squad?.[0]?.appointment_time && (
+          {hasSquad && matchSquad?.appointment_time && (
             <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-              CITACIÓN: {(m as any).squad[0].appointment_time.slice(0, 5)} HS
+              CITACIÓN: {matchSquad.appointment_time.slice(0, 5)} HS
             </div>
           )}
-          {hasSquad && (m as any).squad?.[0]?.location && (() => {
-            const loc = (m as any).squad[0].location;
+          {hasSquad && matchSquad?.location && (() => {
+            const loc = matchSquad.location;
             const mapsUrl = loc.startsWith('http://') || loc.startsWith('https://') 
               ? loc 
               : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
@@ -238,18 +271,64 @@ const SquadsTab: React.FC = () => {
             <span className="text-sm font-black uppercase italic text-[var(--text-main)] truncate max-w-[120px] text-right">{m.awayteam}</span>
           </div>
           <div className="h-1 bg-surface-ground rounded-full overflow-hidden">
-            <div className={`h-full transition-all duration-1000 ${hasSquad ? 'w-full bg-green-500' : 'w-0 bg-primary-600'}`}></div>
+            <div className={`h-full transition-all duration-1000 ${hasStarters ? 'w-full bg-emerald-500' : hasSquad ? 'w-1/2 bg-amber-500' : 'w-0 bg-primary-600'}`}></div>
           </div>
         </div>
 
-        <button className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all ${
-          hasSquad 
-            ? 'bg-green-600/10 text-green-600 group-hover:bg-green-600 group-hover:text-white' 
-            : 'bg-primary-600 text-white shadow-xl shadow-primary-600/20 group-hover:scale-[1.02]'
-        }`}>
-          {hasSquad ? 'Revisar Plantilla' : 'Armar Convocatoria'}
-          <ChevronRight size={14} />
-        </button>
+        {hasStarters ? (
+          <div className="space-y-2">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleGoToFixture(m.id);
+              }}
+              className="w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all bg-primary-600 hover:bg-primary-700 text-white shadow-xl shadow-primary-600/20 group-hover:scale-[1.02]"
+            >
+              <Plus size={16} />
+              <span>CARGAR DATOS</span>
+              <ChevronRight size={14} />
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedMatch(m);
+                setShowSquadModal(true);
+              }}
+              className="w-full py-2.5 rounded-xl font-bold uppercase text-[9px] tracking-wider flex items-center justify-center gap-1.5 transition-all text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20"
+              title="Ver o editar lista de convocados y formación"
+            >
+              <Users size={13} />
+              <span>Ver Convocatoria / Pizarra</span>
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedMatch(m);
+              setShowSquadModal(true);
+            }}
+            className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all ${
+              hasSquad 
+                ? 'bg-amber-500/10 text-amber-500 group-hover:bg-amber-500 group-hover:text-white border border-amber-500/20' 
+                : 'bg-primary-600 text-white shadow-xl shadow-primary-600/20 group-hover:scale-[1.02]'
+            }`}
+          >
+            {hasSquad ? (
+              <>
+                <Star size={14} fill="currentColor" />
+                <span>Definir Equipo Titular</span>
+              </>
+            ) : (
+              <>
+                <Users size={14} />
+                <span>Armar Convocatoria</span>
+              </>
+            )}
+            <ChevronRight size={14} />
+          </button>
+        )}
       </div>
     );
   };
@@ -397,6 +476,11 @@ const SquadsTab: React.FC = () => {
             setSelectedMatch(null);
             setShowSquadModal(false);
             setRefreshTrigger(prev => prev + 1);
+          }}
+          onOpenResultModal={(m) => {
+            setSelectedMatch(null);
+            setShowSquadModal(false);
+            handleGoToFixture(m.id);
           }}
         />
       )}

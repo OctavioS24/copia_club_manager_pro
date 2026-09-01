@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, Loader2, Edit3, Plus, Activity } from 'lucide-react';
+import { Trophy, Calendar, Loader2, Edit3, Plus, Activity, Star, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Match, Player } from '../../types';
 import { getFixturesByCategory, getTournaments } from '../../lib/torneos';
@@ -15,12 +15,16 @@ interface FixtureViewProps {
   disciplineId?: string;
   categoryId?: string;
   gender?: string;
+  initialMatchId?: string | null;
+  onOpenMatchIdCleared?: () => void;
 }
 
 const FixtureView: React.FC<FixtureViewProps> = ({ 
   disciplineId: propDisciplineId, 
   categoryId: propCategoryId, 
-  gender: propGender 
+  gender: propGender,
+  initialMatchId,
+  onOpenMatchIdCleared
 }) => {
   const { 
     selectedDivision: contextCategoryId, 
@@ -108,6 +112,21 @@ const FixtureView: React.FC<FixtureViewProps> = ({
       fetchData();
     }
   }, [selectedDivision, fetchData]);
+
+  useEffect(() => {
+    const targetId = initialMatchId || localStorage.getItem('open_fixture_match_id');
+    if (targetId && matches.length > 0) {
+      const matchToOpen = matches.find(m => m.id === targetId);
+      if (matchToOpen) {
+        setSelectedMatch(matchToOpen);
+        setShowSquadModal(false);
+        if (onOpenMatchIdCleared) {
+          onOpenMatchIdCleared();
+        }
+        localStorage.removeItem('open_fixture_match_id');
+      }
+    }
+  }, [initialMatchId, matches, onOpenMatchIdCleared]);
 
   if (isLoading) {
     return (
@@ -218,21 +237,62 @@ const FixtureView: React.FC<FixtureViewProps> = ({
 
                   {/* Actions */}
                   <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2 md:gap-3">
-                    {!isFinished && !isSuspended && (
-                      <button
-                        onClick={() => {
-                          setSelectedMatch(match);
-                          setShowSquadModal(true);
-                        }}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]"
-                      >
-                        <Users className="w-4 h-4" />
-                        CONVOCATORIA
-                      </button>
-                    )}
+                    {!isFinished && !isSuspended && (() => {
+                      const matchSquad = Array.isArray((match as any).squad) ? (match as any).squad[0] : (match as any).squad;
+                      const hasSquad = !!matchSquad;
+                      const squadPlayers = matchSquad?.players || [];
+                      const hasStarters = squadPlayers.some((p: any) => p.is_starting);
+
+                      if (!hasSquad) {
+                        return (
+                          <button
+                            onClick={() => {
+                              setSelectedMatch(match);
+                              setShowSquadModal(true);
+                            }}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-5 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all bg-primary-600 hover:bg-primary-700 text-white shadow-md shadow-primary-600/20"
+                          >
+                            <Users className="w-4 h-4" />
+                            <span>CONVOCATORIA</span>
+                          </button>
+                        );
+                      }
+
+                      if (!hasStarters) {
+                        return (
+                          <button
+                            onClick={() => {
+                              setSelectedMatch(match);
+                              setShowSquadModal(true);
+                            }}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-5 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                          >
+                            <Star className="w-4 h-4" fill="currentColor" />
+                            <span>DEFINIR EQUIPO</span>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <button
+                          onClick={() => {
+                            setSelectedMatch(match);
+                            setShowSquadModal(true);
+                          }}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-5 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>PLANTILLA</span>
+                        </button>
+                      );
+                    })()}
+
                     <button
                       disabled={isSuspended}
-                      onClick={() => setSelectedMatch(match)}
+                      onClick={() => {
+                        setShowSquadModal(false);
+                        setSelectedMatch(match);
+                      }}
                       className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-xl font-black text-[9px] md:text-[10px] tracking-widest uppercase transition-all ${
                         isFinished
                           ? 'bg-surface-ground hover:bg-surface-hover text-[var(--text-main)] border border-[var(--surface-border)]'
@@ -244,12 +304,12 @@ const FixtureView: React.FC<FixtureViewProps> = ({
                       {isFinished ? (
                         <>
                           <Edit3 className="w-4 h-4" />
-                          RESULTADO
+                          <span>RESULTADO</span>
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          CARGAR
+                          <span>CARGAR DATOS</span>
                         </>
                       )}
                     </button>
@@ -308,6 +368,10 @@ const FixtureView: React.FC<FixtureViewProps> = ({
               setSelectedMatch(null);
               setShowSquadModal(false);
               fetchData();
+            }}
+            onOpenResultModal={(m) => {
+              setShowSquadModal(false);
+              setSelectedMatch(m);
             }}
           />
         )}

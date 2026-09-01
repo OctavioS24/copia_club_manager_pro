@@ -25,6 +25,7 @@ import ControlAcceso from './components/ControlAcceso.tsx';
 import ProtectedRoute from './components/Auth/ProtectedRoute.tsx';
 import Login from './components/Auth/Login.tsx';
 import { useAuth } from './context/AuthContext.tsx';
+import PublicConvocatoriaView from './components/Torneos/PublicConvocatoriaView.tsx';
 
 function App() {
   const navigate = useNavigate();
@@ -436,6 +437,9 @@ function App() {
               <SquadConfigView config={config} members={members} />
             </ProtectedRoute>
           } />
+
+          {/* Vista Pública de Convocatoria (Accesible vía WhatsApp / Enlace directo sin login) */}
+          <Route path="/convocatoria/:matchId" element={<PublicConvocatoriaView />} />
 
           {/* Redirección por defecto */}
           <Route path="*" element={<Navigate to="/" replace />} />

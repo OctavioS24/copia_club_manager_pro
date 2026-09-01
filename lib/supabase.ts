@@ -636,6 +636,30 @@ tournaments: {
       }
       return query;
     },
+
+    getByDateRange: (startDate: string, endDate: string, discipline: string, categoryId?: string) => {
+      let query = supabase
+        .from('attendance')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .eq('discipline', discipline);
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+      return query.order('date', { ascending: true });
+    },
+
+    getByCategory: (discipline: string, categoryId?: string) => {
+      let query = supabase
+        .from('attendance')
+        .select('*')
+        .eq('discipline', discipline);
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+      return query.order('date', { ascending: true });
+    },
     
     upsert: (records: any[]) => supabase
       .from('attendance')

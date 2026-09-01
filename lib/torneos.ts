@@ -39,7 +39,7 @@ export const getTournaments = async (): Promise<Tournament[]> => {
 export const getFixturesByCategory = async (tournamentId: string, categoryId: string): Promise<Match[]> => {
   const { data, error } = await supabase
     .from('matches')
-    .select('*, events:match_events(*)')
+    .select('*, events:match_events(*), squad:match_squads(*, players:match_squad_players(*))')
     .eq('tournamentid', tournamentId)
     .eq('categoryid', categoryId)
     .order('date', { ascending: true });

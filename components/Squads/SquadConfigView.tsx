@@ -40,6 +40,9 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('squad_active_tab') || 'dashboard';
   });
+  const [targetFixtureMatchId, setTargetFixtureMatchId] = useState<string | null>(() => {
+    return localStorage.getItem('open_fixture_match_id') || null;
+  });
   const [tournaments, setTournaments] = useState<any[]>([]);
 
   useEffect(() => {
@@ -216,9 +219,27 @@ const SquadConfigView: React.FC<SquadConfigViewProps> = ({ config: propConfig, m
       case 'asistencia':
         return <Asistencia />;
       case 'fixture':
-        return <FixtureView />;
+        return (
+          <FixtureView 
+            initialMatchId={targetFixtureMatchId} 
+            onOpenMatchIdCleared={() => {
+              setTargetFixtureMatchId(null);
+              localStorage.removeItem('open_fixture_match_id');
+            }} 
+          />
+        );
       case 'squads':
-        return <SquadsTab />;
+        return (
+          <SquadsTab 
+            onNavigateToFixture={(matchId?: string) => {
+              if (matchId) {
+                setTargetFixtureMatchId(matchId);
+                localStorage.setItem('open_fixture_match_id', matchId);
+              }
+              setActiveTab('fixture');
+            }} 
+          />
+        );
       case 'medico':
         return <MedicalDashboard readOnly={true} />;
       case 'compromisos':

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Trophy, TrendingUp, Activity, Loader2, AlertCircle, 
-  TrendingDown, ShieldAlert, Target,
+  TrendingDown, ShieldAlert, ShieldX, Target,
   Award, Calendar, ChevronRight, History, Timer, AlertTriangle, RefreshCw, HeartPulse, Heart, X,
   ArrowUpRight
 } from 'lucide-react';
@@ -78,7 +78,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
   const [isLoadingLists, setIsLoadingLists] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [showStatsType, setShowStatsType] = useState<'Goles' | 'Amarillas' | 'Rojas' | null>(null);
+  const [showStatsType, setShowStatsType] = useState<'Goles' | 'Amarillas' | 'Rojas' | 'Goles en Contra' | null>(null);
   
   // Medical fitness warnings states
   const [showMedicalWarningModal, setShowMedicalWarningModal] = useState(false);
@@ -273,6 +273,19 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
     return 'neutral';
   }, [matches, clubConfig, disciplineConfig]);
 
+  const goalsConceded = useMemo(() => {
+    if (!selectedCategory || !clubConfig) return 0;
+    const teamName = clubConfig.name || 'Mi Equipo';
+
+    return matches.reduce((acc, match) => {
+      if (match.status !== 'Finished') return acc;
+      const isHome = (match.hometeam || match.home_team) === teamName;
+      // If our team is home, goals conceded is away score; if our team is away, goals conceded is home score
+      const conceded = isHome ? (match.awayscore ?? match.away_score ?? 0) : (match.homescore ?? match.home_score ?? 0);
+      return acc + conceded;
+    }, 0);
+  }, [matches, selectedCategory, clubConfig]);
+
   const squadStats = useMemo(() => {
     const stats: Record<string, number> = {};
     
@@ -426,33 +439,59 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
             </div>
           </div>
 
-          {/* Estadísticas Personales del Plantel */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => (
-              <div key={et.id} className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
-                    <Award size={24} />
+          {/* Estadísticas Secundarias del Plantel (Goles a Favor, Goles en Contra, Tarjetas Amarillas y Rojas) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {disciplineConfig?.event_types.filter(et => disciplineConfig.dashboard_stats.includes(et.statsKey)).map(et => {
+              const isGoal = et.name === 'GOL' || et.statsKey === 'GOLES_TOTALES';
+              return (
+                <React.Fragment key={et.id}>
+                  <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ backgroundColor: `${et.color}10`, color: et.color }}>
+                        <Award size={24} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">{et.name}S TOTALES</p>
+                        <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats[et.statsKey] || 0}</h4>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowStatsType(et.name === 'GOL' ? 'Goles' : et.name.includes('AMARILLA') ? 'Amarillas' : 'Rojas')}
+                      className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">{et.name}S TOTALES</p>
-                    <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats[et.statsKey] || 0}</h4>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowStatsType(et.name === 'GOL' ? 'Goles' : et.name.includes('AMARILLA') ? 'Amarillas' : 'Rojas')}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            ))}
+
+                  {/* Card específica de GOLES EN CONTRA inmediatamente al lado de Goles Totales */}
+                  {isGoal && (
+                    <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all hover:border-rose-500/30">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
+                          <ShieldX size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles en Contra</p>
+                          <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsConceded}</h4>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowStatsType('Goles en Contra')}
+                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0 cursor-pointer"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
             
             {!disciplineConfig && (
               <>
                 <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-primary-500/30" onClick={() => setShowStatsType('Goles')}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 shrink-0 shadow-inner">
                       <Award size={24} />
                     </div>
                     <div>
@@ -460,11 +499,36 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                       <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.GOLES_TOTALES || 0}</h4>
                     </div>
                   </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles'); }}
+                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-primary-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Card de Goles en Contra en fallback sin config */}
+                <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-rose-500/30" onClick={() => setShowStatsType('Goles en Contra')}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
+                      <ShieldX size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#666666] dark:text-[#AAAAAA] uppercase tracking-widest truncate leading-none">Goles en Contra</p>
+                      <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{goalsConceded}</h4>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Goles en Contra'); }}
+                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
 
                 <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-amber-500/30" onClick={() => setShowStatsType('Amarillas')}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0 shadow-inner">
                       <ShieldAlert size={24} />
                     </div>
                     <div>
@@ -472,11 +536,17 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                       <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_AMARILLAS || 0}</h4>
                     </div>
                   </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Amarillas'); }}
+                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
 
                 <div className="bg-white dark:bg-[#161C28] p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer hover:border-red-500/30" onClick={() => setShowStatsType('Rojas')}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0 shadow-inner">
                       <ShieldAlert size={24} />
                     </div>
                     <div>
@@ -484,6 +554,12 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
                       <h4 className="text-2xl font-black text-[#333333] dark:text-[#E0E0E0] mt-1.5">{squadStats.TARJETAS_ROJAS || 0}</h4>
                     </div>
                   </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowStatsType('Rojas'); }}
+                    className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[#888888] dark:text-[#BBBBBB] hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </>
             )}
@@ -692,6 +768,7 @@ const PlantelDashboard: React.FC<PlantelDashboardProps> = ({ clubConfig: propClu
         <StatsDetailModal 
           type={showStatsType} 
           matches={matches} 
+          teamName={clubConfig?.name || 'Mi Equipo'}
           onClose={() => setShowStatsType(null)} 
         />
       )}

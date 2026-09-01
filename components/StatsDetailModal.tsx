@@ -3,14 +3,33 @@ import { X, Award, User } from 'lucide-react';
 import { Match } from '../types';
 
 interface StatsDetailModalProps {
-  type: 'Goles' | 'Amarillas' | 'Rojas';
+  type: 'Goles' | 'Amarillas' | 'Rojas' | 'Goles en Contra';
   matches: Match[];
   onClose: () => void;
+  teamName?: string;
 }
 
-const StatsDetailModal: React.FC<StatsDetailModalProps> = ({ type, matches, onClose }) => {
+const StatsDetailModal: React.FC<StatsDetailModalProps> = ({ type, matches, onClose, teamName = 'Mi Equipo' }) => {
   const stats = useMemo(() => {
-    const playerStats: Record<string, { name: string; count: number }> = {};
+    if (type === 'Goles en Contra') {
+      // For goals conceded, group by rival match
+      return matches
+        .filter(m => m.status === 'Finished')
+        .map(m => {
+          const isHome = m.hometeam === teamName;
+          const rival = isHome ? (m.awayteam || 'Rival') : (m.hometeam || 'Rival');
+          const conceded = isHome ? (m.awayscore ?? 0) : (m.homescore ?? 0);
+          return {
+            name: `vs. ${rival} (${m.date || 'S/F'})`,
+            count: conceded,
+            extra: isHome ? 'Local' : 'Visitante'
+          };
+        })
+        .filter(item => item.count > 0)
+        .sort((a, b) => b.count - a.count);
+    }
+
+    const playerStats: Record<string, { name: string; count: number; extra?: string }> = {};
     
     matches.forEach(m => {
       if (m.status !== 'Finished' || !m.events) return;
@@ -34,10 +53,10 @@ const StatsDetailModal: React.FC<StatsDetailModalProps> = ({ type, matches, onCl
     });
     
     return Object.values(playerStats).sort((a, b) => b.count - a.count);
-  }, [matches, type]);
+  }, [matches, type, teamName]);
 
-  const colorClass = type === 'Goles' ? 'text-primary-500' : type === 'Amarillas' ? 'text-amber-500' : 'text-red-500';
-  const bgClass = type === 'Goles' ? 'bg-primary-500/10' : type === 'Amarillas' ? 'bg-amber-500/10' : 'bg-red-500/10';
+  const colorClass = type === 'Goles' ? 'text-primary-500' : type === 'Amarillas' ? 'text-amber-500' : type === 'Goles en Contra' ? 'text-rose-500' : 'text-red-500';
+  const bgClass = type === 'Goles' ? 'bg-primary-500/10' : type === 'Amarillas' ? 'bg-amber-500/10' : type === 'Goles en Contra' ? 'bg-rose-500/10' : 'bg-red-500/10';
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
@@ -80,14 +99,16 @@ const StatsDetailModal: React.FC<StatsDetailModalProps> = ({ type, matches, onCl
                     <div className="min-w-0">
                       <h4 className="font-black text-sm uppercase italic tracking-tighter text-[var(--text-main)] leading-none mb-1 truncate">{player.name}</h4>
                       <div className="flex items-center gap-1">
-                        <span className="text-[7px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-40">Posición #{idx + 1}</span>
+                        <span className="text-[7px] font-black text-[var(--text-muted)] uppercase tracking-widest italic opacity-40">
+                          {player.extra || `Posición #${idx + 1}`}
+                        </span>
                       </div>
                     </div>
                   </div>
                   
                   <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${bgClass} ${colorClass} border border-white/10 shadow-lg shrink-0`}>
                     <span className="text-lg font-black italic leading-none">{player.count}</span>
-                    <span className="text-[5px] font-black uppercase tracking-widest">{type === 'Goles' ? 'GOL' : 'TARJ'}</span>
+                    <span className="text-[5px] font-black uppercase tracking-widest">{type === 'Goles' ? 'GOL' : type === 'Goles en Contra' ? 'GC' : 'TARJ'}</span>
                   </div>
                 </div>
               ))}
